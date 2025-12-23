@@ -1,10 +1,63 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" dir="ltr">
 <head>
-  <meta charset="UTF-8">
-  <title>Title</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FLYTAU - Official Airline Website</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
+    <header>
+        <div class="header-container">
+            <img src="{{ url_for('static', filename='images/logo.png') }}" alt="FLYTAU Logo" class="logo">
 
+            <nav>
+                <a href="{{ url_for('index') }}">Home</a>
+                <a href="{{ url_for('login') }}">Login</a>
+                <a href="{{ url_for('register') }}">Register</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <h1>Fly High with FLYTAU</h1>
+            <p>Your journey begins here</p>
+        </section>
+
+        <section class="search-section">
+            <h2>Search Flights</h2>
+            <form action="/search" method="GET" class="search-form">
+                <div class="input-group">
+                    <label>Origin</label>
+                    <input type="text" name="origin" placeholder="City or Airport" required>
+                </div>
+                <div class="input-group">
+                    <label>Destination</label>
+                    <input type="text" name="destination" placeholder="Where to?" required>
+                </div>
+                <div class="input-group">
+                    <label>Date</label>
+                    <input type="date" name="flight_date" required>
+                </div>
+                <button type="submit" class="btn-primary">Search Flights</button>
+            </form>
+        </section>
+
+        <section class="guest-access">
+            <h3>Already have a booking?</h3>
+            <p>View your active ticket by entering your details below:</p>
+            <form action="/view-ticket" method="POST" class="inline-form">
+                <input type="text" name="order_code" placeholder="Order Code" required>
+                <input type="email" name="email" placeholder="Email Address" required>
+                <button type="submit" class="btn-secondary">View Ticket</button>
+            </form>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2026 FLYTAU Airlines. All rights reserved.</p>
+        <p>Information Systems Project - Tel Aviv University</p>
+    </footer>
 </body>
 </html>
