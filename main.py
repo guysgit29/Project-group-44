@@ -25,7 +25,7 @@ def home_page():
 @app.route('/login')
 def login_page():
     # Managers login with ID, Customers with Email [cite: 16, 80]
-    return render_template('login_page.html')
+    return render_template('client_login_page.html')
 
 @app.route('/register')
 def registration():
