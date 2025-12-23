@@ -16,3 +16,21 @@ app.config.update(
 
 Session(app)
 
+
+@app.route('/')
+def home_page():
+    # Renders the main landing page for guests and users
+    return render_template('home_page.html')
+
+@app.route('/login')
+def login_page():
+    # Managers login with ID, Customers with Email [cite: 16, 80]
+    return render_template('login_page.html')
+
+@app.route('/register')
+def registration():
+    # Interface for new customers to sign up [cite: 79, 80]
+    return render_template('registration.html')
+
+if __name__ == '__main__':
+    app.run(debug=True)
