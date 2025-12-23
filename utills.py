@@ -21,4 +21,3 @@ def db_cur():
     finally:
         if cursor: cursor.close()
         if mydb: mydb.close()
-#group 44
