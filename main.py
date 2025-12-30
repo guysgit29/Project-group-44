@@ -52,8 +52,39 @@ def home_page():
 @app.route('/login', methods=['GET', 'POST'])
 def login_page():
     if request.method == 'POST':
-        # Authentication logic will go here
-        pass
+        # Get data from the form
+        login_input = request.form.get('username')  # Can be Email or ID
+        password_input = request.form.get('password')
+
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        # 1. Check if the user is a Manager (Login by ID)
+        cursor.execute("SELECT * FROM Manager WHERE id = %s AND password = %s", (login_input, password_input))
+        manager = cursor.fetchone()
+
+        if manager:
+            session['user_id'] = manager['id']
+            session['role'] = 'manager'
+            cursor.close()
+            conn.close()
+            return redirect(url_for('manager_dashboard'))  # Create this route later
+
+        # 2. Check if the user is a Registered Customer (Login by Email)
+        cursor.execute("SELECT * FROM RegisteredUser WHERE email = %s AND password = %s", (login_input, password_input))
+        customer = cursor.fetchone()
+
+        cursor.close()
+        conn.close()
+
+        if customer:
+            session['user_id'] = customer['email']
+            session['role'] = 'customer'
+            return redirect(url_for('home_page'))
+
+        # If login failed
+        return render_template('client_login_page.html', error="Invalid ID/Email or Password")
+
     return render_template('client_login_page.html')
 
 @app.route('/register')
