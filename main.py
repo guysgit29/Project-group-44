@@ -91,15 +91,49 @@ def login_page():
 
     return render_template('client_login_page.html')
 
-# --- דף חיפוש הזמנה פעילה (פותר את ה-BuildError) ---
-@app.route('/search_order')
-def search_order():
-    # בשלב זה מחזיר טקסט כדי שלא תהיה שגיאה בטעינת דף הבית
-    return "דף חיפוש הזמנה פעילה - בבנייה"
-
 @app.route('/register')
 def registration():
     return render_template('registration.html')
+
+
+@app.route('/search_order', methods=['GET', 'POST'])
+def search_order():
+    if request.method == 'POST':
+        order_input = request.form.get('order_id')
+        email_input = request.form.get('email')
+
+        try:
+            with db_cur() as cursor:
+                # שימוש בשמות העמודות המדויקים מה-SQL שלך
+                query = "SELECT * FROM booking WHERE booking_id = %s AND email = %s"
+                cursor.execute(query, (order_input, email_input))
+                order = cursor.fetchone()
+
+                if order:
+                    # אם נמצאה, נעביר לדף ניהול עם מספר ההזמנה בכתובת
+                    return redirect(f"/manage_booking/{order['booking_id']}")
+                else:
+                    return render_template('search_order.html', error="הזמנה לא נמצאה.")
+        except Exception as e:
+            return render_template('search_order.html', error="שגיאה בחיבור.")
+
+    return render_template('search_order.html')
+
+
+# ה-Route החדש של דף ניהול ההזמנה
+@app.route('/manage_booking/<booking_id>')
+def manage_booking(booking_id):
+    try:
+        with db_cur() as cursor:
+            # שליפת כל הפרטים של ההזמנה הספציפית
+            cursor.execute("SELECT * FROM booking WHERE booking_id = %s", (booking_id,))
+            order_data = cursor.fetchone()
+
+        if order_data:
+            return render_template('manage_booking.html', order=order_data)
+        return redirect('/')  # אם משום מה לא נמצא, נחזור לבית
+    except Exception as e:
+        return f"Error: {e}"
 
 if __name__ == '__main__':
     app.run(debug=True)
