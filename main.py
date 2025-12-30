@@ -4,6 +4,17 @@ from datetime import timedelta, date
 from contextlib import contextmanager
 import mysql.connector
 
+app = Flask(__name__)
+
+def get_db_connection():
+    connection = mysql.connector.connect(
+        host='guyeylat.mysql.pythonanywhere-services.com', # הכתובת המדויקת מלשונית Databases
+        user='guyeylat',                                   # שם המשתמש שלך
+        password='YOUR_MYSQL_PASSWORD',                    # הסיסמה שהגדרת ל-MySQL
+        database='guyeylat$flytau'                         # שם בסיס הנתונים המלא
+    )
+    return connection
+
 @contextmanager
 def db_cur():
     mydb = None
