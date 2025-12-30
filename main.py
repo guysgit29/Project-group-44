@@ -4,7 +4,6 @@ from datetime import timedelta
 import mysql.connector
 import os
 from contextlib import contextmanager
-from utills import *
 
 app = Flask(__name__)
 
@@ -156,7 +155,7 @@ def register():
         create_user(f_name, l_name, user_email, user_password)
 
         # 3. הפניה לדף התחברות או לדף הבית
-        return redirect('/login')
+        return redirect(url_for('login'))
 
         # אם זו בקשת GET (סתם נכנסו לדף), מציגים את הטופס
     return render_template('registration.html')

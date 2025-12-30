@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>FlyTau - חיפוש הזמנה</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <header>
+        <h1>חיפוש הזמנה פעילה</h1>
+        <nav>
+            <a href="/">חזרה לדף הבית</a>
+        </nav>
+    </header>
+
+    <main>
+        <section class="search-box">
+            <h2>אנא הזן את פרטי ההזמנה שלך</h2>
+
+            {% if error %}
+                <p style="color: red; font-weight: bold;">{{ error }}</p>
+            {% endif %}
+
+            <form action="/search_order" method="POST">
+                <label for="order_id">מספר הזמנה:</label>
+                <input type="text" name="order_id" id="order_id" required placeholder="לדוגמה: 1001">
+
+                <label for="email">כתובת אימייל:</label>
+                <input type="email" name="email" id="email" required placeholder="example@email.com">
+
+                <button type="submit">חפש הזמנה</button>
+            </form>
+        </section>
+    </main>
+</body>
+</html>
