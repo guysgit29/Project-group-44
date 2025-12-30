@@ -1,29 +1,45 @@
-<section class="search-box">
-            <h2>Find Your Flight</h2>
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>FlyTau - דף בית</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header>
+        <h1>ברוכים הבאים ל-FlyTau</h1>
+        <nav>
+        <a href="/login">התחברות משתמש</a> |
+        <a href="/register">הרשמת משתמש</a> |
+        <a href="/search_order">חיפוש הזמנה פעילה</a> |
+        <a href="/login">התחברות מנהל</a>
+</nav>
+    </header>
 
-            <form action="/search" method="GET">
+    <section class="search-box">
+        <h2>Find Your Flight</h2>
+        <form action="/search" method="GET">
+            <label for="origin">From:</label>
+            <select name="origin" id="origin" required>
+                <option value="" disabled selected>Select Origin</option>
+                {% for item in origins %}
+                    <option value="{{ item.origin }}">{{ item.origin }}</option>
+                {% endfor %}
+            </select>
 
-                <label for="origin">From:</label>
-                <select name="origin" id="origin" required>
-                    <option value="" disabled selected>Select Origin</option>
+            <label for="destination">To:</label>
+            <select name="destination" id="destination" required>
+                <option value="" disabled selected>Select Destination</option>
+                {% for item in destinations %}
+                    <option value="{{ item.destination }}">{{ item.destination }}</option>
+                {% endfor %}
+            </select>
 
-                    {% for item in origins %}
-                        <option value="{{ item.origin }}">{{ item.origin }}</option>
-                    {% endfor %}
-                </select>
+            <label for="date">Date:</label>
+            <input type="date" name="date" id="date" required>
 
-                <label for="destination">To:</label>
-                <select name="destination" id="destination" required>
-                    <option value="" disabled selected>Select Destination</option>
-
-                    {% for item in destinations %}
-                        <option value="{{ item.destination }}">{{ item.destination }}</option>
-                    {% endfor %}
-                </select>
-
-                <label for="date">Date:</label>
-                <input type="date" name="date" id="date" required>
-
-                <button type="submit">Search Flights</button>
-            </form>
-        </section>
+            <button type="submit">Search Flights</button>
+        </form>
+    </section>
+</body>
+</html>
