@@ -84,12 +84,12 @@ def login_page():
                     session['role'] = 'customer'
                     return redirect(url_for('home_page'))
 
-            return render_template('client_login_page.html', error="Invalid ID/Email or Password")
+            return render_template('login.html', error="Invalid ID/Email or Password")
         except Exception as e:
             print(f"Login error: {e}")
-            return render_template('client_login_page.html', error="Connection Error")
+            return render_template('login.html', error="Connection Error")
 
-    return render_template('client_login_page.html')
+    return render_template('login.html')
 
 
 # --- זה קטע חדש שהוספתי ---
@@ -142,7 +142,7 @@ def logout():
 
 
 @app.route('/register', methods=['GET', 'POST'])
-def register():
+def registration():
     # אם הבקשה היא POST, זה אומר שהמשתמש לחץ על "הירשם"
     if request.method == 'POST':
         # 1. שליפת הנתונים מהשדות בטופס ה-HTML (לפי ה-name שהגדרנו)
