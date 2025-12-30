@@ -31,9 +31,23 @@ def get_db_connection():
     )
     return connection
 
+
 @app.route('/')
 def home_page():
-    return render_template('home_page.html')
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    cursor.execute("SELECT DISTINCT origin FROM FlightLength")
+    origins = cursor.fetchall()
+
+    cursor.execute("SELECT DISTINCT destination FROM FlightLength")
+    destinations = cursor.fetchall()
+
+    cursor.close()
+    conn.close()
+
+    return render_template('home_page.html', origins=origins, destinations=destinations)
+
 
 @app.route('/login', methods=['GET', 'POST'])
 def login_page():
