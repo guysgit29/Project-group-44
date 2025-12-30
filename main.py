@@ -1,6 +1,33 @@
 from flask import Flask, render_template, request, redirect, session
 from flask_session import Session
 from datetime import timedelta, date
+from contextlib import contextmanager
+import mysql.connector
+
+@contextmanager
+def db_cur():
+    mydb = None
+    cursor = None
+    try:
+        mydb = mysql.connector.connect(
+            host="localhost",
+            user="root",
+            password="root",
+            database="",
+            autocommit=True
+        )
+        cursor = mydb.cursor()
+        yield cursor
+
+    except mysql.connector.Error as err:
+        raise err
+
+    finally:
+        if cursor:
+            cursor.close()
+        if mydb:
+            mydb.close()
+
 
 app = Flask(__name__)
 
@@ -33,3 +60,4 @@ def registration():
 
 if __name__ == '__main__':
     app.run(debug=True)
+    print("hello")
