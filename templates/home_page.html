@@ -1,61 +1,29 @@
-<!DOCTYPE html>
-<html lang="en" dir="ltr">
-<head>
-    <meta charset="UTF-8">
-    <title>FLYTAU - Home</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-</head>
-<body>
-    <header>
-        <img src="{{ url_for('static', filename='images/logo.png') }}" alt="FLYTAU Logo" class="logo">
-
-        <nav>
-            <a href="{{ url_for('home_page') }}">Home</a>
-            <a href="{{ url_for('login_page') }}">Login</a>
-            <a href="{{ url_for('registration') }}">Register</a>
-        </nav>
-    </header>
-
-    <main>
-        <section class="hero">
-            <h1>Welcome to FLYTAU Airlines</h1>
-            <p>Managing flights with precision and safety.</p>
-        </section>
-
-        <section class="search-box">
+<section class="search-box">
             <h2>Find Your Flight</h2>
+
             <form action="/search" method="GET">
-                <select name="origin" required>
-                    <option value="" disabled selected>From</option>
-                    {% for row in origins %}
-                        <option value="{{ row.origin }}">{{ row.origin }}</option>
+
+                <label for="origin">From:</label>
+                <select name="origin" id="origin" required>
+                    <option value="" disabled selected>Select Origin</option>
+
+                    {% for item in origins %}
+                        <option value="{{ item.origin }}">{{ item.origin }}</option>
                     {% endfor %}
                 </select>
 
-                <select name="destination" required>
-                    <option value="" disabled selected>To</option>
-                    {% for row in destinations %}
-                        <option value="{{ row.destination }}">{{ row.destination }}</option>
+                <label for="destination">To:</label>
+                <select name="destination" id="destination" required>
+                    <option value="" disabled selected>Select Destination</option>
+
+                    {% for item in destinations %}
+                        <option value="{{ item.destination }}">{{ item.destination }}</option>
                     {% endfor %}
                 </select>
 
-                <input type="date" name="date" required>
-                <button type="submit">Search</button>
+                <label for="date">Date:</label>
+                <input type="date" name="date" id="date" required>
+
+                <button type="submit">Search Flights</button>
             </form>
         </section>
-
-        <section class="guest-access">
-            <h3>View Active Ticket</h3>
-            <form action="/view-ticket" method="POST">
-                <input type="text" name="order_code" placeholder="Order Code" required>
-                <input type="email" name="email" placeholder="Email" required>
-                <button type="submit">View</button>
-            </form>
-        </section>
-    </main>
-
-    <footer>
-        <p>&copy; 2026 FLYTAU - Information Systems Project</p>
-    </footer>
-</body>
-</html>

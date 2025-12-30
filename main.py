@@ -3,6 +3,7 @@ from flask_session import Session
 from datetime import timedelta
 import mysql.connector
 import os
+from contextlib import contextmanager
 
 app = Flask(__name__)
 
@@ -32,21 +33,64 @@ def get_db_connection():
     return connection
 
 
+@contextmanager
+def db_cur():
+    mydb = None
+    cursor = None
+    try:
+        mydb = mysql.connector.connect(
+            host="localhost",
+            user="root",
+            password="root",  # הסיסמה שלך
+            database="flytau",  # שם הדאטה בייס המקומי
+            autocommit=True
+        )
+        # הוספתי כאן dictionary=True כדי שהתוצאות יחזרו כמילון
+        # זה קריטי כדי שה-HTML (item.code) יעבוד תקין
+        cursor = mydb.cursor(dictionary=True)
+        yield cursor
+
+    except mysql.connector.Error as err:
+        # במקרה של שגיאה, נזרוק אותה כדי שנוכל לתפוס אותה ב-Route
+        raise err
+
+    finally:
+        if cursor:
+            cursor.close()
+        if mydb:
+            mydb.close()
+
+
+# --- דף הבית ---
 @app.route('/')
 def home_page():
-    conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
+    # משתנים שיכילו את הרשימות
+    origins_list = []
+    destinations_list = []
 
-    cursor.execute("SELECT DISTINCT origin FROM FlightLength")
-    origins = cursor.fetchall()
+    try:
+        with db_cur() as cursor:
+            # 1. שליפת רשימת המקורות (רק איפה שיש טיסות יוצאות)
+            query_origins = "SELECT DISTINCT origin FROM Flight ORDER BY origin ASC"
+            cursor.execute(query_origins)
+            origins_list = cursor.fetchall()
+            # יחזיר רשימה כזו: [{'origin': 'TLV'}, {'origin': 'JFK'}...]
 
-    cursor.execute("SELECT DISTINCT destination FROM FlightLength")
-    destinations = cursor.fetchall()
+            # 2. שליפת רשימת היעדים (רק איפה שיש טיסות נכנסות)
+            query_destinations = "SELECT DISTINCT destination FROM Flight ORDER BY destination ASC"
+            cursor.execute(query_destinations)
+            destinations_list = cursor.fetchall()
+            # יחזיר רשימה כזו: [{'destination': 'LHR'}, {'destination': 'CDG'}...]
 
-    cursor.close()
-    conn.close()
+        print("Loaded origins and destinations from Local DB")
 
-    return render_template('home_page.html', origins=origins, destinations=destinations)
+    except Exception as e:
+        print(f"Error connecting to Local DB: {e}")
+
+    # אנחנו שולחים את שתי הרשימות בנפרד ל-HTML
+    return render_template('home_page.html',
+                           origins=origins_list,
+                           destinations=destinations_list)
 
 
 @app.route('/login', methods=['GET', 'POST'])
