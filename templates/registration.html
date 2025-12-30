@@ -1,10 +1,52 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="he" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>Title</title>
+    <title>FlyTau - הרשמה</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
+    <header>
+        <h1>הרשמה למערכת FlyTau</h1>
+        <nav>
+            <a href="/">דף הבית</a> |
+            <a href="/login">התחברות משתמש</a>
+        </nav>
+    </header>
 
+    <section class="form-box">
+        <h2>יצירת חשבון חדש</h2>
+        <form action="/register" method="POST">
+
+            <div class="form-group">
+                <label for="first_name">שם פרטי:</label>
+                <input type="text" id="first_name" name="first_name" required>
+            </div>
+
+            <div class="form-group">
+                <label for="last_name">שם משפחה:</label>
+                <input type="text" id="last_name" name="last_name" required>
+            </div>
+
+            <div class="form-group">
+                <label for="email">אימייל:</label>
+                <input type="email" id="email" name="email" required>
+            </div>
+
+            <div class="form-group">
+                <label for="password">סיסמה:</label>
+                <input type="password" id="password" name="password" required>
+            </div>
+
+            <div class="form-group">
+                <label for="confirm_password">אימות סיסמה:</label>
+                <input type="password" id="confirm_password" name="confirm_password" required>
+            </div>
+
+            <button type="submit">הירשם</button>
+        </form>
+
+        <p>כבר רשום? <a href="/login">התחבר כאן</a></p>
+    </section>
 </body>
 </html>

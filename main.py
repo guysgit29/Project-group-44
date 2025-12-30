@@ -140,9 +140,28 @@ def logout():
     session.clear()
     return redirect(url_for('home_page'))
 
-@app.route('/register')
-def registration():
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    # אם הבקשה היא POST, זה אומר שהמשתמש לחץ על "הירשם"
+    if request.method == 'POST':
+        # 1. שליפת הנתונים מהשדות בטופס ה-HTML (לפי ה-name שהגדרנו)
+        f_name = request.form['first_name']
+        l_name = request.form['last_name']
+        user_email = request.form['email']
+        user_password = request.form['password']
+
+        # 2. קריאה לפונקציה שמעדכנת את ה-DB
+        create_user(f_name, l_name, user_email, user_password)
+
+        # 3. הפניה לדף התחברות או לדף הבית
+        return redirect(url_for('login'))
+
+        # אם זו בקשת GET (סתם נכנסו לדף), מציגים את הטופס
     return render_template('registration.html')
+
+
+
 
 if __name__ == '__main__':
     app.run(debug=True)
