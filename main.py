@@ -23,9 +23,9 @@ Session(app)
 
 def get_db_connection():
     connection = mysql.connector.connect(
-        host='guyeylat.mysql.pythonanywhere-services.com',
+        host='GuyEylat.mysql.pythonanywhere-services.com',
         user='GuyEylat',
-        password='', # Enter your MySQL password here
+        password='1234',
         database='GuyEylat$default',
         autocommit=True
     )
