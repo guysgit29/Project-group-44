@@ -84,12 +84,80 @@ def login_page():
                     session['role'] = 'customer'
                     return redirect(url_for('home_page'))
 
-            return render_template('client_login_page.html', error="Invalid ID/Email or Password")
+            return render_template('login.html', error="Invalid ID/Email or Password")
         except Exception as e:
             print(f"Login error: {e}")
-            return render_template('client_login_page.html', error="Connection Error")
+            return render_template('login.html', error="Connection Error")
 
-    return render_template('client_login_page.html')
+    return render_template('login.html')
+
+
+@app.route('/search')
+def search_flights():
+    origin = request.args.get('origin')
+    destination = request.args.get('destination')
+
+    # אם המשתמש נכנס סתם לדף בלי פרמטרים
+    if not origin or not destination:
+        return redirect(url_for('home_page'))
+
+    found_flights = []
+    try:
+        with db_cur() as cursor:
+            # שליפת טיסות לפי מקור ויעד (ללא תאריך)
+            query = """
+                SELECT * FROM Flight 
+                WHERE origin = %s AND destination = %s 
+                ORDER BY departure_time ASC
+            """
+            cursor.execute(query, (origin, destination))
+            found_flights = cursor.fetchall()
+    except Exception as e:
+        print(f"Search Error: {e}")
+
+    return render_template('results.html',
+                           flights=found_flights,
+                           origin=origin,
+                           dest=destination)
+
+@app.route('/my-flights')
+def my_flights_page():
+    # בדיקה אם המשתמש מחובר
+    if 'user_id' not in session:
+        return redirect(url_for('login_page'))
+
+    user_email = session['user_id']
+    my_flights = []
+
+    try:
+        with db_cur() as cursor:
+            # שליפת נתונים מטבלת Booking ו-Flight
+            query = """
+                SELECT 
+                    F.flight_number, 
+                    F.origin, 
+                    F.destination, 
+                    F.departure_time, 
+                    B.booking_id, 
+                    B.price, 
+                    B.booking_status
+                FROM Flight F
+                JOIN Booking B ON F.flight_number = B.flight_number
+                WHERE B.email = %s
+                ORDER BY F.departure_time ASC
+            """
+            cursor.execute(query, (user_email,))
+            my_flights = cursor.fetchall()
+    except Exception as e:
+        print(f"Error fetching user flights: {e}")
+
+    return render_template('my_flights.html', flights=my_flights)
+
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('home_page'))
 
 # --- דף חיפוש הזמנה פעילה (פותר את ה-BuildError) ---
 @app.route('/search_order')

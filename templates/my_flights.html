@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>הטיסות שלי - FLYTAU</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+            text-align: right;
+        }
+
+        /* עיצוב ה-Header */
+        header {
+            background-color: #333;
+            color: white;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        nav a {
+            color: white;
+            text-decoration: none;
+            margin-right: 15px;
+            font-weight: bold;
+        }
+        nav a:hover { color: #ddd; }
+
+        .logout-btn { color: #ff6b6b !important; }
+
+        /* אזור התוכן הראשי */
+        .container {
+            max-width: 1000px;
+            margin: 40px auto;
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        h1 { margin-top: 0; color: #333; border-bottom: 2px solid #007BFF; padding-bottom: 10px; display: inline-block; }
+
+        /* עיצוב הטבלה */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: right;
+        }
+
+        th {
+            background-color: #007BFF;
+            color: white;
+        }
+
+        tr:nth-child(even) { background-color: #f9f9f9; }
+        tr:hover { background-color: #f1f1f1; }
+
+        /* הודעה כשאין טיסות */
+        .no-flights {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+            font-size: 1.2em;
+        }
+
+        .btn-search {
+            display: inline-block;
+            margin-top: 15px;
+            padding: 10px 20px;
+            background-color: #28a745;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+
+        /* כיוון LTR לתאריכים ומחירים כדי שיראו טוב */
+        .ltr-text { direction: ltr; text-align: right; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="logo">FLYTAU Airlines</div>
+        <nav>
+            <span>שלום, {{ session['user_id'] }}</span> |
+            <a href="/">חיפוש טיסה</a> |
+            <a href="{{ url_for('logout') }}" class="logout-btn">התנתק</a>
+        </nav>
+    </header>
+
+    <main class="container">
+        <h1>ההזמנות שלי</h1>
+
+        {% if flights %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>מספר הזמנה</th>
+                        <th>מספר טיסה</th>
+                        <th>מקור</th>
+                        <th>יעד</th>
+                        <th>זמן המראה</th>
+                        <th>מחיר ששולם</th>
+                        <th>סטטוס</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for flight in flights %}
+                    <tr>
+                        <td>{{ flight.booking_id }}</td>
+                        <td>{{ flight.flight_number }}</td>
+                        <td>{{ flight.origin }}</td>
+                        <td>{{ flight.destination }}</td>
+
+                        <td class="ltr-text">{{ flight.departure_time }}</td>
+
+                        <td class="ltr-text">${{ flight.price }}</td>
+
+                        <td style="font-weight: bold;">{{ flight.booking_status }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <div class="no-flights">
+                <p>לא נמצאו הזמנות פעילות בחשבון זה.</p>
+                <a href="/" class="btn-search">לחץ כאן לחיפוש טיסה חדשה</a>
+            </div>
+        {% endif %}
+
+    </main>
+
+</body>
+</html>
