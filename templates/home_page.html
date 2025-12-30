@@ -25,8 +25,20 @@
         <section class="search-box">
             <h2>Find Your Flight</h2>
             <form action="/search" method="GET">
-                <input type="text" name="origin" placeholder="From" required>
-                <input type="text" name="destination" placeholder="To" required>
+                <select name="origin" required>
+                    <option value="" disabled selected>From</option>
+                    {% for row in origins %}
+                        <option value="{{ row.origin }}">{{ row.origin }}</option>
+                    {% endfor %}
+                </select>
+
+                <select name="destination" required>
+                    <option value="" disabled selected>To</option>
+                    {% for row in destinations %}
+                        <option value="{{ row.destination }}">{{ row.destination }}</option>
+                    {% endfor %}
+                </select>
+
                 <input type="date" name="date" required>
                 <button type="submit">Search</button>
             </form>
