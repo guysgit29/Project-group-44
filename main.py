@@ -25,7 +25,7 @@ def get_db_connection():
     connection = mysql.connector.connect(
         host='guyeylat.mysql.pythonanywhere-services.com',
         user='GuyEylat',
-        password='12345678', # Enter your MySQL password here
+        password='', # Enter your MySQL password here
         database='GuyEylat$default',
         autocommit=True
     )
