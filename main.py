@@ -84,84 +84,22 @@ def login_page():
                     session['role'] = 'customer'
                     return redirect(url_for('home_page'))
 
-            return render_template('login.html', error="Invalid ID/Email or Password")
+            return render_template('client_login_page.html', error="Invalid ID/Email or Password")
         except Exception as e:
             print(f"Login error: {e}")
-            return render_template('login.html', error="Connection Error")
+            return render_template('client_login_page.html', error="Connection Error")
 
-    return render_template('login.html')
+    return render_template('client_login_page.html')
 
+# --- דף חיפוש הזמנה פעילה (פותר את ה-BuildError) ---
+@app.route('/search_order')
+def search_order():
+    # בשלב זה מחזיר טקסט כדי שלא תהיה שגיאה בטעינת דף הבית
+    return "דף חיפוש הזמנה פעילה - בבנייה"
 
-# --- זה קטע חדש שהוספתי ---
-@app.route('/search')
-def search_flights():
-    origin = request.args.get('origin')
-    destination = request.args.get('destination')
-
-    try:
-        with db_cur() as cursor:
-            # שליפת טיסות לפי מקור ויעד
-            query = "SELECT * FROM Flight WHERE origin = %s AND destination = %s ORDER BY departure_time ASC"
-            cursor.execute(query, (origin, destination))
-            found_flights = cursor.fetchall()
-
-            # שליחה ל-results.html
-            return render_template('results.html', flights=found_flights, origin=origin, dest=destination)
-
-    except Exception as e:
-        return "Error searching flights"
-
-
-@app.route('/my-flights')
-def my_flights_page():
-    if 'user_id' not in session:
-        return redirect(url_for('login_page'))
-
-    user_email = session['user_id']
-
-    try:
-        with db_cur() as cursor:
-            # שאילתה חכמה שמחברת טיסה להזמנה
-            query = """
-                SELECT F.*, B.booking_id, B.price, B.booking_status
-                FROM Flight F
-                JOIN Booking B ON F.flight_number = B.flight_number
-                WHERE B.email = %s
-            """
-            cursor.execute(query, (user_email,))
-            my_flights = cursor.fetchall()
-
-            return render_template('my_flights.html', flights=my_flights)
-
-    except Exception:
-        return "Error loading flights"
-@app.route('/logout')
-def logout():
-    session.clear()
-    return redirect(url_for('home_page'))
-
-
-@app.route('/register', methods=['GET', 'POST'])
+@app.route('/register')
 def registration():
-    # אם הבקשה היא POST, זה אומר שהמשתמש לחץ על "הירשם"
-    if request.method == 'POST':
-        # 1. שליפת הנתונים מהשדות בטופס ה-HTML (לפי ה-name שהגדרנו)
-        f_name = request.form['first_name']
-        l_name = request.form['last_name']
-        user_email = request.form['email']
-        user_password = request.form['password']
-
-        # 2. קריאה לפונקציה שמעדכנת את ה-DB
-        create_user(f_name, l_name, user_email, user_password)
-
-        # 3. הפניה לדף התחברות או לדף הבית
-        return redirect(url_for('login'))
-
-        # אם זו בקשת GET (סתם נכנסו לדף), מציגים את הטופס
     return render_template('registration.html')
-
-
-
 
 if __name__ == '__main__':
     app.run(debug=True)

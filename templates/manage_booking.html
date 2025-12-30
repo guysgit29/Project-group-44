@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>ניהול הזמנה - {{ order.booking_id }}</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <header>
+        <h1>פרטי הזמנה: {{ order.booking_id }}</h1>
+        <nav><a href="/">חזרה לבית</a></nav>
+    </header>
+
+    <main class="search-box">
+        <h3>שלום, {{ order.email }}</h3> <p><strong>מספר הזמנה:</strong> {{ order.booking_id }}</p>
+
+        <p>סטטוס הזמנה: פעילה</p>
+
+        <hr>
+        <button onclick="window.print()">הדפס כרטיס</button>
+        <button style="background-color: red; color: white;">ביטול הזמנה</button>
+    </main>
+</body>
+</html>
