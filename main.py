@@ -8,10 +8,10 @@ app = Flask(__name__)
 
 def get_db_connection():
     connection = mysql.connector.connect(
-        host='guyeylat.mysql.pythonanywhere-services.com', # הכתובת המדויקת מלשונית Databases
-        user='guyeylat',                                   # שם המשתמש שלך
-        password='YOUR_MYSQL_PASSWORD',                    # הסיסמה שהגדרת ל-MySQL
-        database='guyeylat$flytau'                         # שם בסיס הנתונים המלא
+        host='guyeylat.mysql.pythonanywhere-services.com',
+        user='guyeylat',
+        password='12345678',
+        database='guyeylat$flytau'
     )
     return connection
 
