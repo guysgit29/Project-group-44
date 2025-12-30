@@ -2,44 +2,70 @@
 <html lang="he" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>FlyTau - דף בית</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FLYTAU - דף הבית</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        /* תיקון צבעי טקסט ל-Select */
+        select, option { color: black !important; background-color: white !important; }
+        body { font-family: 'Segoe UI', sans-serif; text-align: right; }
+    </style>
 </head>
 <body>
     <header>
-        <h1>ברוכים הבאים ל-FlyTau</h1>
         <nav>
-        <a href="/login">התחברות משתמש</a> |
-        <a href="/register">הרשמת משתמש</a> |
-        <a href="/search_order">חיפוש הזמנה פעילה</a> |
-        <a href="/login">התחברות מנהל</a>
-</nav>
+            <a href="/">דף הבית</a>
+            {% if session.get('user_id') %}
+                <span>שלום, {{ session['user_id'] }}</span> |
+                <a href="/my-flights">הטיסות שלי</a> |
+                <a href="/logout">התנתק</a>
+            {% else %}
+                <a href="/login">התחברות</a> |
+                <a href="/register">הרשמה</a>
+            {% endif %}
+        </nav>
     </header>
 
-    <section class="search-box">
-        <h2>Find Your Flight</h2>
-        <form action="/search" method="GET">
-            <label for="origin">From:</label>
-            <select name="origin" id="origin" required>
-                <option value="" disabled selected>Select Origin</option>
-                {% for item in origins %}
-                    <option value="{{ item.origin }}">{{ item.origin }}</option>
-                {% endfor %}
-            </select>
+    <main>
+        <section class="hero">
+            <h1>ברוכים הבאים ל-FLYTAU</h1>
+            <p>חפשו את הטיסה הבאה שלכם בקלות.</p>
+        </section>
 
-            <label for="destination">To:</label>
-            <select name="destination" id="destination" required>
-                <option value="" disabled selected>Select Destination</option>
-                {% for item in destinations %}
-                    <option value="{{ item.destination }}">{{ item.destination }}</option>
-                {% endfor %}
-            </select>
+        <section class="search-box">
+            <h2>חיפוש טיסות</h2>
 
-            <label for="date">Date:</label>
-            <input type="date" name="date" id="date" required>
+            <form action="/search" method="GET">
+                <div style="display: flex; gap: 10px; justify-content: center; align-items: flex-end;">
 
-            <button type="submit">Search Flights</button>
-        </form>
-    </section>
+                    <div>
+                        <label for="origin">מקור:</label>
+                        <select name="origin" id="origin" required>
+                            <option value="" disabled selected>בחר מקור</option>
+                            {% for item in origins %}
+                                <option value="{{ item.origin }}">{{ item.origin }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div>
+                        <label for="destination">יעד:</label>
+                        <select name="destination" id="destination" required>
+                            <option value="" disabled selected>בחר יעד</option>
+                            {% for item in destinations %}
+                                <option value="{{ item.destination }}">{{ item.destination }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <button type="submit">הצג את כל הטיסות</button>
+                </div>
+            </form>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2026 פרויקט FLYTAU</p>
+    </footer>
 </body>
 </html>

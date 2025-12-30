@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>תוצאות חיפוש - FLYTAU</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        body { font-family: sans-serif; text-align: right; background-color: #f4f4f4; }
+        .container { max-width: 1000px; margin: 40px auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        h1 { text-align: center; color: #333; }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: right; }
+        th { background-color: #007BFF; color: white; }
+        tr:nth-child(even) { background-color: #f9f9f9; }
+        tr:hover { background-color: #f1f1f1; }
+
+        .btn-select {
+            background-color: #28a745;
+            color: white;
+            padding: 8px 15px;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: bold;
+            border: none;
+            cursor: pointer;
+        }
+        .btn-select:hover { background-color: #218838; }
+
+        .back-link { display: block; margin-top: 20px; text-align: center; color: #007BFF; text-decoration: none; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <nav style="padding: 15px; background: #333;">
+            <a href="/" style="color: white; text-decoration: none;">חזרה לחיפוש</a>
+        </nav>
+    </header>
+
+    <div class="container">
+        <h1>טיסות מ-{{ origin }} ל-{{ dest }}</h1>
+
+        {% if flights %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>מספר טיסה</th>
+                        <th>מקור</th>
+                        <th>יעד</th>
+                        <th>זמן המראה</th>
+                        <th>זמן נחיתה</th>
+                        <th>סטטוס</th>
+                        <th>פעולה</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for flight in flights %}
+                    <tr>
+                        <td>{{ flight.flight_number }}</td>
+                        <td>{{ flight.origin }}</td>
+                        <td>{{ flight.destination }}</td>
+                        <td style="direction: ltr;">{{ flight.departure_time }}</td>
+                        <td style="direction: ltr;">{{ flight.arrival_time }}</td>
+                        <td>{{ flight.flight_status }}</td>
+                        <td>
+                            <button class="btn-select">בחר טיסה</button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <div style="text-align: center; padding: 30px;">
+                <h3>לא נמצאו טיסות בקו זה.</h3>
+                <p>נסה לחפש יעד אחר.</p>
+            </div>
+        {% endif %}
+
+        <a href="/" class="back-link">חזרה לחיפוש חדש</a>
+    </div>
+
+</body>
+</html>
