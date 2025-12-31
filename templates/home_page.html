@@ -14,15 +14,17 @@
 <body>
     <header>
         <nav>
-            <a href="/">דף הבית</a>
-            {% if session.get('user_id') %}
-                <span>שלום, {{ session['user_id'] }}</span> |
-                <a href="/my-flights">הטיסות שלי</a> |
-                <a href="/logout">התנתק</a>
-            {% else %}
-                <a href="/login">התחברות</a> |
-                <a href="/registration">הרשמה</a>
-            {% endif %}
+        <a href="/">דף הבית</a> |
+        <a href="/search_booking">חיפוש הזמנה</a> |
+
+        {% if session.get('user_id') %}
+            <span>שלום, {{ session['user_id'] }}</span> |
+            <a href="/my-flights">הטיסות שלי</a> |
+            <a href="/logout">התנתק</a>
+        {% else %}
+            <a href="/login">התחברות</a> |
+            <a href="/registration">הרשמה</a>
+        {% endif %}
         </nav>
     </header>
 

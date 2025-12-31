@@ -3,7 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <title>ניהול הזמנה - {{ order.booking_id }}</title>
-    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        .info-section { border: 1px solid #ddd; padding: 15px; margin: 15px 0; border-radius: 8px; background-color: #f9f9f9; }
+        .seat-item { background: #007bff; color: white; padding: 4px 8px; border-radius: 4px; display: inline-block; margin: 2px; }
+        .price-tag { font-size: 1.4em; color: #28a745; font-weight: bold; }
+    </style>
 </head>
 <body>
     <header>
@@ -11,14 +16,48 @@
         <nav><a href="/">חזרה לבית</a></nav>
     </header>
 
-    <main class="search-box">
-        <h3>שלום, {{ order.email }}</h3> <p><strong>מספר הזמנה:</strong> {{ order.booking_id }}</p>
+    <main class="container" style="max-width: 800px; margin: 0 auto; padding: 20px;">
+        <h3>שלום, {{ order.email }}</h3>
 
-        <p>סטטוס הזמנה: פעילה</p>
+        <div class="info-section">
+            <h2>✈️ פרטי הטיסה</h2>
+            <p><strong>מספר טיסה:</strong> {{ order.flight_number }}</p>
+            <p><strong>מסלול:</strong> {{ order.origin }} ל{{ order.destination }}</p>
+            <p><strong>זמן המראה:</strong> {{ order.departure_time }}</p>
+            <p><strong>סטטוס טיסה:</strong> {{ order.flight_status }}</p>
+        </div>
+
+        <div class="info-section">
+            <h2>💺 המושבים שלך</h2>
+            {% if seats %}
+                <p>המושבים המשוריינים עבורך במטוס:</p>
+                <div>
+                    {% for seat in seats %}
+                        <span class="seat-item">
+                            {{ seat.class_type }}: שורה {{ seat.row_num }}, כסא {{ seat.column_number }}
+                        </span>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p>לא נמצאו פרטי מושבים להזמנה זו.</p>
+            {% endif %}
+        </div>
+
+        <div class="info-section">
+            <h2>💰 תשלום וסטטוס</h2>
+            <p><strong>עלות ההזמנה:</strong> <span class="price-tag">₪{{ order.price }}</span></p>
+            <p><strong>סטטוס הזמנה:</strong> {{ order.booking_status }}</p>
+        </div>
 
         <hr>
-        <button onclick="window.print()">הדפס כרטיס</button>
-        <button style="background-color: red; color: white;">ביטול הזמנה</button>
+        <div style="text-align: center;">
+            <button onclick="window.print()" style="padding: 10px 20px; cursor: pointer;">🖨️ הדפס כרטיס</button>
+            <button style="background-color: red; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer;">❌ ביטול הזמנה</button>
+        </div>
     </main>
+
+    <footer>
+        <p>&copy; 2026 פרויקט FLYTAU</p>
+    </footer>
 </body>
 </html>

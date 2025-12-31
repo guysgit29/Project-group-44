@@ -184,29 +184,56 @@ def registration():
 @app.route('/search_booking', methods=['GET', 'POST'])
 def search_booking():
     if request.method == 'POST':
-        # קבלת הנתונים מהטופס
         order_input = request.form.get('order_id')
         email_input = request.form.get('email')
 
         try:
             with db_cur() as cursor:
-                # שאילתה מול טבלת Booking כפי שמופיעה ב-SQL שלך
-                query = "SELECT * FROM Booking WHERE booking_id = %s AND email = %s"
+                # בדיקה אם ההזמנה קיימת (שימוש בשמות המדויקים מה-SQL שלך)
+                query = "SELECT booking_id FROM Booking WHERE booking_id = %s AND email = %s"
                 cursor.execute(query, (order_input, email_input))
                 order = cursor.fetchone()
 
                 if order:
-                    # מעבר לדף ניהול עם ה-ID שנמצא
                     return redirect(f"/manage_booking/{order['booking_id']}")
                 else:
-                    return render_template('search_booking.html', error="לא נמצאה הזמנה. בדוק שוב את הפרטים.")
-
+                    return render_template('search_booking.html', error="הזמנה לא נמצאה.")
         except Exception as e:
-            print(f"Database error: {e}")
+            print(f"Database Error: {e}")
             return render_template('search_booking.html', error="שגיאה בחיבור לבסיס הנתונים.")
 
     return render_template('search_booking.html')
 
+
+@app.route('/manage_booking/<booking_id>')
+def manage_booking(booking_id):
+    try:
+        with db_cur() as cursor:
+            # 1. שליפת פרטי הזמנה וטיסה (מחיר + פרטי טיסה)
+            cursor.execute("""
+                SELECT b.booking_id, b.price, b.booking_status,
+                       f.flight_number, f.origin, f.destination, f.departure_time, f.flight_status
+                FROM Booking b
+                JOIN Flight f ON b.flight_number = f.flight_number
+                WHERE b.booking_id = %s
+            """, (booking_id,))
+            order_info = cursor.fetchone()
+
+            # 2. שליפת מושבים מהזמנה (מטבלת Ticket)
+            cursor.execute("""
+                SELECT class_type, row_num, column_number 
+                FROM Ticket 
+                WHERE booking_id = %s
+            """, (booking_id,))
+            seats = cursor.fetchall()
+
+            if order_info:
+                return render_template('manage_booking.html', order=order_info, seats=seats)
+            return redirect('/search_booking')
+
+    except Exception as e:
+        print(f"Management Error: {e}")
+        return "שגיאה בטעינת נתוני הניהול."
 
 
 if __name__ == '__main__':
