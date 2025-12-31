@@ -57,14 +57,14 @@ def home_page():
         print(f"Error connecting to Local DB: {e}")
 
     return render_template('home_page.html', origins=origins_list, destinations=destinations_list)
-
+123123123
 # --- דף התחברות ---
 @app.route('/login', methods=['GET', 'POST'])
 def login_page():
     if request.method == 'POST':
         login_input = request.form.get('username')
         password_input = request.form.get('password')
-
+123123123123123
         # שימוש ב-db_cur כדי למנוע OperationalError לוקאלית
         try:
             with db_cur() as cursor:
