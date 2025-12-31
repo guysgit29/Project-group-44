@@ -16,16 +16,27 @@
 
     <section class="form-box">
         <h2>יצירת חשבון חדש</h2>
-        <form action="/registeration" method="POST">
+
+        <form action="/registration" method="POST">
 
             <div class="form-group">
-                <label for="first_name">שם פרטי:</label>
+                <label for="first_name">שם פרטי (אנגלית):</label>
                 <input type="text" id="first_name" name="first_name" required>
             </div>
 
             <div class="form-group">
-                <label for="last_name">שם משפחה:</label>
+                <label for="last_name">שם משפחה (אנגלית):</label>
                 <input type="text" id="last_name" name="last_name" required>
+            </div>
+
+            <div class="form-group">
+                <label for="birth_date">תאריך לידה:</label>
+                <input type="date" id="birth_date" name="birth_date" required>
+            </div>
+
+            <div class="form-group">
+                <label for="passport_number">מספר דרכון:</label>
+                <input type="text" id="passport_number" name="passport_number" required>
             </div>
 
             <div class="form-group">

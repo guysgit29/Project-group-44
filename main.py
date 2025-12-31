@@ -57,14 +57,13 @@ def home_page():
         print(f"Error connecting to Local DB: {e}")
 
     return render_template('home_page.html', origins=origins_list, destinations=destinations_list)
-123123123
 # --- דף התחברות ---
 @app.route('/login', methods=['GET', 'POST'])
 def login_page():
     if request.method == 'POST':
         login_input = request.form.get('username')
         password_input = request.form.get('password')
-123123123123123
+
         # שימוש ב-db_cur כדי למנוע OperationalError לוקאלית
         try:
             with db_cur() as cursor:
@@ -162,21 +161,20 @@ def logout():
 
 @app.route('/registration', methods=['GET', 'POST'])
 def registration():
-    # אם הבקשה היא POST, זה אומר שהמשתמש לחץ על "הירשם"
     if request.method == 'POST':
-        # 1. שליפת הנתונים מהשדות בטופס ה-HTML (לפי ה-name שהגדרנו)
+        # שליפת כל הנתונים מהטופס
         f_name = request.form['first_name']
         l_name = request.form['last_name']
-        user_email = request.form['email']
-        user_password = request.form['password']
+        email = request.form['email']
+        password = request.form['password']
+        # שליפת הנתונים החדשים
+        birth_date = request.form['birth_date']
+        passport = request.form['passport_number']
 
-        # 2. קריאה לפונקציה שמעדכנת את ה-DB
-        create_user(f_name, l_name, user_email, user_password)
+        # שליחה לפונקציה המעודכנת ב-utills
+        create_user(f_name, l_name, email, password, birth_date, passport)
 
-        # 3. הפניה לדף התחברות או לדף הבית
         return redirect('/')
-
-        # אם זו בקשת GET (סתם נכנסו לדף), מציגים את הטופס
     return render_template('registration.html')
 
 
