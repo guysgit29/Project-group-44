@@ -64,6 +64,7 @@ def login_page():
     if request.method == 'POST':
         login_input = request.form.get('username')
         password_input = request.form.get('password')
+        123123123123123
 
         # שימוש ב-db_cur כדי למנוע OperationalError לוקאלית
         try:
