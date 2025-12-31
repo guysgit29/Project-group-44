@@ -181,6 +181,32 @@ def registration():
     return render_template('registration.html')
 
 
+@app.route('/search_booking', methods=['GET', 'POST'])
+def search_booking():
+    if request.method == 'POST':
+        # קבלת הנתונים מהטופס
+        order_input = request.form.get('order_id')
+        email_input = request.form.get('email')
+
+        try:
+            with db_cur() as cursor:
+                # שאילתה מול טבלת Booking כפי שמופיעה ב-SQL שלך
+                query = "SELECT * FROM Booking WHERE booking_id = %s AND email = %s"
+                cursor.execute(query, (order_input, email_input))
+                order = cursor.fetchone()
+
+                if order:
+                    # מעבר לדף ניהול עם ה-ID שנמצא
+                    return redirect(f"/manage_booking/{order['booking_id']}")
+                else:
+                    return render_template('search_booking.html', error="לא נמצאה הזמנה. בדוק שוב את הפרטים.")
+
+        except Exception as e:
+            print(f"Database error: {e}")
+            return render_template('search_booking.html', error="שגיאה בחיבור לבסיס הנתונים.")
+
+    return render_template('search_booking.html')
+
 
 
 if __name__ == '__main__':
