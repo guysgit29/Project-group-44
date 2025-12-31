@@ -53,7 +53,6 @@ def home_page():
             origins_list = cursor.fetchall()
             cursor.execute("SELECT DISTINCT destination FROM Flight ORDER BY destination ASC")
             destinations_list = cursor.fetchall()
-        print("Loaded origins and destinations from Local DB")
     except Exception as e:
         print(f"Error connecting to Local DB: {e}")
 
