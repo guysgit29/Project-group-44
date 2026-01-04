@@ -27,34 +27,42 @@ import mysql.connector  # או מה שאת משתמשת בו לחיבור
 
 
 # פונקציה לדוגמה לשמירת משתמש
-def create_user(first_name, last_name, email, password):
-    # יצירת החיבור
+import mysql.connector
+from datetime import datetime
+
+
+def create_user(first_name, last_name, email, password, birth_date, passport_number):
     mydb = mysql.connector.connect(
         host="localhost",
         user="root",
         password="rootroot",
         database="flytau",
-        autocommit=True
+        autocommit=True,
+        auth_plugin='mysql_native_password'
     )
 
-    # יצירת ה-cursor (זו השורה שהייתה חסרה לך)
     cursor = mydb.cursor()
 
-    # שאילתת SQL להכנסת נתונים
-    query = "INSERT INTO RegisteredUser (first_name, last_name, email, password) VALUES (%s, %s, %s, %s)"
-    # שים לב: שיניתי את שם הטבלה ל-RegisteredUser כי זה מה שמופיע בקוד הלוגין שלך,
-    # במקום users. אם הטבלה ב-DB שלך היא users, תחזיר את זה ל-users.
+    # יצירת תאריך הרשמה אוטומטי
+    current_reg_date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-    values = (first_name, last_name, email, password)
+    # --- התיקון: שינוי מ-_eng ל-_en ---
+    query = """
+    INSERT INTO RegisteredUser 
+    (email, first_name_en, last_name_en, birth_date, registration_date, passport_number, password) 
+    VALUES (%s, %s, %s, %s, %s, %s, %s)
+    """
+
+    values = (email, first_name, last_name, birth_date, current_reg_date, passport_number, password)
 
     try:
         cursor.execute(query, values)
-        mydb.commit()  # תיקון: שימוש ב-mydb במקום ב-conn
+        mydb.commit()
+        print("User created successfully!")
     except Exception as e:
         print(f"Error creating user: {e}")
     finally:
-        # סגירת החיבורים בצורה מסודרת
         cursor.close()
-        mydb.close()  # תיקון: שימוש ב-mydb במקום ב-conn
+        mydb.close()
 
     return True

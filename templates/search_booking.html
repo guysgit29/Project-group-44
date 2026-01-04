@@ -7,26 +7,26 @@
 </head>
 <body>
     <header>
-        <h1>חיפוש הזמנה פעילה</h1>
+        <h1>חיפוש הזמנה</h1>
         <nav><a href="/">חזרה לדף הבית</a></nav>
     </header>
 
     <main class="container">
         <section class="search-box">
-            <h2>חיפוש בטבלת Booking</h2>
+            <h2>אנא מלאו את הפרטים הבאים כפי שקיבלתם בעת ביצוע ההזמנה</h2>
 
             {% if error %}
                 <p style="color: red; font-weight: bold;">{{ error }}</p>
             {% endif %}
 
             <form action="/search_booking" method="POST">
-                <label for="order_id">מספר הזמנה (לדוגמה B1001):</label>
+                <label for="order_id">מספר הזמנה המורכב מ-6 תווים:</label>
                 <input type="text" name="order_id" id="order_id" required>
 
-                <label for="email">אימייל:</label>
+                <label for="email">כתובת אימייל המשוייכת להזמנה:</label>
                 <input type="email" name="email" id="email" required>
 
-                <button type="submit">חפש</button>
+                <button type="submit">חפש הזמנה</button>
             </form>
         </section>
     </main>

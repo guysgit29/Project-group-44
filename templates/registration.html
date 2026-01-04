@@ -16,21 +16,41 @@
 
     <section class="form-box">
         <h2>יצירת חשבון חדש</h2>
-        <form action="/registeration" method="POST">
+
+        {% if error %}
+            <p class="error">{{ error }}</p>
+        {% endif %}
+
+        <form action="/registration" method="POST">
 
             <div class="form-group">
-                <label for="first_name">שם פרטי:</label>
-                <input type="text" id="first_name" name="first_name" required>
+                <label for="first_name">שם פרטי (אנגלית):</label>
+                <input type="text" id="first_name" name="first_name"
+                       value="{{ request.form.get('first_name', '') }}" required>
             </div>
 
             <div class="form-group">
-                <label for="last_name">שם משפחה:</label>
-                <input type="text" id="last_name" name="last_name" required>
+                <label for="last_name">שם משפחה (אנגלית):</label>
+                <input type="text" id="last_name" name="last_name"
+                       value="{{ request.form.get('last_name', '') }}" required>
+            </div>
+
+            <div class="form-group">
+                <label for="birth_date">תאריך לידה:</label>
+                <input type="date" id="birth_date" name="birth_date"
+                       value="{{ request.form.get('birth_date', '') }}" required>
+            </div>
+
+            <div class="form-group">
+                <label for="passport_number">מספר דרכון:</label>
+                <input type="text" id="passport_number" name="passport_number"
+                       value="{{ request.form.get('passport_number', '') }}" required>
             </div>
 
             <div class="form-group">
                 <label for="email">אימייל:</label>
-                <input type="email" id="email" name="email" required>
+                <input type="email" id="email" name="email"
+                       value="{{ request.form.get('email', '') }}" required>
             </div>
 
             <div class="form-group">
