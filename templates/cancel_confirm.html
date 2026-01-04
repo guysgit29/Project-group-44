@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>אישור ביטול הזמנה - {{ booking_id }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body style="text-align: center; padding: 50px; font-family: sans-serif;">
+    <div style="max-width: 600px; margin: 0 auto; border: 2px solid #ddd; padding: 30px; border-radius: 15px; background-color: #fff5f5;">
+        <h1 style="color: #d9534f;">ביטול הזמנה {{ booking_id }}</h1>
+
+        <p style="font-size: 1.3em; margin: 30px 0; line-height: 1.6;">
+            בעת ביטול הזמנה זו אני מודע כי ביטול ההזמנה יגרור דמי ביטול בגובה 5% מסך מחיר ההזמנה הכולל.
+            אני מודע כי פעולה זו הינה סופית ולא יהיה ניתן לשחזר את ההזמנה המקורית.
+        </p>
+
+        <div style="display: flex; justify-content: center; gap: 20px;">
+            <form action="/cancel_booking_execute/{{ booking_id }}" method="POST">
+                <button type="submit" style="background-color: #d9534f; color: white; padding: 12px 25px; border: none; border-radius: 5px; cursor: pointer; font-size: 1.1em; font-weight: bold;">
+                    ביטול הזמנה
+                </button>
+            </form>
+
+            <a href="/manage_booking/{{ booking_id }}" style="background-color: #6c757d; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-size: 1.1em;">
+                השאירו את ההזמנה כפי שהיא
+            </a>
+        </div>
+    </div>
+</body>
+</html>

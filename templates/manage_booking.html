@@ -20,41 +20,71 @@
         <h3>שלום, {{ order.email }}</h3>
 
         <div class="info-section">
-            <h2>✈️ פרטי הטיסה</h2>
-            <p><strong>מספר טיסה:</strong> {{ order.flight_number }}</p>
-            <p><strong>מסלול:</strong> {{ order.origin }} ל{{ order.destination }}</p>
-            <p><strong>זמן המראה:</strong> {{ order.departure_time }}</p>
-            <p><strong>סטטוס טיסה:</strong> {{ order.flight_status }}</p>
+    <h2>✈️ פרטי הטיסה:</h2>
+    <p><strong>מספר טיסה:</strong> {{ order.flight_number }}</p>
+    <p><strong>שדה מוצא:</strong> {{ order.origin }} </p>
+    <p><strong>שדה יעד:</strong> {{ order.destination }}</p>
+
+    <p><strong>המראה:</strong>
+        {{ order.departure_time.strftime('%d/%m/%Y %H:%M') if order.departure_time else 'לא הוזן' }}
+    </p>
+
+    <p><strong>נחיתה:</strong>
+        {{ order.arrival_time.strftime('%d/%m/%Y %H:%M') if order.arrival_time else 'לא הוזן' }}
+    </p>
+
+    <p><strong>סטטוס טיסה:</strong> {{ order.flight_status }}</p>
         </div>
 
         <div class="info-section">
-            <h2>💺 המושבים שלך</h2>
-            {% if seats %}
-                <p>המושבים המשוריינים עבורך במטוס:</p>
-                <div>
-                    {% for seat in seats %}
-                        <span class="seat-item">
-                            {{ seat.class_type }}: שורה {{ seat.row_num }}, כסא {{ seat.column_number }}
-                        </span>
-                    {% endfor %}
+    <h2>💺 המושבים שלך</h2>
+    {% if seats %}
+        <p>המושבים המשוריינים עבורך במטוס:</p>
+        <div style="display: flex; flex-wrap: wrap; gap: 15px;">
+            {% for seat in seats %}
+                <div class="info-section" style="border: 1px solid #007bff; min-width: 150px; background-color: #e7f1ff;">
+                    <p><strong>מחלקה:</strong> {{ seat.class_type }}</p>
+                    <p><strong>שורה:</strong> {{ seat.row_num }}</p>
+                    <p><strong>כיסא:</strong> {{ seat.column_number }}</p>
                 </div>
-            {% else %}
-                <p>לא נמצאו פרטי מושבים להזמנה זו.</p>
-            {% endif %}
+            {% endfor %}
         </div>
+    {% else %}
+        <p>לא נמצאו פרטי מושבים להזמנה זו.</p>
+    {% endif %}
+</div>
 
         <div class="info-section">
-            <h2>💰 תשלום וסטטוס</h2>
-            <p><strong>עלות ההזמנה:</strong> <span class="price-tag">₪{{ order.price }}</span></p>
-            <p><strong>סטטוס הזמנה:</strong> {{ order.booking_status }}</p>
-        </div>
+    <h2>💰 תשלום וסטטוס</h2>
+    <p>
+        <strong>עלות ההזמנה:</strong>
+        <span class="price-tag">₪{{ order.price }}</span>
+
+        {# הצגת ההערה רק אם הסטטוס הוא בוטל #}
+        {% if order.booking_status == 'Canceled by Customer' %}
+            <br>
+            <span style="color: #d9534f; font-size: 0.9em; font-weight: bold;">
+                *דמי ביטול להזמנה שבוטלה (5% מהמחיר המקורי)
+            </span>
+        {% endif %}
+    </p>
+    <p><strong>סטטוס הזמנה:</strong> {{ order.booking_status }}</p>
+</div>
 
         <hr>
-        <div style="text-align: center;">
-            <button onclick="window.print()" style="padding: 10px 20px; cursor: pointer;">🖨️ הדפס כרטיס</button>
-            <button style="background-color: red; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer;">❌ ביטול הזמנה</button>
+        <div style="text-align: center; margin-top: 30px;">
+            <button onclick="window.print()" style="padding: 10px 20px; cursor: pointer; font-size: 1.1em; border-radius: 5px; border: 1px solid #ccc;">
+                🖨️ הדפס כרטיס
+            </button>
+
+            {% if order.booking_status != 'Canceled by Customer' %}
+                <a href="{{ url_for('cancel_booking_confirm', booking_id=order.booking_id) }}"
+                   style="background-color: #d9534f; color: white; padding: 11px 20px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block; margin-right: 10px;">
+                   ❌ ביטול הזמנה
+                </a>
+            {% endif %}
         </div>
-    </main>
+        </main>
 
     <footer>
         <p>&copy; 2026 פרויקט FLYTAU</p>

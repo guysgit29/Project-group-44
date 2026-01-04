@@ -177,7 +177,6 @@ def registration():
         return redirect('/')
     return render_template('registration.html')
 
-
 @app.route('/search_booking', methods=['GET', 'POST'])
 def search_booking():
     if request.method == 'POST':
@@ -186,52 +185,90 @@ def search_booking():
 
         try:
             with db_cur() as cursor:
-                # בדיקה אם ההזמנה קיימת (שימוש בשמות המדויקים מה-SQL שלך)
-                query = "SELECT booking_id FROM Booking WHERE booking_id = %s AND email = %s"
-                cursor.execute(query, (order_input, email_input))
+                # התיקון: בדיקה מול שתי עמודות האימייל הקיימות ב-SQL שלך
+                query = """
+                    SELECT booking_id FROM Booking 
+                    WHERE booking_id = %s 
+                    AND (registered_email = %s OR guest_email = %s)
+                """
+                cursor.execute(query, (order_input, email_input, email_input))
                 order = cursor.fetchone()
 
                 if order:
-                    return redirect(f"/manage_booking/{order['booking_id']}")
+                    # שימוש בפורמט dict כי ה-cursor מוגדר כ-dictionary=True
+                    return redirect(url_for('manage_booking', booking_id=order['booking_id']))
                 else:
-                    return render_template('search_booking.html', error="הזמנה לא נמצאה.")
+                    return render_template('search_booking.html', error="הזמנה לא נמצאה, אנא נסה שוב או פנה אל שירות הלקוחות.")
         except Exception as e:
             print(f"Database Error: {e}")
             return render_template('search_booking.html', error="שגיאה בחיבור לבסיס הנתונים.")
 
     return render_template('search_booking.html')
 
-
 @app.route('/manage_booking/<booking_id>')
 def manage_booking(booking_id):
     try:
         with db_cur() as cursor:
-            # 1. שליפת פרטי הזמנה וטיסה (מחיר + פרטי טיסה)
-            cursor.execute("""
-                SELECT b.booking_id, b.price, b.booking_status,
-                       f.flight_number, f.origin, f.destination, f.departure_time, f.flight_status
+            # שליפת פרטי הזמנה (נשאר אותו דבר)
+            query = """
+                SELECT b.*, f.origin, f.destination, f.departure_time, f.arrival_time, f.flight_status
                 FROM Booking b
                 JOIN Flight f ON b.flight_number = f.flight_number
                 WHERE b.booking_id = %s
-            """, (booking_id,))
-            order_info = cursor.fetchone()
+            """
+            cursor.execute(query, (booking_id,))
+            order_data = cursor.fetchone()
 
-            # 2. שליפת מושבים מהזמנה (מטבלת Ticket)
-            cursor.execute("""
-                SELECT class_type, row_num, column_number 
-                FROM Ticket 
+            # התיקון: שליפת מושבים מטבלת Ticket במקום Seats_in_Booking
+            cursor.execute("SELECT * FROM Ticket WHERE booking_id = %s", (booking_id,))
+            seats_data = cursor.fetchall()
+
+        if order_data:
+            return render_template('manage_booking.html', order=order_data, seats=seats_data)
+        return redirect('/')
+    except Exception as e:
+        print(f"Error: {e}")
+        return "שגיאה בטעינת נתונים"
+
+
+@app.route('/cancel_booking_confirm/<booking_id>')
+def cancel_booking_confirm(booking_id):
+    # רק מציג את דף האישור עם מספר ההזמנה
+    return render_template('cancel_confirm.html', booking_id=booking_id)
+
+
+@app.route('/cancel_booking_execute/<booking_id>', methods=['POST'])
+def cancel_booking_execute(booking_id):
+    try:
+        with db_cur() as cursor:
+            # שלב א': בדיקה שההזמנה עדיין לא בוטלה (כדי לא לחלק את המחיר ב-20 פעם שנייה)
+            cursor.execute("SELECT booking_status FROM Booking WHERE booking_id = %s", (booking_id,))
+            current_status = cursor.fetchone()
+
+            if current_status and current_status['booking_status'] == 'Canceled by Customer':
+                print(f"Booking {booking_id} is already canceled.")
+                return redirect(url_for('manage_booking', booking_id=booking_id))
+
+            # שלב ב': מחיקת המושבים מטבלת Ticket
+            # זה משחרר את המושבים פיזית מההזמנה בבסיס הנתונים
+            cursor.execute("DELETE FROM Ticket WHERE booking_id = %s", (booking_id,))
+
+            # שלב ג': עדכון הסטטוס והמחיר ל-5% (חלקי 20)
+            query = """
+                UPDATE Booking 
+                SET booking_status = 'Canceled by Customer',
+                    price = price / 20
                 WHERE booking_id = %s
-            """, (booking_id,))
-            seats = cursor.fetchall()
+            """
+            cursor.execute(query, (booking_id,))
 
-            if order_info:
-                return render_template('manage_booking.html', order=order_info, seats=seats)
-            return redirect('/search_booking')
+        print(f"Booking {booking_id} canceled successfully: price reduced to 5% and seats released.")
+        return redirect(url_for('manage_booking', booking_id=booking_id))
 
     except Exception as e:
-        print(f"Management Error: {e}")
-        return "שגיאה בטעינת נתוני הניהול."
-
+        # הדפסת השגיאה המדויקת לטרמינל לצרכי Debugging
+        print(f"Error during cancellation process: {e}")
+        return "חלה שגיאה בעדכון הביטול במסד הנתונים."
 
 if __name__ == '__main__':
     app.run(debug=True)
