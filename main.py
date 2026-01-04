@@ -162,19 +162,35 @@ def logout():
 @app.route('/registration', methods=['GET', 'POST'])
 def registration():
     if request.method == 'POST':
-        # שליפת כל הנתונים מהטופס
-        f_name = request.form['first_name']
-        l_name = request.form['last_name']
-        email = request.form['email']
-        password = request.form['password']
-        # שליפת הנתונים החדשים
-        birth_date = request.form['birth_date']
-        passport = request.form['passport_number']
+        f_name = request.form.get('first_name', '')
+        l_name = request.form.get('last_name', '')
+        email = request.form.get('email', '').strip().lower()
+        password = request.form.get('password', '')
+        confirm_password = request.form.get('confirm_password', '')
+        birth_date = request.form.get('birth_date', '')
+        passport = request.form.get('passport_number', '')
 
-        # שליחה לפונקציה המעודכנת ב-utills
+        if password != confirm_password:
+            return render_template('registration.html', error="Passwords do not match.")
+
+        try:
+            with db_cur() as cursor:
+                cursor.execute(
+                    "SELECT 1 FROM RegisteredUser WHERE email = %s",
+                    (email,)
+                )
+                if cursor.fetchone():
+                    return render_template(
+                        'registration.html',
+                        error="Email already registered."
+                    )
+        except Exception as e:
+            print(f"DB error: {e}")
+            return render_template('registration.html', error="Database error.")
+
         create_user(f_name, l_name, email, password, birth_date, passport)
-
         return redirect('/')
+
     return render_template('registration.html')
 
 
