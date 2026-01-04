@@ -5,7 +5,7 @@ import mysql.connector
 import os
 from contextlib import contextmanager
 from utills import *
-#יי
+
 app = Flask(__name__)
 # הגדרות Session לעבודה לוקאלית
 session_dir = os.path.join(os.getcwd(), 'flask_session_data')
