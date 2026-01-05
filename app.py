@@ -156,6 +156,30 @@ def logout():
     session.clear()
     return redirect(url_for('home_page'))
 
+@app.route('/seat_selection/<flight_id>')
+def seat_selection(flight_id):
+    """Shows the airplane seat map"""
+    seats = Flight.get_seat_map(flight_id)
+    return render_template('seat_selection.html', flight_number=flight_id, all_seats=seats)
+
+@app.route('/process_booking', methods=['POST'])
+def process_booking():
+    """Calculates total price based on selected seats"""
+    flight_num = request.form.get('flight_number')
+    selected_seats = request.form.getlist('selected_seats')
+
+    if not selected_seats:
+        return redirect(url_for('seat_selection', flight_id=flight_num))
+
+    # חישוב מחיר בשרת כדי למנוע זיופים
+    with DB.get_cursor() as cursor:
+        placeholders = ','.join(['%s'] * len(selected_seats))
+        query = f"SELECT seat_number, base_price, class_name FROM Seat WHERE seat_number IN ({placeholders})"
+        cursor.execute(query, selected_seats)
+        details = cursor.fetchall()
+
+    total = sum(d['base_price'] for d in details)
+    return render_template('payment_summary.html', details=details, total=total, flight_number=flight_num)
 
 if __name__ == '__main__':
     app.run(debug=True)

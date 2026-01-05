@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+    .plane-map { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; max-width: 600px; margin: 40px auto; }
+    .seat-label { display: block; padding: 12px; border: 2px solid #ccc; border-radius: 6px; text-align: center; cursor: pointer; transition: 0.3s; }
+    .Business { border-color: #ffd700; background: #fff9e6; } /* זהב למחלקת עסקים */
+    .Economy { border-color: #007bff; background: #f0f7ff; } /* כחול למחלקת תיירים */
+    .taken { background: #eee; color: #aaa; cursor: not-allowed; border-color: #ddd; }
+    .checkbox-hidden { display: none; }
+    .checkbox-hidden:checked + .seat-label { background: #28a745; color: white; border-color: #1e7e34; transform: scale(1.05); }
+</style>
+
+<div class="container">
+    <h2 style="text-align:center;">בחר מושבים לטיסה {{ flight_number }}</h2>
+    <form action="{{ url_for('process_booking') }}" method="POST">
+        <input type="hidden" name="flight_number" value="{{ flight_number }}">
+        <div class="plane-map">
+            {% for seat in all_seats %}
+                <div>
+                {% if seat.is_taken %}
+                    <div class="seat-label taken">{{ seat.seat_number }}</div>
+                {% else %}
+                    <input type="checkbox" name="selected_seats" value="{{ seat.seat_number }}" id="s-{{ seat.seat_number }}" class="checkbox-hidden">
+                    <label for="s-{{ seat.seat_number }}" class="seat-label {{ seat.class_name }}">
+                        {{ seat.seat_number }}<br><small>₪{{ seat.base_price }}</small>
+                    </label>
+                {% endif %}
+                </div>
+            {% endfor %}
+        </div>
+        <button type="submit" class="btn-select" style="display:block; margin: 30px auto; padding: 15px 40px;">המשך לסיכום ותשלום</button>
+    </form>
+</div>
+{% endblock %}

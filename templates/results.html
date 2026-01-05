@@ -4,17 +4,55 @@
 
 {% block content %}
     <style>
-        .container { max-width: 1000px; margin: 40px auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        h1 { text-align: center; color: #333; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { border: 1px solid #ddd; padding: 12px; text-align: right; }
-        th { background-color: #007BFF; color: white; }
-        tr:nth-child(even) { background-color: #f9f9f9; }
-        .btn-select { background-color: #28a745; color: white; padding: 8px 15px; border-radius: 5px; border: none; cursor: pointer; font-weight: bold; }
+        /* עיצוב ייעודי לדף התוצאות כדי לוודא שהטבלה נראית טוב */
+        .results-container { 
+            max-width: 1000px; 
+            margin: 40px auto; 
+            background: white; 
+            padding: 30px; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1); 
+        }
+        
+        table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            margin-top: 25px; 
+            background-color: white;
+        }
+        
+        th { 
+            background-color: #007BFF; 
+            color: white; 
+            padding: 15px; 
+            text-align: right; 
+        }
+        
+        td { 
+            border-bottom: 1px solid #eee; 
+            padding: 15px; 
+            text-align: right; 
+        }
+        
+        tr:hover { background-color: #f8f9fa; }
+
+        .btn-select { 
+            background-color: #28a745; 
+            color: white; 
+            padding: 10px 20px; 
+            border: none; 
+            border-radius: 6px; 
+            cursor: pointer; 
+            font-weight: bold; 
+            transition: background 0.3s;
+        }
+        .btn-select:hover { background-color: #218838; }
+
+        .no-flights { text-align: center; padding: 50px; color: #666; }
     </style>
 
-    <div class="container">
-        <h1>טיסות מ-{{ origin }} ל-{{ dest }}</h1>
+    <div class="results-container">
+        <h1 style="text-align: center; color: #333;">טיסות מ-{{ origin }} ל-{{ dest }}</h1>
 
         {% if flights %}
             <table>
@@ -25,32 +63,35 @@
                         <th>יעד</th>
                         <th>זמן המראה</th>
                         <th>זמן נחיתה</th>
-                        <th>סטטוס</th>
                         <th>פעולה</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for flight in flights %}
-                    <tr>
-                        <td>{{ flight.flight_number }}</td>
-                        <td>{{ flight.origin }}</td>
-                        <td>{{ flight.destination }}</td>
-                        <td style="direction: ltr;">{{ flight.departure_time }}</td>
-                        <td style="direction: ltr;">{{ flight.arrival_time }}</td>
-                        <td>{{ flight.flight_status }}</td>
-                        <td>
-                            <button class="btn-select">בחר טיסה</button>
-                        </td>
-                    </tr>
-                    {% endfor %} </tbody>
+                        <tr>
+                            <td><strong>{{ flight.flight_number }}</strong></td>
+                            <td>{{ flight.origin }}</td>
+                            <td>{{ flight.destination }}</td>
+                            <td style="direction: ltr;">{{ flight.departure_time }}</td>
+                            <td style="direction: ltr;">{{ flight.arrival_time }}</td>
+                                    <td>
+                                    <form action="{{ url_for('seat_selection', flight_id=flight.flight_number) }}" method="GET">
+                                        <button type="submit" class="btn-select">בחר טיסה</button>
+                                    </form>
+                                </td>
+                                </tr>
+                    {% endfor %}
+                </tbody>
             </table>
         {% else %}
-            <div style="text-align: center; padding: 30px;">
-                <h3>לא נמצאו טיסות בקו זה.</h3>
-                <p>נסה לחפש יעד אחר.</p>
+            <div class="no-flights">
+                <h3>לא נמצאו טיסות פעילות בקו זה.</h3>
+                <p>נסה לחפש תאריכים או יעדים אחרים.</p>
             </div>
         {% endif %}
 
-        <a href="/" style="display: block; margin-top: 20px; text-align: center; color: #007BFF; text-decoration: none; font-weight: bold;">חזרה לחיפוש חדש</a>
+        <div style="text-align: center; margin-top: 30px;">
+            <a href="/" style="color: #007BFF; text-decoration: none; font-weight: bold;">← חזרה לחיפוש חדש</a>
+        </div>
     </div>
 {% endblock %}
