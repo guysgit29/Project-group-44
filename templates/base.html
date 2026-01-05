@@ -2,21 +2,40 @@
 <html lang="he" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>FlyTau</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}FlyTau{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        /* עיצוב בסיסי ל-Header כדי שייראה כמו בתמונה */
+        header nav { padding: 20px; background-color: #f8f9fa; border-bottom: 1px solid #ddd; text-align: center; }
+        header nav a { text-decoration: none; color: purple; font-weight: bold; margin: 0 10px; font-size: 1.2em; }
+        header nav a:hover { text-decoration: underline; }
+        .user-greeting { margin-left: 15px; font-weight: normal; color: #333; }
+    </style>
 </head>
 <body>
-    <header style="background: #003366; color: white; padding: 15px; text-align: center;">
-        <h1>FlyTau - ברוכים הבאים</h1>
+    <header>
         <nav>
-            <a href="/" style="color: white; margin: 0 10px;">דף הבית</a> |
-            <a href="/search_booking" style="color: white; margin: 0 10px;">חיפוש הזמנה</a> |
-            <a href="/registration" style="color: white; margin: 0 10px;">הרשמה</a>
+            <a href="/">דף הבית</a> |
+            <a href="/search_booking">חיפוש הזמנה</a> |
+
+            {% if session.get('user_id') %}
+                <span class="user-greeting">שלום, {{ session['user_id'] }}</span> |
+                <a href="/my_flights">הטיסות שלי</a> |
+                <a href="/logout">התנתק</a>
+            {% else %}
+                <a href="/login">התחברות</a> |
+                <a href="/registration">הרשמה</a>
+            {% endif %}
         </nav>
     </header>
 
-    <main style="padding: 20px;">
+    <main class="container" style="padding: 20px;">
         {% block content %}{% endblock %}
     </main>
+
+    <footer style="text-align: center; padding: 20px; border-top: 1px solid #ddd; margin-top: 50px;">
+        <p>&copy; 2026 פרויקט FLYTAU</p>
+    </footer>
 </body>
 </html>

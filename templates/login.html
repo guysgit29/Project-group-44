@@ -1,18 +1,10 @@
-<!DOCTYPE html>
-<html lang="he" dir="rtl">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>התחברות - FLYTAU</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+{% extends "base.html" %}
 
+{% block title %}התחברות - FLYTAU{% endblock %}
+
+{% block content %}
     <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f4f4f4;
-            text-align: center;
-            direction: rtl; /* יישור לימין לעברית */
-        }
+        /* Styles specific to the login container */
         .login-container {
             background: white;
             width: 350px;
@@ -20,26 +12,25 @@
             padding: 30px;
             border-radius: 10px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            text-align: center;
         }
         h2 { margin-bottom: 20px; color: #333; }
 
-        /* עיצוב השדות */
         .form-group { margin-bottom: 15px; text-align: right; }
         label { display: block; margin-bottom: 5px; font-weight: bold; color: #555; }
 
         input[type="text"], input[type="password"] {
             width: 100%;
             padding: 10px;
-            box-sizing: border-box; /* מבטיח שהפדינג לא יגדיל את הרוחב */
+            box-sizing: border-box;
             border: 1px solid #ccc;
             border-radius: 5px;
             font-size: 16px;
-            /* התיקון הקריטי לצבע הטקסט */
             color: black;
             background-color: white;
         }
 
-        button {
+        .login-btn {
             width: 100%;
             padding: 12px;
             background-color: #007BFF;
@@ -51,9 +42,8 @@
             margin-top: 10px;
             transition: background 0.3s;
         }
-        button:hover { background-color: #0056b3; }
+        .login-btn:hover { background-color: #0056b3; }
 
-        /* הודעת שגיאה */
         .error-message {
             color: #721c24;
             background-color: #f8d7da;
@@ -62,52 +52,40 @@
             border-radius: 5px;
             margin-bottom: 15px;
             font-size: 14px;
+            text-align: center;
         }
 
-        .links { margin-top: 20px; font-size: 14px; }
+        .links { margin-top: 20px; font-size: 14px; text-align: center; }
         .links a { text-decoration: none; color: #007BFF; }
     </style>
-</head>
-<body>
 
-    <header>
-        <nav style="padding: 20px;">
-            <a href="{{ url_for('home_page') }}">חזרה לדף הבית</a>
-        </nav>
-    </header>
+    <div class="login-container">
+        <h2>כניסה למערכת</h2>
 
-    <main>
-        <div class="login-container">
-            <h2>כניסה למערכת</h2>
-
-            {% if error %}
-                <div class="error-message">
-                    {{ error }}
-                </div>
-            {% endif %}
-
-            <form action="/login" method="POST">
-
-                <div class="form-group">
-                    <label for="username">שם משתמש:</label>
-                    <input type="text" id="username" name="username"
-                           placeholder="תעודת זהות (מנהל) או אימייל (לקוח)" required>
-                </div>
-
-                <div class="form-group">
-                    <label for="password">סיסמה:</label>
-                    <input type="password" id="password" name="password"
-                           placeholder="הכנס סיסמה" required>
-                </div>
-
-                <button type="submit">התחבר</button>
-            </form>
-
-            <div class="links">
-                עדיין אין לך משתמש? <a href="{{ url_for('registration') }}">הירשם כאן</a>
+        {% if error %}
+            <div class="error-message">
+                {{ error }}
             </div>
-        </div>
-    </main>
+        {% endif %}
 
-</body>
-</html>
+        <form action="/login" method="POST">
+            <div class="form-group">
+                <label for="username">שם משתמש:</label>
+                <input type="text" id="username" name="username"
+                       placeholder="תעודת זהות (מנהל) או אימייל (לקוח)" required>
+            </div>
+
+            <div class="form-group">
+                <label for="password">סיסמה:</label>
+                <input type="password" id="password" name="password"
+                       placeholder="הכנס סיסמה" required>
+            </div>
+
+            <button type="submit" class="login-btn">התחבר</button>
+        </form>
+
+        <div class="links">
+            עדיין אין לך משתמש? <a href="{{ url_for('registration') }}">הירשם כאן</a>
+        </div>
+    </div>
+{% endblock %}

@@ -1,35 +1,26 @@
-{% extends "base.html" %} {% block title %}FlyTau - הרשמה{% endblock %}
+{% extends "base.html" %}
 
 {% block content %}
 <main class="container" style="max-width: 500px; margin: 50px auto;">
     <h2>יצירת חשבון חדש</h2>
-    
+
     {% if error %}
         <p style="color: red; font-weight: bold;">{{ error }}</p>
     {% endif %}
 
-    <form action="/registration" method="POST" style="display: flex; flex-direction: column; gap: 15px;">
-        <label>שם פרטי (באנגלית):</label>
-        <input type="text" name="first_name" required placeholder="למשל: Israel">
-        
-        <label>שם משפחה (באנגלית):</label>
-        <input type="text" name="last_name" required placeholder="למשל: Israeli">
-        
-        <label>כתובת אימייל:</label>
-        <input type="email" name="email" required>
-        
-        <label>סיסמה:</label>
-        <input type="password" name="password" required>
-        
+    <form action="/registration" method="POST" style="display: flex; flex-direction: column; gap: 10px;">
+        <input type="text" name="first_name" placeholder="שם פרטי (EN)" required>
+        <input type="text" name="last_name" placeholder="שם משפחה (EN)" required>
+        <input type="email" name="email" placeholder="אימייל" required>
+
+        <input type="password" name="password" placeholder="סיסמה" required>
+        <input type="password" name="confirm_password" placeholder="אימות סיסמה" required>
+
         <label>תאריך לידה:</label>
         <input type="date" name="birth_date" required>
-        
-        <label>מספר דרכון:</label>
-        <input type="text" name="passport_number" required>
-        
-        <button type="submit" style="padding: 10px; background-color: #003366; color: white; border: none; cursor: pointer;">
-            הרשמה
-        </button>
+        <input type="text" name="passport_number" placeholder="מספר דרכון" required>
+
+        <button type="submit" style="background: #003366; color: white; padding: 10px;">הרשמה</button>
     </form>
 </main>
 {% endblock %}

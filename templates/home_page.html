@@ -1,32 +1,13 @@
-<!DOCTYPE html>
-<html lang="he" dir="rtl">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FLYTAU - דף הבית</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <style>
-        /* תיקון צבעי טקסט ל-Select */
-        select, option { color: black !important; background-color: white !important; }
-        body { font-family: 'Segoe UI', sans-serif; text-align: right; }
-    </style>
-</head>
-<body>
-    <header>
-        <nav>
-        <a href="/">דף הבית</a> |
-        <a href="/search_booking">חיפוש הזמנה</a> |
+{% extends "base.html" %}
 
-        {% if session.get('user_id') %}
-            <span>שלום, {{ session['user_id'] }}</span> |
-            <a href="/my-flights">הטיסות שלי</a> |
-            <a href="/logout">התנתק</a>
-        {% else %}
-            <a href="/login">התחברות</a> |
-            <a href="/registration">הרשמה</a>
-        {% endif %}
-        </nav>
-    </header>
+{% block title %}FLYTAU - דף הבית{% endblock %}
+
+{% block content %}
+    <style>
+        select, option { color: black !important; background-color: white !important; }
+        .hero { text-align: center; padding: 40px 0; }
+        .search-box { background: #f4f4f4; padding: 20px; border-radius: 8px; text-align: center; }
+    </style>
 
     <main>
         <section class="hero">
@@ -38,7 +19,7 @@
             <h2>חיפוש טיסות</h2>
 
             <form action="/search" method="GET">
-                <div style="display: flex; gap: 10px; justify-content: center; align-items: flex-end;">
+                <div style="display: flex; gap: 10px; justify-content: center; align-items: flex-end; flex-wrap: wrap;">
 
                     <div>
                         <label for="origin">מקור:</label>
@@ -60,14 +41,11 @@
                         </select>
                     </div>
 
-                    <button type="submit">הצג את כל הטיסות</button>
+                    <button type="submit" style="background-color: #003366; color: white; border: none; padding: 10px 20px; cursor: pointer;">
+                        הצג את כל הטיסות
+                    </button>
                 </div>
             </form>
         </section>
     </main>
-
-    <footer>
-        <p>&copy; 2026 פרויקט FLYTAU</p>
-    </footer>
-</body>
-</html>
+{% endblock %}

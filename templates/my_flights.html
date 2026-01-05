@@ -1,40 +1,9 @@
-<!DOCTYPE html>
-<html lang="he" dir="rtl">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>הטיסות שלי - FLYTAU</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+{% extends "base.html" %}
 
+{% block title %}הטיסות שלי - FLYTAU{% endblock %}
+
+{% block content %}
     <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f4f4f4;
-            margin: 0;
-            padding: 0;
-            text-align: right;
-        }
-
-        /* עיצוב ה-Header */
-        header {
-            background-color: #333;
-            color: white;
-            padding: 15px 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        nav a {
-            color: white;
-            text-decoration: none;
-            margin-right: 15px;
-            font-weight: bold;
-        }
-        nav a:hover { color: #ddd; }
-
-        .logout-btn { color: #ff6b6b !important; }
-
         /* אזור התוכן הראשי */
         .container {
             max-width: 1000px;
@@ -87,22 +56,11 @@
             font-weight: bold;
         }
 
-        /* כיוון LTR לתאריכים ומחירים כדי שיראו טוב */
+        /* כיוון LTR לתאריכים ומחירים */
         .ltr-text { direction: ltr; text-align: right; }
     </style>
-</head>
-<body>
 
-    <header>
-        <div class="logo">FLYTAU Airlines</div>
-        <nav>
-            <span>שלום, {{ session['user_id'] }}</span> |
-            <a href="/">חיפוש טיסה</a> |
-            <a href="{{ url_for('logout') }}" class="logout-btn">התנתק</a>
-        </nav>
-    </header>
-
-    <main class="container">
+    <div class="container">
         <h1>ההזמנות שלי</h1>
 
         {% if flights %}
@@ -126,23 +84,5 @@
                         <td>{{ flight.origin }}</td>
                         <td>{{ flight.destination }}</td>
 
-                        <td class="ltr-text">{{ flight.departure_time }}</td>
-
-                        <td class="ltr-text">${{ flight.price }}</td>
-
-                        <td style="font-weight: bold;">{{ flight.booking_status }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        {% else %}
-            <div class="no-flights">
-                <p>לא נמצאו הזמנות פעילות בחשבון זה.</p>
-                <a href="/" class="btn-search">לחץ כאן לחיפוש טיסה חדשה</a>
-            </div>
-        {% endif %}
-
-    </main>
-
-</body>
-</html>
+                        <td class="ltr-text">
+                            {{ flight.departure_time.strftime('%d/%m/%Y %H:%M') if flight.

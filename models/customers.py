@@ -11,20 +11,34 @@ class RegisteredUser:
         self.passport = passport_number
 
     @staticmethod
-    def login(email, password):
-        """מאמת פרטי התחברות ללקוח"""
-        with DB.get_cursor() as cursor:
-            cursor.execute("SELECT * FROM RegisteredUser WHERE email = %s AND password = %s", (email, password))
-            return RegisteredUser.from_db(cursor.fetchone())
+    def register(data):
+        """פונקציה שמרכזת את כל לוגיקת ההרשמה"""
+        email = data.get('email', '').strip().lower()
+        password = data.get('password')
+        confirm_password = data.get('confirm_password')
 
-    @staticmethod
-    def from_db(row):
-        if not row: return None
-        return RegisteredUser(row['email'], row['first_name_en'], row['last_name_en'],
-                              row['password'], row['birth_date'], row['passport_number'])
+        # 1. בדיקת התאמת סיסמאות
+        if password != confirm_password:
+            return None, "הסיסמאות שהוזנו אינן תואמות, אנא נסה שוב"
+
+        # 2. בדיקה אם המשתמש כבר קיים
+        with DB.get_cursor() as cursor:
+            cursor.execute("SELECT 1 FROM RegisteredUser WHERE email = %s", (email,))
+            if cursor.fetchone():
+                return None, "האימייל שהוזן משוייך לחשבון קיים, אנא התחבר או צור חשבון עם מייל שונה"
+
+        # 3. יצירת האובייקט ושמירה ל-DB
+        try:
+            new_user = RegisteredUser(
+                email, data.get('first_name'), data.get('last_name'),
+                password, data.get('birth_date'), data.get('passport_number')
+            )
+            new_user.save()
+            return new_user, None
+        except Exception as e:
+            return None, f"Database error: {str(e)}"
 
     def save(self):
-        """שומר משתמש חדש ל-DB"""
         reg_date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         query = """INSERT INTO RegisteredUser (email, first_name_en, last_name_en, birth_date, 
                    registration_date, passport_number, password) VALUES (%s, %s, %s, %s, %s, %s, %s)"""
