@@ -195,6 +195,6 @@ def process_booking():
         total=total_price,
         flight_number=flight_num
     )
-
+#
 if __name__ == '__main__':
     app.run(debug=True)
