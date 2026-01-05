@@ -1,18 +1,160 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="container" style="max-width: 500px; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-top: 50px;">
-    <h3>סיכום הזמנה - טיסה {{ flight_number }}</h3>
-    <ul style="list-style: none; padding: 0;">
-        {% for item in details %}
-            <li style="padding: 10px 0; border-bottom: 1px solid #eee;">
-                מושב <strong>{{ item.seat_id }}</strong> ({{ item.class_name }}) - ₪{{ item.base_price }}
-            </li>
+
+<style>
+  .center-wrap{
+    min-height: calc(100vh - 200px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 40px 20px;
+  }
+  .card{
+    width: 100%;
+    max-width: 720px;
+    background: #fff;
+    border-radius: 14px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.10);
+    padding: 28px;
+  }
+  .card h2{
+    text-align: center;
+    margin: 0 0 18px 0;
+  }
+  .seat-list{
+    display: grid;
+    gap: 12px;
+    margin: 18px 0;
+  }
+  .seat-item{
+    border: 1px solid #e6e6e6;
+    border-radius: 10px;
+    padding: 14px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+  }
+
+  /* Seat + Class on one line */
+  .seat-meta{
+    display: flex;
+    gap: 24px;
+    align-items: center;
+    justify-content: flex-end;
+    direction: rtl;
+    text-align: right;
+    flex-wrap: wrap;
+  }
+  .pair{
+    display: inline-flex;
+    gap: 8px;
+    align-items: baseline;
+    white-space: nowrap;
+  }
+  .label{ font-weight: 800; }
+  .val{ font-weight: 600; color: #222; }
+
+  .price{
+    font-weight: 800;
+    font-size: 16px;
+    white-space: nowrap;
+  }
+  .total{
+    border-top: 1px solid #eee;
+    margin-top: 16px;
+    padding-top: 16px;
+    text-align: center;
+    font-size: 20px;
+    font-weight: 800;
+    color: #1f8f3a;
+  }
+  .actions{
+    margin-top: 18px;
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .btn{
+    padding: 12px 20px;
+    border-radius: 10px;
+    border: 1px solid #333;
+    background: #f2f2f2;
+    cursor: pointer;
+    text-decoration: none;
+    color: #111;
+    font-weight: 700;
+  }
+  .btn-primary{
+    background: #111;
+    color: #fff;
+    border-color: #111;
+  }
+</style>
+
+<div class="center-wrap">
+  <div class="card">
+    <h2>סיכום הזמנה - טיסה {{ flight_number }}</h2>
+
+    <div class="seat-list">
+      {% for s in details %}
+
+        {% if s is mapping %}
+          {% set seat_no = (s.get('seat_no')
+                            or s.get('seat_number')
+                            or s.get('seat')
+                            or s.get('seat_label')
+                            or s.get('label')
+                            or '') %}
+
+          {% set class_type = (s.get('class_type')
+                               or s.get('class_name')
+                               or s.get('class')
+                               or '') %}
+
+          {% set price_val = (s.get('price')
+                              if s.get('price') is not none else
+                              (s.get('base_price') if s.get('base_price') is not none else
+                               (s.get('class_price') if s.get('class_price') is not none else 0))) %}
+        {% else %}
+          {% set seat_no = s[0] if s|length > 0 else '' %}
+          {% set class_type = s[1] if s|length > 1 else '' %}
+          {% set price_val = s[2] if s|length > 2 else 0 %}
+        {% endif %}
+
+        <div class="seat-item">
+          <div class="seat-meta">
+            <div class="pair">
+              <span class="label">מספר כיסא:</span>
+              <span class="val">{{ seat_no }}</span>
+            </div>
+            <div class="pair">
+              <span class="label">מחלקה:</span>
+              <span class="val">{{ class_type }}</span>
+            </div>
+          </div>
+
+          <div class="price">₪{{ "%.2f"|format(price_val|float) }}</div>
+        </div>
+
+      {% endfor %}
+    </div>
+
+    <div class="total">סה״כ לתשלום: ₪{{ "%.2f"|format(total|float) }}</div>
+
+    <div class="actions">
+      <a class="btn" href="{{ url_for('seat_selection', flight_id=flight_number) }}">חזרה לבחירת מקומות</a>
+
+      <form action="{{ url_for('checkout', flight_id=flight_number) }}" method="GET" style="margin:0;">
+        {% for s in selected_seats %}
+          <input type="hidden" name="selected_seats" value="{{ s }}">
         {% endfor %}
-    </ul>
-    <h4 style="color: #28a745; text-align: center; font-size: 24px;">סה"כ לתשלום: ₪{{ total }}</h4>
-    
-    <form action="{{ url_for('home_page') }}" method="GET">
-        <button type="submit" class="btn-select" style="width: 100%; padding: 15px;">אשר ובצע תשלום</button>
-    </form>
+        <button class="btn btn-primary" type="submit">המשך</button>
+      </form>
+    </div>
+
+  </div>
 </div>
+
 {% endblock %}
