@@ -156,6 +156,24 @@ def logout():
     session.clear()
     return redirect(url_for('home_page'))
 
+@app.route("/manager_login", methods=["GET", "POST"])
+def manager_login():
+    if request.method == "POST":
+        emp_id = request.form["id"]
+        password = request.form["password"]
+
+        manager = Manager.login(emp_id, password)
+
+        if manager:
+            session["user_id"] = manager.id
+            session["role"] = "manager"
+            session["first_name"] = manager.first_name_he
+            return redirect("/manager_dashboard")
+        return render_template(
+            "manager_login.html",
+            error="תעודת עובד או סיסמה שגויים")
+    return render_template("manager_login.html")
+
 
 if __name__ == '__main__':
     app.run(debug=True)

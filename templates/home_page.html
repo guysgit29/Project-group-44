@@ -3,49 +3,86 @@
 {% block title %}FLYTAU - דף הבית{% endblock %}
 
 {% block content %}
-    <style>
-        select, option { color: black !important; background-color: white !important; }
-        .hero { text-align: center; padding: 40px 0; }
-        .search-box { background: #f4f4f4; padding: 20px; border-radius: 8px; text-align: center; }
-    </style>
+<style>
+    select, option {
+        color: black !important;
+        background-color: white !important;
+    }
 
-    <main>
-        <section class="hero">
-            <h1>ברוכים הבאים ל-FLYTAU</h1>
-            <p>חפשו את הטיסה הבאה שלכם בקלות.</p>
-        </section>
+    .hero {
+        text-align: center;
+        padding: 40px 0;
+    }
 
-        <section class="search-box">
-            <h2>חיפוש טיסות</h2>
+    .search-box {
+        background: #f4f4f4;
+        padding: 20px;
+        border-radius: 8px;
+        text-align: center;
+    }
 
-            <form action="/search" method="GET">
-                <div style="display: flex; gap: 10px; justify-content: center; align-items: flex-end; flex-wrap: wrap;">
+    /* כפתור מנהל */
+    .manager-login-btn {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        background-color: #444;
+        color: white;
+        padding: 10px 16px;
+        text-decoration: none;
+        border-radius: 4px;
+        font-weight: bold;
+    }
 
-                    <div>
-                        <label for="origin">מקור:</label>
-                        <select name="origin" id="origin" required>
-                            <option value="" disabled selected>בחר מקור</option>
-                            {% for item in origins %}
-                                <option value="{{ item.origin }}">{{ item.origin }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
+    .manager-login-btn:hover {
+        background-color: #222;
+    }
+</style>
 
-                    <div>
-                        <label for="destination">יעד:</label>
-                        <select name="destination" id="destination" required>
-                            <option value="" disabled selected>בחר יעד</option>
-                            {% for item in destinations %}
-                                <option value="{{ item.destination }}">{{ item.destination }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
+<!-- כפתור התחברות מנהל -->
+<a href="/manager_login" class="manager-login-btn">
+    התחברות מנהל
+</a>
 
-                    <button type="submit" style="background-color: #003366; color: white; border: none; padding: 10px 20px; cursor: pointer;">
-                        הצג את כל הטיסות
-                    </button>
+<main>
+    <section class="hero">
+        <h1>ברוכים הבאים ל-FLYTAU</h1>
+        <p>חפשו את הטיסה הבאה שלכם בקלות.</p>
+    </section>
+
+    <section class="search-box">
+        <h2>חיפוש טיסות</h2>
+
+        <form action="/search" method="GET">
+            <div style="display: flex; gap: 10px; justify-content: center; align-items: flex-end; flex-wrap: wrap;">
+
+                <div>
+                    <label for="origin">מקור:</label>
+                    <select name="origin" id="origin" required>
+                        <option value="" disabled selected>בחר מקור</option>
+                        {% for item in origins %}
+                            <option value="{{ item.origin }}">{{ item.origin }}</option>
+                        {% endfor %}
+                    </select>
                 </div>
-            </form>
-        </section>
-    </main>
+
+                <div>
+                    <label for="destination">יעד:</label>
+                    <select name="destination" id="destination" required>
+                        <option value="" disabled selected>בחר יעד</option>
+                        {% for item in destinations %}
+                            <option value="{{ item.destination }}">{{ item.destination }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <button type="submit"
+                        style="background-color: #003366; color: white; border: none; padding: 10px 20px; cursor: pointer;">
+                    הצג את כל הטיסות
+                </button>
+
+            </div>
+        </form>
+    </section>
+</main>
 {% endblock %}

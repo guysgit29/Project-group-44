@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block content %}
+<main class="container" style="max-width: 400px; margin: 50px auto;">
+    <h2>התחברות מנהל</h2>
+
+    {% if error %}
+        <p style="color:red; font-weight:bold;">{{ error }}</p>
+    {% endif %}
+
+    <form method="POST" style="display:flex; flex-direction:column; gap:10px;">
+        <input type="number" name="id" placeholder="תעודת עובד" required>
+        <input type="password" name="password" placeholder="סיסמה" required>
+
+        <button type="submit"
+                style="background:#003366; color:white; padding:10px;">
+            התחבר
+        </button>
+    </form>
+</main>
+{% endblock %}
