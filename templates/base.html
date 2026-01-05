@@ -24,13 +24,22 @@
             <a href="/" style="text-decoration: none; color: var(--text-main); font-weight: 600;">חיפוש טיסות</a>
             <a href="/search_booking" style="text-decoration: none; color: var(--text-main); font-weight: 600;">ניהול הזמנה</a>
 
-            {% if session.get('user_id') %}
+            {% if session.get('role') == 'manager' %}
+                <div style="height: 30px; width: 1px; background: #ddd;"></div>
+                <a href="/manager_dashboard" style="text-decoration: none; color: var(--primary-navy); font-weight: 700;">לוח בקרה מנהל</a>
+                <span style="color: #666;">שלום, <b>{{ session['first_name'] }}</b></span>
+                <a href="/logout" class="btn-premium" style="background: #f8d7da; color: #721c24; padding: 8px 15px;">התנתק</a>
+
+            {% elif session.get('user_id') %}
                 <div style="height: 30px; width: 1px; background: #ddd;"></div>
                 <a href="/my_flights" style="text-decoration: none; color: var(--primary-navy); font-weight: 700;">הטיסות שלי</a>
                 <a href="/logout" class="btn-premium" style="background: #f8d7da; color: #721c24; padding: 8px 15px;">התנתק</a>
+
             {% else %}
-                <a href="/login" style="text-decoration: none; color: var(--text-main); font-weight: 600;">התחברות</a>
+                <a href="/login" style="text-decoration: none; color: var(--text-main); font-weight: 600;">התחברות לקוח</a>
                 <a href="/registration" class="btn-premium">להרשמה</a>
+                <div style="height: 30px; width: 1px; background: #ddd;"></div>
+                <a href="/manager_login" style="text-decoration: none; color: #636e72; font-size: 0.9rem; font-weight: 500;">כניסת צוות ➔</a>
             {% endif %}
         </div>
     </nav>
