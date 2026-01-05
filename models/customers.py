@@ -1,45 +1,33 @@
-from utills import db_cur
+from database import DB
+from datetime import datetime
 
-class Customer:
-    def __init__(self, email, first_name_en, last_name_en, phones=None):
+class RegisteredUser:
+    def __init__(self, email, first_name_en, last_name_en, password, birth_date=None, passport_number=None):
         self.email = email
         self.first_name = first_name_en
         self.last_name = last_name_en
-        self.phones = phones if phones else []
-
-class RegisteredUser(Customer):
-    def __init__(self, email, first_name_en, last_name_en, password, birth_date=None, passport=None, phones=None):
-        super().__init__(email, first_name_en, last_name_en, phones)
         self.password = password
         self.birth_date = birth_date
-        self.passport = passport
+        self.passport = passport_number
 
-    def load_phones(self):
-        with db_cur() as cursor:
-            query = "SELECT phone_number FROM RegisteredPhone WHERE email = %s"
-            cursor.execute(query, (self.email,))
-            results = cursor.fetchall()
-            self.phones = [row['phone_number'] for row in results]
+    @staticmethod
+    def login(email, password):
+        """מאמת פרטי התחברות ללקוח"""
+        with DB.get_cursor() as cursor:
+            cursor.execute("SELECT * FROM RegisteredUser WHERE email = %s AND password = %s", (email, password))
+            return RegisteredUser.from_db(cursor.fetchone())
 
     @staticmethod
     def from_db(row):
         if not row: return None
-        user = RegisteredUser(
-            email=row['email'],
-            first_name_en=row['first_name_en'],
-            last_name_en=row['last_name_en'],
-            password=row['password'],
-            birth_date=row['birth_date'],
-            passport=row['passport_number']
-        )
-        user.load_phones() # טעינה אוטומטית של הטלפונים
-        return user
+        return RegisteredUser(row['email'], row['first_name_en'], row['last_name_en'],
+                              row['password'], row['birth_date'], row['passport_number'])
 
-class GuestUser(Customer):
-    def load_phones(self):
-        """שליפת טלפונים מטבלת CustomerPhone"""
-        with db_cur() as cursor:
-            query = "SELECT phone_number FROM CustomerPhone WHERE email = %s"
-            cursor.execute(query, (self.email,))
-            results = cursor.fetchall()
-            self.phones = [row['phone_number'] for row in results]
+    def save(self):
+        """שומר משתמש חדש ל-DB"""
+        reg_date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        query = """INSERT INTO RegisteredUser (email, first_name_en, last_name_en, birth_date, 
+                   registration_date, passport_number, password) VALUES (%s, %s, %s, %s, %s, %s, %s)"""
+        with DB.get_cursor() as cursor:
+            cursor.execute(query, (self.email, self.first_name, self.last_name, self.birth_date,
+                                   reg_date, self.passport, self.password))

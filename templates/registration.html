@@ -1,72 +1,35 @@
-<!DOCTYPE html>
-<html lang="he" dir="rtl">
-<head>
-    <meta charset="UTF-8">
-    <title>FlyTau - הרשמה</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-</head>
-<body>
-    <header>
-        <h1>הרשמה למערכת FlyTau</h1>
-        <nav>
-            <a href="/">דף הבית</a> |
-            <a href="/login">התחברות משתמש</a>
-        </nav>
-    </header>
+{% extends "base.html" %} {% block title %}FlyTau - הרשמה{% endblock %}
 
-    <section class="form-box">
-        <h2>יצירת חשבון חדש</h2>
+{% block content %}
+<main class="container" style="max-width: 500px; margin: 50px auto;">
+    <h2>יצירת חשבון חדש</h2>
+    
+    {% if error %}
+        <p style="color: red; font-weight: bold;">{{ error }}</p>
+    {% endif %}
 
-        {% if error %}
-            <p class="error">{{ error }}</p>
-        {% endif %}
-
-        <form action="/registration" method="POST">
-
-            <div class="form-group">
-                <label for="first_name">שם פרטי (אנגלית):</label>
-                <input type="text" id="first_name" name="first_name"
-                       value="{{ request.form.get('first_name', '') }}" required>
-            </div>
-
-            <div class="form-group">
-                <label for="last_name">שם משפחה (אנגלית):</label>
-                <input type="text" id="last_name" name="last_name"
-                       value="{{ request.form.get('last_name', '') }}" required>
-            </div>
-
-            <div class="form-group">
-                <label for="birth_date">תאריך לידה:</label>
-                <input type="date" id="birth_date" name="birth_date"
-                       value="{{ request.form.get('birth_date', '') }}" required>
-            </div>
-
-            <div class="form-group">
-                <label for="passport_number">מספר דרכון:</label>
-                <input type="text" id="passport_number" name="passport_number"
-                       value="{{ request.form.get('passport_number', '') }}" required>
-            </div>
-
-            <div class="form-group">
-                <label for="email">אימייל:</label>
-                <input type="email" id="email" name="email"
-                       value="{{ request.form.get('email', '') }}" required>
-            </div>
-
-            <div class="form-group">
-                <label for="password">סיסמה:</label>
-                <input type="password" id="password" name="password" required>
-            </div>
-
-            <div class="form-group">
-                <label for="confirm_password">אימות סיסמה:</label>
-                <input type="password" id="confirm_password" name="confirm_password" required>
-            </div>
-
-            <button type="submit">הירשם</button>
-        </form>
-
-        <p>כבר רשום? <a href="/login">התחבר כאן</a></p>
-    </section>
-</body>
-</html>
+    <form action="/registration" method="POST" style="display: flex; flex-direction: column; gap: 15px;">
+        <label>שם פרטי (באנגלית):</label>
+        <input type="text" name="first_name" required placeholder="למשל: Israel">
+        
+        <label>שם משפחה (באנגלית):</label>
+        <input type="text" name="last_name" required placeholder="למשל: Israeli">
+        
+        <label>כתובת אימייל:</label>
+        <input type="email" name="email" required>
+        
+        <label>סיסמה:</label>
+        <input type="password" name="password" required>
+        
+        <label>תאריך לידה:</label>
+        <input type="date" name="birth_date" required>
+        
+        <label>מספר דרכון:</label>
+        <input type="text" name="passport_number" required>
+        
+        <button type="submit" style="padding: 10px; background-color: #003366; color: white; border: none; cursor: pointer;">
+            הרשמה
+        </button>
+    </form>
+</main>
+{% endblock %}

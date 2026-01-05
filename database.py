@@ -1,22 +1,26 @@
 import mysql.connector
 from contextlib import contextmanager
 
-class DBManager:
+class DB:
     @staticmethod
     @contextmanager
     def get_cursor():
-        # הגדרות החיבור שלך - שנה כאן פעם אחת וזה יתעדכן בכל הפרויקט
-        config = {
-            'host': "localhost",
-            'user': "root",
-            'password': "rootroot",
-            'database': "flytau",
-            'autocommit': True
-        }
-        conn = mysql.connector.connect(**config)
-        cursor = conn.cursor(dictionary=True) # מחזיר תוצאות כמילון
+        mydb = None
+        cursor = None
         try:
+            mydb = mysql.connector.connect(
+                host="localhost",
+                user="root",
+                password="rootroot",
+                database="flytau",
+                autocommit=True,
+                auth_plugin='mysql_native_password'
+            )
+            cursor = mydb.cursor(dictionary=True)
             yield cursor
+        except mysql.connector.Error as err:
+            print(f"Database connection error: {err}")
+            raise err
         finally:
-            cursor.close()
-            conn.close()
+            if cursor: cursor.close()
+            if mydb: mydb.close()

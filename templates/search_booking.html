@@ -1,34 +1,32 @@
-<!DOCTYPE html>
-<html lang="he" dir="rtl">
-<head>
-    <meta charset="UTF-8">
-    <title>FlyTau - חיפוש הזמנה</title>
-    <link rel="stylesheet" href="/static/style.css">
-</head>
-<body>
-    <header>
-        <h1>חיפוש הזמנה</h1>
-        <nav><a href="/">חזרה לדף הבית</a></nav>
-    </header>
+{% extends "base.html" %}
 
-    <main class="container">
-        <section class="search-box">
-            <h2>אנא מלאו את הפרטים הבאים כפי שקיבלתם בעת ביצוע ההזמנה</h2>
+{% block title %}FlyTau - חיפוש הזמנה{% endblock %}
 
-            {% if error %}
-                <p style="color: red; font-weight: bold;">{{ error }}</p>
-            {% endif %}
+{% block content %}
+<main class="container" style="max-width: 600px; margin: 50px auto; text-align: center;">
+    <section class="search-box" style="border: 1px solid #ddd; padding: 30px; border-radius: 10px; background: #f9f9f9;">
+        <h2>חיפוש הזמנה קיימת</h2>
+        <p>אנא מלאו את הפרטים הבאים כפי שמופיעים באישור ההזמנה</p>
 
-            <form action="/search_booking" method="POST">
-                <label for="order_id">מספר הזמנה המורכב מ-6 תווים:</label>
-                <input type="text" name="order_id" id="order_id" required>
+        {% if error %}
+            <p style="color: red; font-weight: bold; background: #ffe6e6; padding: 10px;">{{ error }}</p>
+        {% endif %}
 
-                <label for="email">כתובת אימייל המשוייכת להזמנה:</label>
-                <input type="email" name="email" id="email" required>
+        <form action="/search_booking" method="POST" style="display: flex; flex-direction: column; gap: 20px; text-align: right;">
+            <div>
+                <label for="order_id"><strong>מספר הזמנה (6 תווים):</strong></label>
+                <input type="text" name="order_id" id="order_id" required style="width: 100%; padding: 8px;" placeholder="למשל: BK1234">
+            </div>
 
-                <button type="submit">חפש הזמנה</button>
-            </form>
-        </section>
-    </main>
-</body>
-</html>
+            <div>
+                <label for="email"><strong>כתובת אימייל למשלוח:</strong></label>
+                <input type="email" name="email" id="email" required style="width: 100%; padding: 8px;">
+            </div>
+
+            <button type="submit" style="padding: 12px; background-color: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 1.1em; font-weight: bold;">
+                🔍 חפש הזמנה
+            </button>
+        </form>
+    </section>
+</main>
+{% endblock %}
