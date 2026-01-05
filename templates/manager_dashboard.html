@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block content %}
+<main class="container" style="max-width: 800px; margin: 50px auto;">
+    <h2>דשבורד מנהל</h2>
+
+שלום, {{ session.first_name }} {{ session.last_name }}
+
+    <ul>
+        <li>ניהול טיסות</li>
+        <li>ניהול עובדים</li>
+        <li>דוחות</li>
+    </ul>
+</main>
+{% endblock %}
