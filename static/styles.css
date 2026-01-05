@@ -1,0 +1,92 @@
+/* ייבוא פונט מקצועי מ-Google */
+@import url('https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;600;700&display=swap');
+
+:root {
+    --primary-navy: #1a2a6c;     /* כחול עמוק "רציני" */
+    --accent-gold: #b39359;      /* צבע דגש יוקרתי (אופציונלי) */
+    --text-main: #2d3436;
+    --bg-soft: #f1f3f6;
+    --white: #ffffff;
+    --shadow-sm: 0 2px 4px rgba(0,0,0,0.05);
+    --shadow-md: 0 10px 15px -3px rgba(0,0,0,0.1);
+}
+
+body {
+    font-family: 'Assistant', sans-serif;
+    background-color: var(--bg-soft);
+    margin: 0;
+    color: var(--text-main);
+    line-height: 1.6;
+}
+
+/* קונטיינר רציני עם רווחים נכונים */
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+/* כפתור מקצועי עם Transition */
+.btn-premium {
+    background-color: var(--primary-navy);
+    color: white;
+    padding: 10px 24px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    border: none;
+    cursor: pointer;
+    display: inline-block;
+}
+
+.btn-premium:hover {
+    background-color: #0d1a4d;
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+}
+
+/* עיצוב טבלאות מודרני - ללא קווים גסים */
+.professional-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0 8px; /* ריווח בין שורות */
+    margin: 20px 0;
+}
+
+.professional-table th {
+    background: transparent;
+    color: #636e72;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    letter-spacing: 1px;
+    padding: 15px;
+}
+
+.professional-table tr {
+    background: var(--white);
+    box-shadow: var(--shadow-sm);
+    transition: transform 0.2s;
+}
+
+.professional-table tr:hover {
+    transform: scale(1.01);
+}
+
+.professional-table td {
+    padding: 15px;
+    border: none;
+}
+
+.professional-table td:first-child { border-radius: 0 8px 8px 0; }
+.professional-table td:last-child { border-radius: 8px 0 0 8px; }
+
+/* תגיות סטטוס מודרניות */
+.badge {
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: bold;
+}
+.badge-active { background: #e3fcef; color: #00875a; }
+.badge-history { background: #f4f5f7; color: #42526e; }

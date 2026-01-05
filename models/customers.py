@@ -45,3 +45,27 @@ class RegisteredUser:
         with DB.get_cursor() as cursor:
             cursor.execute(query, (self.email, self.first_name, self.last_name, self.birth_date,
                                    reg_date, self.passport, self.password))
+
+    @staticmethod
+    def login(email, password):
+        """מחפש משתמש בטבלת RegisteredUser לפי אימייל וסיסמה"""
+        query = """
+                SELECT email, first_name_en, last_name_en, password, birth_date, passport_number
+                FROM RegisteredUser 
+                WHERE email = %s AND password = %s
+            """
+        with DB.get_cursor() as cursor:
+            cursor.execute(query, (email.strip().lower(), password))
+            result = cursor.fetchone()
+
+            if result:
+                # יצירת אובייקט מהנתונים שחזרו (שימוש בשמות המפתחות כפי שמופיעים ב-SELECT)
+                return RegisteredUser(
+                    email=result['email'],
+                    first_name_en=result['first_name_en'],
+                    last_name_en=result['last_name_en'],
+                    password=result['password'],
+                    birth_date=result['birth_date'],
+                    passport_number=result['passport_number']
+                )
+        return None

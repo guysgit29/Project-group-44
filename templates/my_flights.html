@@ -1,88 +1,72 @@
 {% extends "base.html" %}
 
-{% block title %}הטיסות שלי - FLYTAU{% endblock %}
-
 {% block content %}
-    <style>
-        /* אזור התוכן הראשי */
-        .container {
-            max-width: 1000px;
-            margin: 40px auto;
-            background: white;
-            padding: 30px;
-            border-radius: 8px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-        }
+<div class="container">
+    <div style="margin-bottom: 40px;">
+        <h1 style="font-size: 2.2rem; color: var(--primary-navy); margin-bottom: 10px;">שלום, {{ session['user_id'] }}</h1>
+        <p style="color: #636e72;">נהל את הנסיעות שלך, צפה בכרטיסים ובצע שינויים בהזמנות קיימות.</p>
+    </div>
 
-        h1 { margin-top: 0; color: #333; border-bottom: 2px solid #007BFF; padding-bottom: 10px; display: inline-block; }
-
-        /* עיצוב הטבלה */
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-        }
-
-        th, td {
-            border: 1px solid #ddd;
-            padding: 12px;
-            text-align: right;
-        }
-
-        th {
-            background-color: #007BFF;
-            color: white;
-        }
-
-        tr:nth-child(even) { background-color: #f9f9f9; }
-        tr:hover { background-color: #f1f1f1; }
-
-        /* הודעה כשאין טיסות */
-        .no-flights {
-            text-align: center;
-            padding: 40px;
-            color: #666;
-            font-size: 1.2em;
-        }
-
-        .btn-search {
-            display: inline-block;
-            margin-top: 15px;
-            padding: 10px 20px;
-            background-color: #28a745;
-            color: white;
-            text-decoration: none;
-            border-radius: 5px;
-            font-weight: bold;
-        }
-
-        /* כיוון LTR לתאריכים ומחירים */
-        .ltr-text { direction: ltr; text-align: right; }
-    </style>
-
-    <div class="container">
-        <h1>ההזמנות שלי</h1>
-
-        {% if flights %}
-            <table>
+    <section>
+        <h2 style="font-size: 1.4rem; border-right: 4px solid var(--primary-navy); padding-right: 15px;">✈️ טיסות עתידיות</h2>
+        {% if active %}
+            <table class="professional-table">
                 <thead>
                     <tr>
                         <th>מספר הזמנה</th>
-                        <th>מספר טיסה</th>
-                        <th>מקור</th>
                         <th>יעד</th>
                         <th>זמן המראה</th>
-                        <th>מחיר ששולם</th>
                         <th>סטטוס</th>
+                        <th></th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% for flight in flights %}
+                    {% for flight in active %}
                     <tr>
-                        <td>{{ flight.booking_id }}</td>
-                        <td>{{ flight.flight_number }}</td>
-                        <td>{{ flight.origin }}</td>
-                        <td>{{ flight.destination }}</td>
+                        <td><strong>{{ flight.booking_id }}</strong></td>
+                        <td>
+                            <div style="font-weight: 700;">{{ flight.origin }} ➔ {{ flight.destination }}</div>
+                            <small style="color: #999;">טיסה: {{ flight.flight_number }}</small>
+                        </td>
+                        <td style="direction: ltr; font-weight: 600;">{{ flight.departure_time.strftime('%d/%m/%Y %H:%M') }}</td>
+                        <td><span class="badge badge-active">מאושרת</span></td>
+                        <td style="text-align: left;">
+                            <a href="{{ url_for('manage_booking', booking_id=flight.booking_id) }}" class="btn-premium">ניהול כרטיס</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <div style="background: white; padding: 40px; text-align: center; border-radius: 8px; margin-top: 20px;">
+                <p>אין לך טיסות עתידיות כרגע.</p>
+                <a href="/" style="color: var(--primary-navy); font-weight: bold;">חפש טיסה חדשה ➔</a>
+            </div>
+        {% endif %}
+    </section>
 
-                        <td class="ltr-text">
-                            {{ flight.departure_time.strftime('%d/%m/%Y %H:%M') if flight.
+    <section style="margin-top: 60px;">
+        <h2 style="font-size: 1.4rem; color: #636e72; border-right: 4px solid #ddd; padding-right: 15px;">📜 היסטוריה וביטולים</h2>
+        {% if history %}
+            <table class="professional-table" style="opacity: 0.8;">
+                <tbody>
+                    {% for flight in history %}
+                    <tr>
+                        <td style="width: 150px;">{{ flight.booking_id }}</td>
+                        <td>{{ flight.origin }} ➔ {{ flight.destination }}</td>
+                        <td style="direction: ltr;">{{ flight.departure_time.strftime('%d/%m/%Y') }}</td>
+                        <td>
+                            <span class="badge {{ 'badge-history' if flight.booking_status == 'Completed' else '' }}"
+                                  style="{{ 'background: #ffebe6; color: #bf2600;' if 'Canceled' in flight.booking_status else '' }}">
+                                {{ flight.booking_status }}
+                            </span>
+                        </td>
+                        <td style="text-align: left; font-weight: bold;">₪{{ "{:,.2f}".format(flight.price) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% endif %}
+    </section>
+</div>
+{% endblock %}

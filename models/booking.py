@@ -55,6 +55,33 @@ class Booking:
             """, (self.booking_id,))
 
     @staticmethod
+    def get_user_flights(email):
+        query = """
+            SELECT B.booking_id, B.flight_number, B.price, B.booking_status,
+                   F.origin, F.destination, F.departure_time
+            FROM Booking B
+            JOIN Flight F ON B.flight_number = F.flight_number
+            WHERE B.registered_email = %s OR B.guest_email = %s
+            ORDER BY F.departure_time DESC
+        """
+        with DB.get_cursor() as cursor:
+            cursor.execute(query, (email, email))
+            return cursor.fetchall()
+
+    @staticmethod
+    def sync_past_bookings():
+        """עדכון אוטומטי של הזמנות שזמן הטיסה שלהן עבר"""
+        query = """
+            UPDATE Booking B
+            JOIN Flight F ON B.flight_number = F.flight_number
+            SET B.booking_status = 'Completed'
+            WHERE B.booking_status = 'Active' 
+              AND F.departure_time < NOW()
+        """
+        with DB.get_cursor() as cursor:
+            cursor.execute(query)
+
+    @staticmethod
     def from_db(row):
         """Helper to convert DB row to Python object"""
         if not row: return None

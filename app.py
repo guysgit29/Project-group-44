@@ -43,12 +43,22 @@ def search_flights():
 
 @app.route('/my_flights')
 def my_flights():
-    """User bookings history."""
     if 'user_id' not in session:
         return redirect(url_for('login_page'))
-
-    user_flights = Booking.get_user_flights(session['user_id'])
-    return render_template('my_flights.html', flights=user_flights)
+    Booking.sync_past_bookings()
+    all_bookings = Booking.get_user_flights(session['user_id'])
+    from datetime import datetime
+    now = datetime.now()
+    active_bookings = []
+    history_bookings = []
+    for b in all_bookings:
+        if b['departure_time'] > now and b['booking_status'] == 'Active':
+            active_bookings.append(b)
+        else:
+            history_bookings.append(b)
+    return render_template('my_flights.html',
+                           active=active_bookings,
+                           history=history_bookings)
 
 # --- Booking Management Routes ---
 
@@ -108,19 +118,17 @@ def registration():
 
 @app.route('/login', methods=['GET', 'POST'])
 def login_page():
-    """Login route."""
+    """Login route - For Registered Users (Customers) only."""
     if request.method == 'POST':
-        uid = request.form.get('username')
+        email = request.form.get('username')
         pwd = request.form.get('password')
-
-        user = Manager.login(uid, pwd) or RegisteredUser.login(uid, pwd)
+        user = RegisteredUser.login(email, pwd)
         if user:
-            session['user_id'] = getattr(user, 'id', getattr(user, 'email', None))
-            session['role'] = 'manager' if isinstance(user, Manager) else 'customer'
+            # בלקוחות רשומים המזהה הוא ה-email
+            session['user_id'] = user.email
+            session['role'] = 'customer'
             return redirect(url_for('home_page'))
-
-        return render_template('login.html', error="Invalid Credentials")
-
+        return render_template('login.html', error="Invalid Email or Password")
     return render_template('login.html')
 
 
