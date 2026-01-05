@@ -60,7 +60,7 @@ def search_booking():
     """Find booking by id + email."""
     if request.method == "POST":
         order_id = request.form.get("order_id")
-        email = request.form.get("email")
+        email = (request.form.get("email") or "").strip().lower()
 
         booking = Booking.get_by_id_and_email(order_id, email)
         if booking:
@@ -210,6 +210,9 @@ def process_booking():
     if not selected_seats:
         return redirect(url_for("seat_selection", flight_id=flight_num))
 
+    # נבנה "details" בצורה שתתאים גם ל-payment_summary החדש וגם לישן:
+    # - seat_no/class_type/price (החדש)
+    # - seat/class/price (הישן)
     total_price = 0.0
     details = []
 
@@ -227,15 +230,19 @@ def process_booking():
             )
             res = cursor.fetchone()
             price = float(res["class_price"]) if res and res["class_price"] is not None else 0.0
-
             total_price += price
-            details.append(
-                {
-                    "seat": f"{row_num}{col_num}",
-                    "class": class_type,
-                    "price": price,
-                }
-            )
+
+            seat_no = f"{row_num}{col_num}"
+
+            details.append({
+                # חדש:
+                "seat_no": seat_no,
+                "class_type": class_type,
+                "price": price,
+                # ישן (כדי לא להפיל templates קיימים):
+                "seat": seat_no,
+                "class": class_type,
+            })
 
     return render_template(
         "payment_summary.html",
@@ -248,30 +255,32 @@ def process_booking():
 # ------------------------------------------------------------
 # Checkout (שלב הבא)
 # ------------------------------------------------------------
-@app.route('/checkout/<int:flight_id>', methods=['GET', 'POST'])
+
+@app.route("/checkout/<int:flight_id>", methods=["GET", "POST"])
 def checkout(flight_id):
     # seats from GET query OR POST hidden fields
-    selected_seats = request.form.getlist('selected_seats') if request.method == 'POST' else request.args.getlist('selected_seats')
+    selected_seats = request.form.getlist("selected_seats") if request.method == "POST" else request.args.getlist("selected_seats")
     if not selected_seats:
-        return redirect(url_for('seat_selection', flight_id=flight_id))
+        return redirect(url_for("seat_selection", flight_id=flight_id))
 
-    # build summary (you already have this method)
+    # build summary from Booking model
+    # IMPORTANT: checkout.html שלך משתמש ב: d.seat_no, d.class_type, d.price
     details, total = Booking.get_pricing_for_selected_seats(flight_id, selected_seats)
 
-    # prefill if logged in (optional)
+    # prefill if logged in
     prefill = {"first_name": "", "last_name": "", "email": "", "lock_email": False}
-    if session.get('role') == 'customer' and session.get('user_id'):
-        user = RegisteredUser.get_by_email(session['user_id'])
+    if session.get("role") == "customer" and session.get("user_id"):
+        user = RegisteredUser.get_by_email(session["user_id"])
         if user:
             prefill["first_name"] = getattr(user, "first_name_en", "") or ""
             prefill["last_name"] = getattr(user, "last_name_en", "") or ""
-            prefill["email"] = getattr(user, "email", "") or session['user_id']
+            prefill["email"] = getattr(user, "email", "") or session["user_id"]
             prefill["lock_email"] = True
 
     # GET -> show page
-    if request.method == 'GET':
+    if request.method == "GET":
         return render_template(
-            'checkout.html',
+            "checkout.html",
             flight_number=flight_id,
             selected_seats=selected_seats,
             details=details,
@@ -281,16 +290,16 @@ def checkout(flight_id):
         )
 
     # POST -> validate + create booking
-    first_name = (request.form.get('first_name') or "").strip()
-    last_name  = (request.form.get('last_name') or "").strip()
-    email      = (request.form.get('email') or "").strip().lower()
-    payment_method = request.form.get('payment_method') or "card"  # "card" / "points"
+    first_name = (request.form.get("first_name") or "").strip()
+    last_name = (request.form.get("last_name") or "").strip()
+    email = (request.form.get("email") or "").strip().lower()
+    payment_method = request.form.get("payment_method") or "card"  # "card" / "points"
 
     # block: email belongs to registered user but NOT logged in
-    if session.get('role') != 'customer':
+    if session.get("role") != "customer":
         if RegisteredUser.email_exists(email):
             return render_template(
-                'checkout.html',
+                "checkout.html",
                 flight_number=flight_id,
                 selected_seats=selected_seats,
                 details=details,
@@ -306,12 +315,12 @@ def checkout(flight_id):
         email=email,
         selected_seats=selected_seats,
         payment_method=payment_method,
-        logged_in_registered=(session.get('role') == 'customer')
+        logged_in_registered=(session.get("role") == "customer")
     )
 
     if not created_id:
         return render_template(
-            'checkout.html',
+            "checkout.html",
             flight_number=flight_id,
             selected_seats=selected_seats,
             details=details,
@@ -320,7 +329,9 @@ def checkout(flight_id):
             error="לא ניתן להשלים הזמנה. ייתכן שמושב נתפס או שיש חוסר התאמה בנתוני מושבים לטיסה."
         )
 
-    return redirect(url_for('manage_booking', booking_id=created_id))
+    return redirect(url_for("manage_booking", booking_id=created_id))
+
+
 # ------------------------------------------------------------
 # Run (MUST be last)
 # ------------------------------------------------------------
