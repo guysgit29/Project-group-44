@@ -1,34 +1,152 @@
 {% extends "base.html" %}
 {% block content %}
 <style>
-    .plane-map { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; max-width: 600px; margin: 40px auto; }
-    .seat-label { display: block; padding: 12px; border: 2px solid #ccc; border-radius: 6px; text-align: center; cursor: pointer; transition: 0.3s; }
-    .Business { border-color: #ffd700; background: #fff9e6; } /* זהב למחלקת עסקים */
-    .Economy { border-color: #007bff; background: #f0f7ff; } /* כחול למחלקת תיירים */
+    .plane-map {
+        display: grid;
+        grid-template-columns: repeat({{ max_col|default(4) }}, 1fr);
+        gap: 10px;
+        max-width: 900px;
+        margin: 40px auto;
+    }
+
+    .seat-label {
+        display: block;
+        padding: 12px;
+        border: 2px solid #ccc;
+        border-radius: 6px;
+        text-align: center;
+        cursor: pointer;
+        transition: 0.2s;
+        min-height: 55px;
+    }
+
+    .Business { border-color: #ffd700; background: #fff9e6; }
+    .Economy  { border-color: #007bff; background: #f0f7ff; }
+    .First    { border-color: #ff0000; background: #ffe6e6; }
+
     .taken { background: #eee; color: #aaa; cursor: not-allowed; border-color: #ddd; }
+    .empty { border: none; background: transparent; cursor: default; }
+
     .checkbox-hidden { display: none; }
-    .checkbox-hidden:checked + .seat-label { background: #28a745; color: white; border-color: #1e7e34; transform: scale(1.05); }
+
+    .checkbox-hidden:checked + .seat-label {
+        background: #28a745;
+        color: white;
+        border-color: #1e7e34;
+        transform: scale(1.03);
+    }
+
+    .legend {
+        max-width: 900px;
+        margin: 0 auto;
+        text-align: center;
+        font-weight: 700;
+        display: flex;
+        gap: 16px;
+        justify-content: center;
+        align-items: center;
+    }
+    .legend span {
+        padding: 6px 10px;
+        border-radius: 6px;
+        border: 2px solid transparent;
+        font-weight: 600;
+    }
+    .legend .Business { border-color: #ffd700; background: #fff9e6; }
+    .legend .Economy  { border-color: #007bff; background: #f0f7ff; }
+    .legend .First    { border-color: #ff0000; background: #ffe6e6; }
 </style>
 
 <div class="container">
     <h2 style="text-align:center;">בחר מושבים לטיסה {{ flight_number }}</h2>
+
     <form action="{{ url_for('process_booking') }}" method="POST">
         <input type="hidden" name="flight_number" value="{{ flight_number }}">
+
+        {# Split seats by class #}
+        {% set first_seats = all_seats | selectattr('class_type', 'equalto', 'First') | list %}
+        {% set business_seats = all_seats | selectattr('class_type', 'equalto', 'Business') | list %}
+        {% set economy_seats = all_seats | selectattr('class_type', 'equalto', 'Economy') | list %}
+
+        {# Compute max rows per class #}
+        {% set first_rows = first_seats | map(attribute='row_num') | list %}
+        {% set business_rows = business_seats | map(attribute='row_num') | list %}
+        {% set economy_rows = economy_seats | map(attribute='row_num') | list %}
+
+        {% set first_max = (first_rows | max) if first_rows else 0 %}
+        {% set business_max = (business_rows | max) if business_rows else 0 %}
+        {% set economy_max = (economy_rows | max) if economy_rows else 0 %}
+
+        {# Offsets so sections do not overlap #}
+        {% set first_offset = 0 %}
+        {% set business_offset = first_max %}
+        {% set economy_offset = first_max + business_max %}
+
+        {# Total display rows in the single grid #}
+        {% set total_rows = first_max + business_max + economy_max %}
+
+        {# Build lookup: "displayRow-col" -> seat #}
+        {% set seat_map = {} %}
+
+        {% for s in first_seats %}
+            {% set dr = s.row_num + first_offset %}
+            {% set key = (dr|string) ~ '-' ~ (s.column_number|string) %}
+            {% set _ = seat_map.update({key: s}) %}
+        {% endfor %}
+
+        {% for s in business_seats %}
+            {% set dr = s.row_num + business_offset %}
+            {% set key = (dr|string) ~ '-' ~ (s.column_number|string) %}
+            {% set _ = seat_map.update({key: s}) %}
+        {% endfor %}
+
+        {% for s in economy_seats %}
+            {% set dr = s.row_num + economy_offset %}
+            {% set key = (dr|string) ~ '-' ~ (s.column_number|string) %}
+            {% set _ = seat_map.update({key: s}) %}
+        {% endfor %}
+
+        {# Optional legend (outside the grid so it won't shift seats) #}
+        <div class="legend" style="margin-top: 10px;">
+            {% if first_max > 0 %}<span class="First">First</span>{% endif %}
+            {% if business_max > 0 %}<span class="Business">Business</span>{% endif %}
+            {% if economy_max > 0 %}<span class="Economy">Economy</span>{% endif %}
+        </div>
+
         <div class="plane-map">
-            {% for seat in all_seats %}
-                <div>
-                {% if seat.is_taken %}
-                    <div class="seat-label taken">{{ seat.seat_number }}</div>
-                {% else %}
-                    <input type="checkbox" name="selected_seats" value="{{ seat.seat_number }}" id="s-{{ seat.seat_number }}" class="checkbox-hidden">
-                    <label for="s-{{ seat.seat_number }}" class="seat-label {{ seat.class_name }}">
-                        {{ seat.seat_number }}<br><small>₪{{ seat.base_price }}</small>
-                    </label>
-                {% endif %}
-                </div>
+            {# Render the single grid: 1..total_rows x 1..max_col #}
+            {% for r in range(1, total_rows + 1) %}
+                {% for c in range(1, max_col + 1) %}
+                    {% set k = (r|string) ~ '-' ~ (c|string) %}
+                    {% set seat = seat_map.get(k) %}
+
+                    {% if seat is none %}
+                        <div class="seat-label empty"></div>
+                    {% else %}
+                        {% set seat_val = seat.class_type ~ '-' ~ seat.row_num ~ '-' ~ seat.column_number %}
+                        {% set seat_label = seat.row_num ~ seat.column_number %}
+
+                        {% if seat.available == 0 %}
+                            <div class="seat-label taken">{{ seat_label }}</div>
+                        {% else %}
+                            <input type="checkbox"
+                                   name="selected_seats"
+                                   value="{{ seat_val }}"
+                                   id="s-{{ seat_val }}"
+                                   class="checkbox-hidden">
+                            <label for="s-{{ seat_val }}" class="seat-label {{ seat.class_type }}">
+                                {{ seat_label }}<br>
+                                <small>₪{{ seat.class_price }}</small>
+                            </label>
+                        {% endif %}
+                    {% endif %}
+                {% endfor %}
             {% endfor %}
         </div>
-        <button type="submit" class="btn-select" style="display:block; margin: 30px auto; padding: 15px 40px;">המשך לסיכום ותשלום</button>
+
+        <button type="submit" class="btn-select" style="display:block; margin: 30px auto; padding: 15px 40px;">
+            המשך לסיכום ותשלום
+        </button>
     </form>
 </div>
 {% endblock %}
