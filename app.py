@@ -27,7 +27,7 @@ def home_page():
     origins, destinations = Flight.get_all_origins_and_destinations()
     return render_template('home_page.html', origins=origins, destinations=destinations)
 
-
+#
 @app.route('/search')
 def search_flights():
     """Flight search."""
