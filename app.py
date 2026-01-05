@@ -195,6 +195,42 @@ def process_booking():
         total=total_price,
         flight_number=flight_num
     )
+
+
+@app.route("/manager_login", methods=["GET", "POST"])
+def manager_login():
+    if request.method == "POST":
+        emp_id_raw = request.form.get("id", "")
+        password = request.form.get("password", "")
+
+        emp_id_raw = emp_id_raw.strip()
+        password = password.strip()
+
+        if not emp_id_raw.isdigit():
+            return render_template("manager_login.html", error="תעודת עובד חייבת להיות מספר")
+
+        emp_id = int(emp_id_raw)
+
+        manager = Manager.login(emp_id, password)
+        if manager:
+            session["user_id"] = manager.id
+            session["role"] = "manager"
+            session["first_name"] = manager.first_name_he
+            session["last_name"] = manager.last_name_he
+            return redirect("/manager_dashboard")
+
+        return render_template("manager_login.html", error="תעודת עובד או סיסמה שגויים")
+
+    return render_template("manager_login.html")
+
+@app.route("/manager_dashboard")
+def manager_dashboard():
+    # הגנה: רק מנהל יכול להיכנס
+    if session.get("role") != "manager":
+        return redirect("/manager_login")
+
+    return render_template("manager_dashboard.html")
+
 #
 if __name__ == '__main__':
     app.run(debug=True)
