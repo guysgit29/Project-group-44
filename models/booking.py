@@ -107,3 +107,71 @@ class Booking:
         """Helper to convert DB row to Python object"""
         if not row: return None
         return Booking(row['booking_id'], row['flight_number'], row['price'], row['booking_status'])
+
+    @staticmethod
+    def create_booking(flight_number: int,
+                       email: str,
+                       first_name: str,
+                       last_name: str,
+                       selected_seats: list[str],
+                       total: float,
+                       is_registered: bool) -> int:
+        """
+        Create a booking + tickets.
+        selected_seats format: ["Business-1-4", "Economy-5-3", ...]
+        Returns: booking_id (int)
+        """
+
+        if not selected_seats:
+            raise ValueError("selected_seats is empty")
+
+        # Decide which email column to fill
+        reg_email = email if is_registered else None
+        guest_email = None if is_registered else email
+
+        with DB.get_cursor() as cursor:
+            # 1) Create booking
+            cursor.execute(
+                """
+                INSERT INTO Booking (flight_number, registered_email, guest_email, price, booking_status)
+                VALUES (%s, %s, %s, %s, 'Active')
+                """,
+                (int(flight_number), reg_email, guest_email, float(total))
+            )
+
+            booking_id = cursor.lastrowid
+            if not booking_id:
+                # fallback (rare): fetch last inserted id
+                cursor.execute("SELECT LAST_INSERT_ID() AS booking_id")
+                booking_id = cursor.fetchone()["booking_id"]
+
+            # 2) Create tickets for selected seats
+            for seat_str in selected_seats:
+                class_type, row_num, col_num = seat_str.split("-")
+
+                cursor.execute(
+                    """
+                    INSERT INTO Ticket (booking_id, flight_number, class_type, row_num, column_number)
+                    VALUES (%s, %s, %s, %s, %s)
+                    """,
+                    (int(booking_id), int(flight_number), class_type, int(row_num), int(col_num))
+                )
+
+                # 3) OPTIONAL: mark seat as taken if you have Seat table with 'available'
+                # If your schema has Seat( flight_number, row_num, column_number, available )
+                # uncomment this:
+                #
+                # cursor.execute(
+                #     """
+                #     UPDATE Seat
+                #     SET available = 0
+                #     WHERE flight_number = %s AND row_num = %s AND column_number = %s
+                #     """,
+                #     (int(flight_number), int(row_num), int(col_num))
+                # )
+
+        # 4) Update flight status by capacity (you already use this in cancel)
+        from models.flight import Flight
+        Flight.update_status_by_capacity(int(flight_number))
+
+        return int(booking_id)

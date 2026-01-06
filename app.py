@@ -172,6 +172,10 @@ def process_booking():
     if not selected_seats:
         return redirect(url_for('seat_selection', flight_id=flight_num))
 
+    # Recommended: keep the user's choices for the checkout step as well
+    session["flight_number"] = flight_num
+    session["selected_seats"] = selected_seats
+
     total_price = 0.0
     details = []
 
@@ -201,9 +205,9 @@ def process_booking():
         'payment_summary.html',
         details=details,
         total=total_price,
-        flight_number=flight_num
+        flight_number=flight_num,
+        selected_seats=selected_seats   # REQUIRED for the updated payment_summary.html
     )
-
 
 @app.route("/manager_login", methods=["GET", "POST"])
 def manager_login():
@@ -238,7 +242,82 @@ def manager_dashboard():
         return redirect("/manager_login")
 
     return render_template("manager_dashboard.html")
+@app.route("/checkout", methods=["GET", "POST"])
+def checkout():
+    if request.method == "GET":
+        flight_number = request.args.get("flight_number") or session.get("flight_number")
+        selected_seats = request.args.getlist("selected_seats") or session.get("selected_seats", [])
 
-#
+        if not flight_number:
+            return redirect(url_for("home_page"))
+
+        # אם כבר חישבת ושמרת ב-session
+        details = session.get("details", [])
+        total = session.get("total", 0)
+
+        prefill = {
+            "first_name": "",
+            "last_name": "",
+            "email": session.get("user_id", "") if session.get("role") == "customer" else "",
+            "lock_email": True if (session.get("role") == "customer" and session.get("user_id")) else False
+        }
+
+        return render_template(
+            "checkout.html",
+            flight_number=flight_number,
+            selected_seats=selected_seats,
+            details=details,
+            total=total,
+            prefill=prefill
+        )
+
+    # ---------- POST ----------
+    flight_number = request.form.get("flight_number") or session.get("flight_number")
+    selected_seats = request.form.getlist("selected_seats") or session.get("selected_seats", [])
+
+    first_name = (request.form.get("first_name") or "").strip()
+    last_name = (request.form.get("last_name") or "").strip()
+    email = (request.form.get("email") or "").strip()
+    payment_method = request.form.get("payment_method") or "card"
+
+    if not flight_number or not selected_seats:
+        return redirect(url_for("home_page"))
+
+    if not first_name or not last_name or not email:
+        # חזרה ל-checkout עם שגיאה
+        details = session.get("details", [])
+        total = session.get("total", 0)
+        prefill = {"first_name": first_name, "last_name": last_name, "email": email, "lock_email": False}
+        return render_template(
+            "checkout.html",
+            flight_number=flight_number,
+            selected_seats=selected_seats,
+            details=details,
+            total=total,
+            prefill=prefill,
+            error="נא למלא שם פרטי, שם משפחה ואימייל."
+        )
+
+    # --- כאן יוצרים הזמנה ומקבלים booking_id ---
+    booking_id = Booking.create_booking(
+        flight_number=int(flight_number),
+        email=email,
+        first_name=first_name,
+        last_name=last_name,
+        selected_seats=selected_seats,
+        total=session.get("total", 0)
+    )
+
+    return redirect(url_for("order_confirmation", booking_id=booking_id))
+
+@app.route("/order_confirmation/<booking_id>")
+def order_confirmation(booking_id):
+    booking = Booking(booking_id, None, None)
+    order_data, seats = booking.get_details()
+
+    if not order_data:
+        return redirect(url_for("home_page"))
+
+    return render_template("order_confirmation.html", order=order_data, seats=seats)
 if __name__ == '__main__':
     app.run(debug=True)
