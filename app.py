@@ -239,6 +239,21 @@ def manager_dashboard():
 
     return render_template("manager_dashboard.html")
 
-#
+@app.route("/manager_flights")
+def manager_flights():
+    if session.get("role") != "manager":
+        return redirect("/manager_login")
+
+    with DB.get_cursor() as cursor:
+        cursor.execute("""
+            SELECT flight_number, aircraft_id, origin, destination,
+                   departure_time, arrival_time, flight_duration, flight_status
+            FROM flight
+            ORDER BY departure_time DESC
+        """)
+        flights = cursor.fetchall()
+
+    return render_template("manager_flights.html", flights=flights)
+
 if __name__ == '__main__':
     app.run(debug=True)
