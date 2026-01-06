@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, redirect, session, url_for
 from flask_session import Session
 from datetime import timedelta
+from urllib.parse import urlencode
 
 from database import DB
 from models.customers import RegisteredUser
@@ -17,6 +18,40 @@ app.config.update(
     PERMANENT_SESSION_LIFETIME=timedelta(minutes=30),
 )
 Session(app)
+
+# ------------------------------------------------------------
+# Helpers
+# ------------------------------------------------------------
+
+def _safe_next(next_url):
+    """
+    Prevent open redirect:
+    accept only internal paths that start with "/".
+    """
+    if not next_url:
+        return None
+    next_url = (next_url or "").strip()
+    if next_url.startswith("/"):
+        return next_url
+    return None
+
+
+def _url_with_selected_seats(endpoint, flight_id, selected_seats):
+    """
+    Build: /<endpoint>/<flight_id>?selected_seats=A&selected_seats=B...
+    """
+    base = url_for(endpoint, flight_id=flight_id)
+    qs = urlencode([("selected_seats", s) for s in (selected_seats or [])])
+    return f"{base}?{qs}" if qs else base
+
+
+def _checkout_url_with_seats(flight_id, selected_seats):
+    return _url_with_selected_seats("checkout", flight_id, selected_seats)
+
+
+def _continue_booking_url(flight_id, selected_seats):
+    return _url_with_selected_seats("continue_booking", flight_id, selected_seats)
+
 
 # ------------------------------------------------------------
 # Main Routes
@@ -51,6 +86,7 @@ def my_flights():
     user_flights = Booking.get_user_flights(session["user_id"])
     return render_template("my_flights.html", flights=user_flights)
 
+
 # ------------------------------------------------------------
 # Booking Management Routes
 # ------------------------------------------------------------
@@ -80,6 +116,28 @@ def manage_booking(booking_id):
         return render_template("manage_booking.html", order=order_data, seats=seats)
     return redirect(url_for("home_page"))
 
+
+# ------------------------------------------------------------
+# NEW: Order confirmation page after successful booking
+# ------------------------------------------------------------
+
+@app.route("/order_confirmation/<booking_id>")
+def order_confirmation(booking_id):
+    """
+    Page after booking is completed (instead of manage_booking redirect).
+    Requires templates/order_confirmation.html
+    """
+    booking = Booking.get_by_id(booking_id)
+    if not booking:
+        return redirect(url_for("home_page"))
+
+    order_data, seats = booking.get_details()
+    if not order_data:
+        return redirect(url_for("home_page"))
+
+    return render_template("order_confirmation.html", order=order_data, seats=seats)
+
+
 # ------------------------------------------------------------
 # Cancellation Flow
 # ------------------------------------------------------------
@@ -98,37 +156,59 @@ def cancel_booking_execute(booking_id):
         booking.cancel()
     return redirect(url_for("manage_booking", booking_id=booking_id))
 
+
 # ------------------------------------------------------------
-# Authentication Routes
+# Authentication Routes (UPDATED: supports next)
 # ------------------------------------------------------------
 
 @app.route("/registration", methods=["GET", "POST"])
 def registration():
-    """User registration."""
-    if request.method == "POST":
-        user, error = RegisteredUser.register(request.form)
-        if error:
-            return render_template("registration.html", error=error)
-        return redirect(url_for("home_page"))
-    return render_template("registration.html")
+    """
+    User registration.
+    Supports ?next=/some/internal/path to return to checkout after register.
+    """
+    if request.method == "GET":
+        next_url = _safe_next(request.args.get("next"))
+        return render_template("registration.html", error=None, next=next_url)
+
+    # POST
+    next_url = _safe_next(request.form.get("next"))
+
+    user, error = RegisteredUser.register(request.form)
+    if error:
+        return render_template("registration.html", error=error, next=next_url)
+
+    # Auto-login after successful registration (so user returns to checkout)
+    if user:
+        session["user_id"] = user.email
+        session["role"] = "customer"
+
+    return redirect(next_url or url_for("home_page"))
 
 
 @app.route("/login", methods=["GET", "POST"])
 def login_page():
-    """Login route."""
-    if request.method == "POST":
-        uid = request.form.get("username")
-        pwd = request.form.get("password")
+    """
+    Login route.
+    Supports ?next=/some/internal/path to return to checkout after login.
+    """
+    if request.method == "GET":
+        next_url = _safe_next(request.args.get("next"))
+        return render_template("login.html", error=None, next=next_url)
 
-        user = Manager.login(uid, pwd) or RegisteredUser.login(uid, pwd)
-        if user:
-            session["user_id"] = getattr(user, "id", getattr(user, "email", None))
-            session["role"] = "manager" if isinstance(user, Manager) else "customer"
-            return redirect(url_for("home_page"))
+    # POST
+    next_url = _safe_next(request.form.get("next"))
 
-        return render_template("login.html", error="Invalid Credentials")
+    uid = request.form.get("username")
+    pwd = request.form.get("password")
 
-    return render_template("login.html")
+    user = Manager.login(uid, pwd) or RegisteredUser.login(uid, pwd)
+    if user:
+        session["user_id"] = getattr(user, "id", getattr(user, "email", None))
+        session["role"] = "manager" if isinstance(user, Manager) else "customer"
+        return redirect(next_url or url_for("home_page"))
+
+    return render_template("login.html", error="Invalid Credentials", next=next_url)
 
 
 @app.route("/logout")
@@ -136,6 +216,7 @@ def logout():
     """Logout."""
     session.clear()
     return redirect(url_for("home_page"))
+
 
 # ------------------------------------------------------------
 # Manager Routes
@@ -170,6 +251,7 @@ def manager_dashboard():
     if session.get("role") != "manager":
         return redirect(url_for("manager_login"))
     return render_template("manager_dashboard.html")
+
 
 # ------------------------------------------------------------
 # Seat Selection + Payment Summary
@@ -210,9 +292,6 @@ def process_booking():
     if not selected_seats:
         return redirect(url_for("seat_selection", flight_id=flight_num))
 
-    # נבנה "details" בצורה שתתאים גם ל-payment_summary החדש וגם לישן:
-    # - seat_no/class_type/price (החדש)
-    # - seat/class/price (הישן)
     total_price = 0.0
     details = []
 
@@ -235,11 +314,10 @@ def process_booking():
             seat_no = f"{row_num}{col_num}"
 
             details.append({
-                # חדש:
                 "seat_no": seat_no,
                 "class_type": class_type,
                 "price": price,
-                # ישן (כדי לא להפיל templates קיימים):
+                # backward compatibility for older templates:
                 "seat": seat_no,
                 "class": class_type,
             })
@@ -249,25 +327,62 @@ def process_booking():
         details=details,
         total=total_price,
         flight_number=int(flight_num),
-        selected_seats=selected_seats,  # חשוב להעברה ל-checkout
+        selected_seats=selected_seats,
     )
 
+
 # ------------------------------------------------------------
-# Checkout (שלב הבא)
+# NEW: guest-only bridge page (3 options)
+# ------------------------------------------------------------
+
+@app.route("/continue_booking/<int:flight_id>", methods=["GET"])
+def continue_booking(flight_id):
+    """
+    Guest-only bridge page:
+    - Existing customer -> Login (returns to checkout)
+    - New customer -> Register (returns to checkout)
+    - Continue as guest -> Checkout
+    Requires templates/continue_booking.html
+    """
+    selected_seats = request.args.getlist("selected_seats")
+    if not selected_seats:
+        return redirect(url_for("seat_selection", flight_id=flight_id))
+
+    # If already logged in as customer -> go directly to checkout
+    if session.get("role") == "customer" and session.get("user_id"):
+        return redirect(_checkout_url_with_seats(flight_id, selected_seats))
+
+    checkout_url = _checkout_url_with_seats(flight_id, selected_seats)
+
+    login_url = url_for("login_page") + "?" + urlencode({"next": checkout_url})
+    registration_url = url_for("registration") + "?" + urlencode({"next": checkout_url})
+
+    return render_template(
+        "continue_booking.html",
+        flight_number=flight_id,
+        selected_seats=selected_seats,
+        checkout_url=checkout_url,
+        login_url=login_url,
+        registration_url=registration_url,
+    )
+
+
+# ------------------------------------------------------------
+# Checkout
 # ------------------------------------------------------------
 
 @app.route("/checkout/<int:flight_id>", methods=["GET", "POST"])
 def checkout(flight_id):
-    # seats from GET query OR POST hidden fields
-    selected_seats = request.form.getlist("selected_seats") if request.method == "POST" else request.args.getlist("selected_seats")
+    selected_seats = (
+        request.form.getlist("selected_seats")
+        if request.method == "POST"
+        else request.args.getlist("selected_seats")
+    )
     if not selected_seats:
         return redirect(url_for("seat_selection", flight_id=flight_id))
 
-    # build summary from Booking model
-    # IMPORTANT: checkout.html שלך משתמש ב: d.seat_no, d.class_type, d.price
     details, total = Booking.get_pricing_for_selected_seats(flight_id, selected_seats)
 
-    # prefill if logged in
     prefill = {"first_name": "", "last_name": "", "email": "", "lock_email": False}
     if session.get("role") == "customer" and session.get("user_id"):
         user = RegisteredUser.get_by_email(session["user_id"])
@@ -279,6 +394,10 @@ def checkout(flight_id):
 
     # GET -> show page
     if request.method == "GET":
+        # If not logged in as customer -> force bridge page
+        if session.get("role") != "customer":
+            return redirect(_continue_booking_url(flight_id, selected_seats))
+
         return render_template(
             "checkout.html",
             flight_number=flight_id,
@@ -293,7 +412,7 @@ def checkout(flight_id):
     first_name = (request.form.get("first_name") or "").strip()
     last_name = (request.form.get("last_name") or "").strip()
     email = (request.form.get("email") or "").strip().lower()
-    payment_method = request.form.get("payment_method") or "card"  # "card" / "points"
+    payment_method = request.form.get("payment_method") or "card"
 
     # block: email belongs to registered user but NOT logged in
     if session.get("role") != "customer":
@@ -329,7 +448,7 @@ def checkout(flight_id):
             error="לא ניתן להשלים הזמנה. ייתכן שמושב נתפס או שיש חוסר התאמה בנתוני מושבים לטיסה."
         )
 
-    return redirect(url_for("manage_booking", booking_id=created_id))
+    return redirect(url_for("order_confirmation", booking_id=created_id))
 
 
 # ------------------------------------------------------------

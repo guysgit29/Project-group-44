@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+
+{% block title %}אישור הזמנה - FLYTAU{% endblock %}
+
+{% block content %}
+<style>
+  .card {
+    max-width: 850px;
+    margin: 40px auto;
+    background: #fff;
+    padding: 28px;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+  }
+  .headline { text-align:center; margin-bottom: 20px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .row { background:#f8f9fa; padding: 12px; border-radius: 8px; border: 1px solid #e5e5e5; }
+  .label { font-weight: bold; color:#333; margin-bottom: 4px; }
+  .value { color:#111; direction:ltr; unicode-bidi:bidi-override; }
+  table { width:100%; border-collapse: collapse; margin-top: 18px; }
+  th, td { border: 1px solid #e5e5e5; padding: 10px; text-align: center; }
+  th { background: #f1f3f5; }
+  .actions { display:flex; gap: 10px; justify-content:center; margin-top: 20px; flex-wrap: wrap; }
+  .btn {
+    display:inline-block; padding: 12px 18px; border-radius: 8px; text-decoration:none;
+    border: 1px solid #ccc; background:#f8f9fa; color:#111; font-weight:bold;
+  }
+  .btn.primary { background:#003366; border-color:#003366; color:#fff; }
+</style>
+
+<div class="card">
+  <div class="headline">
+    <h2>הזמנה בוצעה בהצלחה</h2>
+    <p>תודה! שמרנו את פרטי ההזמנה שלך.</p>
+  </div>
+
+  <div class="grid">
+    <div class="row">
+      <div class="label">מספר הזמנה</div>
+      <div class="value">{{ order.booking_id }}</div>
+    </div>
+
+    <div class="row">
+      <div class="label">מייל להזמנה</div>
+      <div class="value">{{ order.email }}</div>
+    </div>
+
+    <div class="row">
+      <div class="label">טיסה</div>
+      <div class="value">{{ order.flight_number }}</div>
+    </div>
+
+    <div class="row">
+      <div class="label">סטטוס</div>
+      <div class="value">{{ order.booking_status }}</div>
+    </div>
+
+    <div class="row">
+      <div class="label">מוצא → יעד</div>
+      <div class="value">{{ order.origin }} → {{ order.destination }}</div>
+    </div>
+
+    <div class="row">
+      <div class="label">מחיר לתשלום</div>
+      <div class="value">{{ order.price }}</div>
+    </div>
+  </div>
+
+  <h3 style="margin-top:18px;">המושבים שהוזמנו</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>מחלקה</th>
+        <th>שורה</th>
+        <th>עמודה</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for t in seats %}
+      <tr>
+        <td>{{ t.class_type }}</td>
+        <td>{{ t.row_num }}</td>
+        <td>{{ t.column_number }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div class="actions">
+    <a class="btn" href="{{ url_for('home_page') }}">חזרה לדף הבית</a>
+    <a class="btn primary" href="{{ url_for('manage_booking', booking_id=order.booking_id) }}">ניהול ההזמנה</a>
+  </div>
+</div>
+{% endblock %}

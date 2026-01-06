@@ -77,3 +77,36 @@ class Flight:
             """
             cursor.execute(query, (flight_number, flight_number, aircraft_id))
             return cursor.fetchall()
+
+    @staticmethod
+    def update_status_if_full(flight_number: int):
+        """
+        If all seats are taken → update flight_status to 'Full'
+        """
+        with DB.get_cursor() as cursor:
+            # total seats in aircraft
+            cursor.execute("""
+                    SELECT COUNT(*) AS total_seats
+                    FROM Seat
+                    WHERE aircraft_id = (
+                        SELECT aircraft_id
+                        FROM Flight
+                        WHERE flight_number = %s
+                    )
+                """, (flight_number,))
+            total_seats = cursor.fetchone()["total_seats"]
+
+            # taken seats
+            cursor.execute("""
+                    SELECT COUNT(*) AS taken_seats
+                    FROM Ticket
+                    WHERE flight_number = %s
+                """, (flight_number,))
+            taken_seats = cursor.fetchone()["taken_seats"]
+
+            if total_seats > 0 and total_seats == taken_seats:
+                cursor.execute("""
+                        UPDATE Flight
+                        SET flight_status = 'Full'
+                        WHERE flight_number = %s
+                    """, (flight_number,))

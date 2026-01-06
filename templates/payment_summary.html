@@ -146,12 +146,21 @@
     <div class="actions">
       <a class="btn" href="{{ url_for('seat_selection', flight_id=flight_number) }}">חזרה לבחירת מקומות</a>
 
-      <form action="{{ url_for('checkout', flight_id=flight_number) }}" method="GET" style="margin:0;">
-        {% for s in selected_seats %}
-          <input type="hidden" name="selected_seats" value="{{ s }}">
-        {% endfor %}
-        <button class="btn btn-primary" type="submit">המשך</button>
-      </form>
+      {% if session.get('role') == 'customer' and session.get('user_id') %}
+  <form action="{{ url_for('checkout', flight_id=flight_number) }}" method="GET" style="margin:0;">
+    {% for s in selected_seats %}
+      <input type="hidden" name="selected_seats" value="{{ s }}">
+    {% endfor %}
+    <button class="btn btn-primary" type="submit">המשך</button>
+  </form>
+{% else %}
+  <form action="{{ url_for('continue_booking', flight_id=flight_number) }}" method="GET" style="margin:0;">
+    {% for s in selected_seats %}
+      <input type="hidden" name="selected_seats" value="{{ s }}">
+    {% endfor %}
+    <button class="btn btn-primary" type="submit">המשך</button>
+  </form>
+{% endif %}
     </div>
 
   </div>
