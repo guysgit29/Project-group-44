@@ -244,16 +244,32 @@ def manager_flights():
     if session.get("role") != "manager":
         return redirect("/manager_login")
 
+    status = request.args.get("status", "").strip()  # Active / Delayed / Canceled / ""
+
     with DB.get_cursor() as cursor:
-        cursor.execute("""
-            SELECT flight_number, aircraft_id, origin, destination,
-                   departure_time, arrival_time, flight_duration, flight_status
-            FROM flight
-            ORDER BY departure_time DESC
-        """)
+        if status:
+            cursor.execute("""
+                SELECT flight_number, aircraft_id, origin, destination,
+                       departure_time, arrival_time, flight_duration, flight_status
+                FROM flight
+                WHERE flight_status = %s
+                ORDER BY departure_time DESC
+            """, (status,))
+        else:
+            cursor.execute("""
+                SELECT flight_number, aircraft_id, origin, destination,
+                       departure_time, arrival_time, flight_duration, flight_status
+                FROM flight
+                ORDER BY departure_time DESC
+            """)
+
         flights = cursor.fetchall()
 
-    return render_template("manager_flights.html", flights=flights)
+    return render_template(
+        "manager_flights.html",
+        flights=flights,
+        selected_status=status
+    )
 
 if __name__ == '__main__':
     app.run(debug=True)
