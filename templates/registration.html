@@ -4,11 +4,24 @@
 <main class="container" style="max-width: 500px; margin: 50px auto;">
     <h2>יצירת חשבון חדש</h2>
 
+    {% if request.args.get('next') %}
+        <p style="color:#666; font-size: 14px; margin-top:-10px; text-align:center;">
+            לאחר ההרשמה נחזיר אותך להמשך ההזמנה
+        </p>
+    {% endif %}
+
     {% if error %}
         <p style="color: red; font-weight: bold;">{{ error }}</p>
     {% endif %}
 
-    <form action="/registration" method="POST" style="display: flex; flex-direction: column; gap: 10px;">
+    <form action="{{ url_for('registration', next=request.args.get('next')) }}" method="POST"
+          style="display: flex; flex-direction: column; gap: 10px;">
+
+        {# מאפשר חזרה אוטומטית ל־checkout / continue_booking אחרי הרשמה #}
+        {% if request.args.get('next') %}
+            <input type="hidden" name="next" value="{{ request.args.get('next') }}">
+        {% endif %}
+
         <input type="text" name="first_name" placeholder="שם פרטי (EN)" required>
         <input type="text" name="last_name" placeholder="שם משפחה (EN)" required>
         <input type="email" name="email" placeholder="אימייל" required>
@@ -21,6 +34,13 @@
         <input type="text" name="passport_number" placeholder="מספר דרכון" required>
 
         <button type="submit" style="background: #003366; color: white; padding: 10px;">הרשמה</button>
+
+        <div style="text-align:center; font-size: 14px; margin-top: 10px;">
+            כבר יש לך חשבון?
+            <a href="{{ url_for('login_page', next=request.args.get('next')) }}" style="color:#007BFF; font-weight:bold; text-decoration:none;">
+                התחבר כאן
+            </a>
+        </div>
     </form>
 </main>
 {% endblock %}

@@ -3,89 +3,122 @@
 {% block title %}התחברות - FLYTAU{% endblock %}
 
 {% block content %}
-    <style>
-        /* Styles specific to the login container */
-        .login-container {
-            background: white;
-            width: 350px;
-            margin: 50px auto;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            text-align: center;
-        }
-        h2 { margin-bottom: 20px; color: #333; }
+<style>
+    .login-container {
+        background: white;
+        width: 350px;
+        margin: 50px auto;
+        padding: 30px;
+        border-radius: 10px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        text-align: center;
+    }
+    h2 { margin-bottom: 20px; color: #333; }
 
-        .form-group { margin-bottom: 15px; text-align: right; }
-        label { display: block; margin-bottom: 5px; font-weight: bold; color: #555; }
+    .form-group { margin-bottom: 15px; text-align: right; }
+    label { display: block; margin-bottom: 5px; font-weight: bold; color: #555; }
 
-        input[type="text"], input[type="password"] {
-            width: 100%;
-            padding: 10px;
-            box-sizing: border-box;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            font-size: 16px;
-            color: black;
-            background-color: white;
-        }
+    input[type="text"], input[type="password"] {
+        width: 100%;
+        padding: 10px;
+        box-sizing: border-box;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        font-size: 16px;
+        color: black;
+        background-color: white;
+    }
 
-        .login-btn {
-            width: 100%;
-            padding: 12px;
-            background-color: #007BFF;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 18px;
-            margin-top: 10px;
-            transition: background 0.3s;
-        }
-        .login-btn:hover { background-color: #0056b3; }
+    .login-btn {
+        width: 100%;
+        padding: 12px;
+        background-color: #007BFF;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 18px;
+        margin-top: 10px;
+    }
+    .login-btn:hover { background-color: #0056b3; }
 
-        .error-message {
-            color: #721c24;
-            background-color: #f8d7da;
-            border: 1px solid #f5c6cb;
-            padding: 10px;
-            border-radius: 5px;
-            margin-bottom: 15px;
-            font-size: 14px;
-            text-align: center;
-        }
+    .error-message {
+        color: #721c24;
+        background-color: #f8d7da;
+        border: 1px solid #f5c6cb;
+        padding: 10px;
+        border-radius: 5px;
+        margin-bottom: 15px;
+        font-size: 14px;
+        text-align: center;
+    }
 
-        .links { margin-top: 20px; font-size: 14px; text-align: center; }
-        .links a { text-decoration: none; color: #007BFF; }
-    </style>
+    .links {
+        margin-top: 20px;
+        font-size: 14px;
+        text-align: center;
+    }
+    .links a {
+        text-decoration: none;
+        color: #007BFF;
+        font-weight: bold;
+    }
 
-    <div class="login-container">
-        <h2>כניסה למערכת</h2>
+    .hint {
+        font-size: 13px;
+        color: #666;
+        margin-bottom: 12px;
+    }
+</style>
 
-        {% if error %}
-            <div class="error-message">
-                {{ error }}
-            </div>
+<div class="login-container">
+    <h2>כניסה למערכת</h2>
+
+    {% if request.args.get('next') %}
+        <div class="hint">
+            כדי להמשיך בהזמנה, יש להתחבר לחשבון שלך
+        </div>
+    {% endif %}
+
+    {% if error %}
+        <div class="error-message">
+            {{ error }}
+        </div>
+    {% endif %}
+
+    <form action="{{ url_for('login_page') }}" method="POST">
+
+        {# מאפשר חזרה אוטומטית ל־checkout / continue_booking #}
+        {% if request.args.get('next') %}
+            <input type="hidden" name="next" value="{{ request.args.get('next') }}">
         {% endif %}
 
-        <form action="/login" method="POST">
-            <div class="form-group">
-                <label for="username">שם משתמש:</label>
-                <input type="text" id="username" name="username"
-                       placeholder="תעודת זהות (מנהל) או אימייל (לקוח)" required>
-            </div>
-
-            <div class="form-group">
-                <label for="password">סיסמה:</label>
-                <input type="password" id="password" name="password"
-                       placeholder="הכנס סיסמה" required>
-            </div>
-
-            <button type="submit" class="login-btn">התחבר</button>
-        </form>
-
-        <div class="links">
-            עדיין אין לך משתמש? <a href="{{ url_for('registration') }}">הירשם כאן</a>
+        <div class="form-group">
+            <label for="username">שם משתמש:</label>
+            <input type="text"
+                   id="username"
+                   name="username"
+                   placeholder="אימייל (לקוח) או תעודת זהות (מנהל)"
+                   required>
         </div>
+
+        <div class="form-group">
+            <label for="password">סיסמה:</label>
+            <input type="password"
+                   id="password"
+                   name="password"
+                   placeholder="הכנס סיסמה"
+                   required>
+        </div>
+
+        <button type="submit" class="login-btn">התחבר</button>
+    </form>
+
+    <div class="links">
+        עדיין אין לך חשבון?
+        <a href="{{ url_for('registration', next=request.args.get('next')) }}">
+            הירשם כאן
+        </a>
     </div>
+</div>
 {% endblock %}
