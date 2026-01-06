@@ -43,16 +43,37 @@ class Booking:
             return order, seats
 
     def cancel(self):
-        """The actual business logic that updates the SQL status"""
+        """
+        Cancel booking:
+        - delete tickets
+        - mark booking canceled + apply fee
+        - IMPORTANT: refresh flight status (Full/Active) after seats are freed
+        """
         with DB.get_cursor() as cursor:
-            # שלב 1: שחרור המושבים
+            # ensure we have flight_number even if this object was created manually
+            if not self.flight_number:
+                cursor.execute(
+                    "SELECT flight_number FROM Booking WHERE booking_id = %s",
+                    (self.booking_id,),
+                )
+                r = cursor.fetchone()
+                self.flight_number = r.get("flight_number") if r else None
+
             cursor.execute("DELETE FROM Ticket WHERE booking_id = %s", (self.booking_id,))
-            # שלב 2: עדכון סטטוס ומחיר (דמי ביטול 5%)
-            cursor.execute("""
-                UPDATE Booking 
-                SET booking_status = 'Canceled by Customer', price = price * 0.05 
+            cursor.execute(
+                """
+                UPDATE Booking
+                SET booking_status = 'Canceled by Customer',
+                    price = price * 0.05
                 WHERE booking_id = %s
-            """, (self.booking_id,))
+                """,
+                (self.booking_id,),
+            )
+
+        # NEW: always recompute flight status after cancellation
+        if self.flight_number:
+            from models.flight import Flight
+            Flight.update_status_by_capacity(int(self.flight_number))
 
     @staticmethod
     def get_user_flights(email):
