@@ -13,7 +13,6 @@ class Flight:
 
     @staticmethod
     def get_all_origins_and_destinations():
-        """Fetch distinct origins/destinations for the search form."""
         with DB.get_cursor() as cursor:
             cursor.execute("SELECT DISTINCT origin FROM Flight ORDER BY origin ASC")
             origins = cursor.fetchall()
@@ -23,7 +22,10 @@ class Flight:
 
     @staticmethod
     def search(origin, destination):
-        """Search only ACTIVE flights."""
+        """
+        Search only ACTIVE flights.
+        (So 'Full' flights will not appear.)
+        """
         query = """
             SELECT *
             FROM Flight
@@ -78,35 +80,53 @@ class Flight:
             cursor.execute(query, (flight_number, flight_number, aircraft_id))
             return cursor.fetchall()
 
+    # ------------------------------------------------------------
+    # NEW: Flight capacity status updater (Full <-> Active)
+    # ------------------------------------------------------------
     @staticmethod
-    def update_status_if_full(flight_number: int):
+    def update_status_by_capacity(flight_number: int) -> str | None:
         """
-        If all seats are taken → update flight_status to 'Full'
+        Sets Flight.flight_status to:
+          - 'Full'   if sold seats == total seats
+          - 'Active' if there is at least 1 free seat
+
+        Returns the new status or None if flight not found.
         """
+        if not flight_number:
+            return None
+
         with DB.get_cursor() as cursor:
+            cursor.execute(
+                "SELECT aircraft_id, flight_status FROM Flight WHERE flight_number = %s",
+                (int(flight_number),)
+            )
+            f = cursor.fetchone()
+            if not f or f.get("aircraft_id") is None:
+                return None
+
+            aircraft_id = int(f["aircraft_id"])
+
             # total seats in aircraft
-            cursor.execute("""
-                    SELECT COUNT(*) AS total_seats
-                    FROM Seat
-                    WHERE aircraft_id = (
-                        SELECT aircraft_id
-                        FROM Flight
-                        WHERE flight_number = %s
-                    )
-                """, (flight_number,))
-            total_seats = cursor.fetchone()["total_seats"]
+            cursor.execute(
+                "SELECT COUNT(*) AS total_seats FROM Seat WHERE aircraft_id = %s",
+                (aircraft_id,)
+            )
+            total = int((cursor.fetchone() or {}).get("total_seats") or 0)
 
-            # taken seats
-            cursor.execute("""
-                    SELECT COUNT(*) AS taken_seats
-                    FROM Ticket
-                    WHERE flight_number = %s
-                """, (flight_number,))
-            taken_seats = cursor.fetchone()["taken_seats"]
+            # sold seats for this flight
+            cursor.execute(
+                "SELECT COUNT(*) AS sold_seats FROM Ticket WHERE flight_number = %s",
+                (int(flight_number),)
+            )
+            sold = int((cursor.fetchone() or {}).get("sold_seats") or 0)
 
-            if total_seats > 0 and total_seats == taken_seats:
-                cursor.execute("""
-                        UPDATE Flight
-                        SET flight_status = 'Full'
-                        WHERE flight_number = %s
-                    """, (flight_number,))
+            new_status = "Full" if total > 0 and sold >= total else "Active"
+
+            # Update only if changed (optional but cleaner)
+            if (f.get("flight_status") or "").strip() != new_status:
+                cursor.execute(
+                    "UPDATE Flight SET flight_status = %s WHERE flight_number = %s",
+                    (new_status, int(flight_number))
+                )
+
+            return new_status

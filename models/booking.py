@@ -90,7 +90,22 @@ class Booking:
             return order, seats
 
     def cancel(self):
+        """
+        Cancel booking:
+        - delete tickets
+        - mark booking canceled + apply fee
+        - IMPORTANT: refresh flight status (Full/Active) after seats are freed
+        """
         with DB.get_cursor() as cursor:
+            # ensure we have flight_number even if this object was created manually
+            if not self.flight_number:
+                cursor.execute(
+                    "SELECT flight_number FROM Booking WHERE booking_id = %s",
+                    (self.booking_id,),
+                )
+                r = cursor.fetchone()
+                self.flight_number = r.get("flight_number") if r else None
+
             cursor.execute("DELETE FROM Ticket WHERE booking_id = %s", (self.booking_id,))
             cursor.execute(
                 """
@@ -101,6 +116,11 @@ class Booking:
                 """,
                 (self.booking_id,),
             )
+
+        # NEW: always recompute flight status after cancellation
+        if self.flight_number:
+            from models.flight import Flight
+            Flight.update_status_by_capacity(int(self.flight_number))
 
     # ----------------------------
     # Seat parsing
@@ -134,15 +154,6 @@ class Booking:
     def get_pricing_for_selected_seats(flight_number: int, selected_seats: list[str]):
         """
         Returns: (details_list, total)
-        detail item:
-          {
-            "seat_no": "14",
-            "class_type": "Economy",
-            "price": 310.0,
-            "row_num": 1,
-            "column_number": 4,
-            "aircraft_id": 777
-          }
         """
         Booking._dbg(f"get_pricing_for_selected_seats(flight={flight_number}, seats={selected_seats})")
 
@@ -158,7 +169,6 @@ class Booking:
                 Booking._dbg("pricing: cannot find aircraft_id for flight -> ([],0)")
                 return [], 0.0
 
-            # Build price map per class (from Classes_on_Flights, filtered by aircraft_id like your seat_map)
             class_types = sorted({p[0] for p in parsed})
             placeholders = ",".join(["%s"] * len(class_types))
 
@@ -199,9 +209,6 @@ class Booking:
     # ----------------------------
     @staticmethod
     def get_next_booking_id() -> str:
-        """
-        If max booking is BK0014 -> returns BK0015
-        """
         with DB.get_cursor() as cursor:
             cursor.execute(
                 """
@@ -218,7 +225,7 @@ class Booking:
             return bid
 
     # ----------------------------
-    # Create booking + tickets (LOCK BY TICKET, because availability is derived from Ticket)
+    # Create booking + tickets
     # ----------------------------
     @staticmethod
     def create_booking_with_tickets(
@@ -250,7 +257,7 @@ class Booking:
             aircraft_id = details[0]["aircraft_id"]
             Booking._dbg(f"create_booking: aircraft_id={aircraft_id}, seats_count={len(details)}, total={total}")
 
-            # 0) If guest flow: MUST exist before Booking insert (FK Booking.guest_email -> GuestUser.email)
+            # 0) Guest must exist before Booking insert (FK)
             if not logged_in_registered:
                 Booking._dbg("create_booking: step0 ensure GuestUser exists (FK requirement) ...")
                 cursor.execute("SELECT 1 FROM GuestUser WHERE email = %s LIMIT 1", (email,))
@@ -307,7 +314,7 @@ class Booking:
                     )
                     return None
 
-            # 3) Insert Booking (now FK will pass because GuestUser exists)
+            # 3) Insert Booking
             booking_id = Booking.get_next_booking_id()
             registered_email = email if logged_in_registered else None
             guest_email = None if logged_in_registered else email
@@ -357,8 +364,7 @@ class Booking:
 
             Booking._dbg(f"create_booking: SUCCESS booking_id={booking_id}")
 
-            # NEW: update flight status if full (import here to avoid circular import)
-            from models.flight import Flight
-            Flight.update_status_if_full(int(flight_number))
+        from models.flight import Flight
+        Flight.update_status_by_capacity(int(flight_number))
 
-            return booking_id
+        return booking_id

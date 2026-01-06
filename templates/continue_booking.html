@@ -46,7 +46,9 @@
   <div class="btn-row">
     <a class="btn" href="{{ login_url }}">התחברות</a>
     <a class="btn" href="{{ registration_url }}">הרשמה</a>
-    <a class="btn primary" href="{{ checkout_url }}">המשך כאורח</a>
+
+    {# חשוב: זה לא checkout_url אלא guest_url שמגיע מה-route continue_booking #}
+    <a class="btn primary" href="{{ guest_url }}">המשך כאורח</a>
   </div>
 </div>
 {% endblock %}

@@ -292,44 +292,29 @@ def process_booking():
     if not selected_seats:
         return redirect(url_for("seat_selection", flight_id=flight_num))
 
-    total_price = 0.0
-    details = []
+    flight_id = int(flight_num)
 
-    with DB.get_cursor() as cursor:
-        for seat_str in selected_seats:
-            class_type, row_num, col_num = seat_str.split("-")
+    # Use the same pricing logic as checkout (single source of truth)
+    details, total_price = Booking.get_pricing_for_selected_seats(flight_id, selected_seats)
 
-            cursor.execute(
-                """
-                SELECT class_price
-                FROM Classes_on_Flights
-                WHERE flight_number = %s AND class_type = %s
-                """,
-                (int(flight_num), class_type),
-            )
-            res = cursor.fetchone()
-            price = float(res["class_price"]) if res and res["class_price"] is not None else 0.0
-            total_price += price
+    # If pricing failed (e.g., flight not found / aircraft_id missing / bad seat format)
+    if not details:
+        return redirect(url_for("seat_selection", flight_id=flight_id))
 
-            seat_no = f"{row_num}{col_num}"
-
-            details.append({
-                "seat_no": seat_no,
-                "class_type": class_type,
-                "price": price,
-                # backward compatibility for older templates:
-                "seat": seat_no,
-                "class": class_type,
-            })
+    # Backward-compatibility keys for templates:
+    for d in details:
+        if "seat" not in d:
+            d["seat"] = d.get("seat_no", "")
+        if "class" not in d:
+            d["class"] = d.get("class_type", "")
 
     return render_template(
         "payment_summary.html",
         details=details,
         total=total_price,
-        flight_number=int(flight_num),
+        flight_number=flight_id,
         selected_seats=selected_seats,
     )
-
 
 # ------------------------------------------------------------
 # NEW: guest-only bridge page (3 options)
@@ -337,18 +322,11 @@ def process_booking():
 
 @app.route("/continue_booking/<int:flight_id>", methods=["GET"])
 def continue_booking(flight_id):
-    """
-    Guest-only bridge page:
-    - Existing customer -> Login (returns to checkout)
-    - New customer -> Register (returns to checkout)
-    - Continue as guest -> Checkout
-    Requires templates/continue_booking.html
-    """
     selected_seats = request.args.getlist("selected_seats")
     if not selected_seats:
         return redirect(url_for("seat_selection", flight_id=flight_id))
 
-    # If already logged in as customer -> go directly to checkout
+    # אם כבר מחובר כלקוח -> ישר ל-checkout
     if session.get("role") == "customer" and session.get("user_id"):
         return redirect(_checkout_url_with_seats(flight_id, selected_seats))
 
@@ -357,16 +335,32 @@ def continue_booking(flight_id):
     login_url = url_for("login_page") + "?" + urlencode({"next": checkout_url})
     registration_url = url_for("registration") + "?" + urlencode({"next": checkout_url})
 
+    # חדש: URL שמגדיר guest ואז מפנה ל-checkout
+    guest_url = _url_with_selected_seats("guest_checkout", flight_id, selected_seats)
+
     return render_template(
         "continue_booking.html",
         flight_number=flight_id,
         selected_seats=selected_seats,
-        checkout_url=checkout_url,
         login_url=login_url,
         registration_url=registration_url,
+        guest_url=guest_url,   # חשוב
     )
 
+from urllib.parse import urlencode
+from flask import redirect, request, session, url_for
 
+@app.route("/guest_checkout/<int:flight_id>")
+def guest_checkout(flight_id):
+    selected_seats = request.args.getlist("selected_seats")
+    if not selected_seats:
+        return redirect(url_for("seat_selection", flight_id=flight_id))
+
+    session["role"] = "guest"
+    session.pop("user_id", None)
+
+    qs = urlencode([("selected_seats", s) for s in selected_seats])
+    return redirect(url_for("checkout", flight_id=flight_id) + ("?" + qs if qs else ""))
 # ------------------------------------------------------------
 # Checkout
 # ------------------------------------------------------------
@@ -395,7 +389,7 @@ def checkout(flight_id):
     # GET -> show page
     if request.method == "GET":
         # If not logged in as customer -> force bridge page
-        if session.get("role") != "customer":
+        if session.get("role") not in ("customer", "guest"):
             return redirect(_continue_booking_url(flight_id, selected_seats))
 
         return render_template(
