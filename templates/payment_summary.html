@@ -36,7 +36,6 @@
     gap: 12px;
   }
 
-  /* Seat + Class on one line */
   .seat-meta{
     display: flex;
     gap: 24px;
@@ -147,20 +146,23 @@
       <a class="btn" href="{{ url_for('seat_selection', flight_id=flight_number) }}">חזרה לבחירת מקומות</a>
 
       {% if session.get('role') == 'customer' and session.get('user_id') %}
-  <form action="{{ url_for('checkout', flight_id=flight_number) }}" method="GET" style="margin:0;">
-    {% for s in selected_seats %}
-      <input type="hidden" name="selected_seats" value="{{ s }}">
-    {% endfor %}
-    <button class="btn btn-primary" type="submit">המשך</button>
-  </form>
-{% else %}
-  <form action="{{ url_for('continue_booking', flight_id=flight_number) }}" method="GET" style="margin:0;">
-    {% for s in selected_seats %}
-      <input type="hidden" name="selected_seats" value="{{ s }}">
-    {% endfor %}
-    <button class="btn btn-primary" type="submit">המשך</button>
-  </form>
-{% endif %}
+        {# Logged-in customer: go directly to checkout #}
+        <form action="{{ url_for('checkout', flight_id=flight_number) }}" method="GET" style="margin:0;">
+          {% for s in selected_seats %}
+            <input type="hidden" name="selected_seats" value="{{ s }}">
+          {% endfor %}
+          <button class="btn btn-primary" type="submit">המשך</button>
+        </form>
+
+      {% else %}
+        {# Guest: show 3 options here (no continue_booking page) #}
+        {# Build checkout url with seats #}
+        {% set checkout_url = url_for('checkout', flight_id=flight_number) ~ '?' ~ ('selected_seats=' ~ (selected_seats|join('&selected_seats='))) %}
+
+        <a class="btn" href="{{ url_for('login_page', next=checkout_url) }}">התחברות</a>
+        <a class="btn" href="{{ url_for('registration', next=checkout_url) }}">הרשמה</a>
+        <a class="btn btn-primary" href="{{ checkout_url }}">המשך כאורח</a>
+      {% endif %}
     </div>
 
   </div>

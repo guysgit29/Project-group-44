@@ -317,54 +317,8 @@ def process_booking():
     )
 
 # ------------------------------------------------------------
-# NEW: guest-only bridge page (3 options)
-# ------------------------------------------------------------
-
-@app.route("/continue_booking/<int:flight_id>", methods=["GET"])
-def continue_booking(flight_id):
-    selected_seats = request.args.getlist("selected_seats")
-    if not selected_seats:
-        return redirect(url_for("seat_selection", flight_id=flight_id))
-
-    # אם כבר מחובר כלקוח -> ישר ל-checkout
-    if session.get("role") == "customer" and session.get("user_id"):
-        return redirect(_checkout_url_with_seats(flight_id, selected_seats))
-
-    checkout_url = _checkout_url_with_seats(flight_id, selected_seats)
-
-    login_url = url_for("login_page") + "?" + urlencode({"next": checkout_url})
-    registration_url = url_for("registration") + "?" + urlencode({"next": checkout_url})
-
-    # חדש: URL שמגדיר guest ואז מפנה ל-checkout
-    guest_url = _url_with_selected_seats("guest_checkout", flight_id, selected_seats)
-
-    return render_template(
-        "continue_booking.html",
-        flight_number=flight_id,
-        selected_seats=selected_seats,
-        login_url=login_url,
-        registration_url=registration_url,
-        guest_url=guest_url,   # חשוב
-    )
-
-from urllib.parse import urlencode
-from flask import redirect, request, session, url_for
-
-@app.route("/guest_checkout/<int:flight_id>")
-def guest_checkout(flight_id):
-    selected_seats = request.args.getlist("selected_seats")
-    if not selected_seats:
-        return redirect(url_for("seat_selection", flight_id=flight_id))
-
-    session["role"] = "guest"
-    session.pop("user_id", None)
-
-    qs = urlencode([("selected_seats", s) for s in selected_seats])
-    return redirect(url_for("checkout", flight_id=flight_id) + ("?" + qs if qs else ""))
-# ------------------------------------------------------------
 # Checkout
 # ------------------------------------------------------------
-
 @app.route("/checkout/<int:flight_id>", methods=["GET", "POST"])
 def checkout(flight_id):
     selected_seats = (
@@ -386,12 +340,8 @@ def checkout(flight_id):
             prefill["email"] = getattr(user, "email", "") or session["user_id"]
             prefill["lock_email"] = True
 
-    # GET -> show page
+    # GET -> show page (NO redirect to continue_booking)
     if request.method == "GET":
-        # If not logged in as customer -> force bridge page
-        if session.get("role") not in ("customer", "guest"):
-            return redirect(_continue_booking_url(flight_id, selected_seats))
-
         return render_template(
             "checkout.html",
             flight_number=flight_id,
@@ -443,8 +393,6 @@ def checkout(flight_id):
         )
 
     return redirect(url_for("order_confirmation", booking_id=created_id))
-
-
 # ------------------------------------------------------------
 # Run (MUST be last)
 # ------------------------------------------------------------
