@@ -1,9 +1,9 @@
 {% extends "base.html" %}
 {% block content %}
 
-{# ---- Safety defaults (prevents UndefinedError) ---- #}
+{# ---- Safety defaults ---- #}
 {% set prefill = prefill|default({}) %}
-{% set lock_email = prefill.get('lock_email', False) %}
+{% set lock_fields = prefill.get('lock_fields', False) %}
 {% set selected_seats = selected_seats|default([]) %}
 {% set details = details|default([]) %}
 {% set total = total|default(0) %}
@@ -15,7 +15,6 @@
     justify-content: center;
     padding: 40px 20px;
   }
-
   .checkout{
     width: 100%;
     max-width: 1050px;
@@ -25,29 +24,16 @@
     align-items: start;
     direction: rtl;
   }
-
   .card{
     background: #fff;
     border-radius: 14px;
     box-shadow: 0 8px 24px rgba(0,0,0,0.10);
     padding: 22px;
   }
+  .card h2{ margin: 0 0 14px 0; text-align:center; }
 
-  .card h2{
-    margin: 0 0 14px 0;
-    text-align: center;
-  }
-
-  .field{
-    display: grid;
-    gap: 6px;
-    margin-bottom: 12px;
-  }
-
-  .field label{
-    font-weight: 700;
-  }
-
+  .field{ display:grid; gap:6px; margin-bottom:12px; }
+  .field label{ font-weight:700; }
   .field input{
     padding: 12px 12px;
     border-radius: 10px;
@@ -56,116 +42,89 @@
     direction: rtl;
     text-align: right;
   }
-
   .field input[readonly]{
-    background: #f6f6f6;
-    cursor: not-allowed;
+    background:#f6f6f6;
+    cursor:not-allowed;
   }
 
   .error{
-    background: #ffecec;
-    border: 1px solid #ffb3b3;
-    color: #8a0000;
-    padding: 10px 12px;
-    border-radius: 10px;
-    margin-bottom: 12px;
-    text-align: center;
-    font-weight: 700;
+    background:#ffecec;
+    border:1px solid #ffb3b3;
+    color:#8a0000;
+    padding:10px 12px;
+    border-radius:10px;
+    margin-bottom:12px;
+    text-align:center;
+    font-weight:700;
   }
 
-  .summary-title{
-    font-weight: 800;
-    margin-bottom: 10px;
-    text-align: center;
-  }
-
-  .seat-list{
-    display: grid;
-    gap: 10px;
-    margin-top: 10px;
-  }
+  .summary-title{ font-weight:800; margin-bottom:10px; text-align:center; }
+  .seat-list{ display:grid; gap:10px; margin-top:10px; }
 
   .seat-item{
     border: 1px solid #eee;
     border-radius: 12px;
     padding: 12px 14px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 12px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:12px;
   }
-
-  .seat-meta{
-    display: grid;
-    gap: 4px;
-  }
-
-  .muted{
-    color: #555;
-    font-size: 14px;
-  }
-
+  .seat-meta{ display:grid; gap:4px; }
+  .muted{ color:#555; font-size:14px; }
   .price{
-    font-weight: 800;
-    white-space: nowrap;
-    direction: ltr;
-    text-align: left;
+    font-weight:800;
+    white-space:nowrap;
+    direction:ltr;
+    text-align:left;
   }
 
   .total{
-    margin-top: 14px;
-    border-top: 1px solid #eee;
-    padding-top: 14px;
-    text-align: center;
-    font-weight: 900;
-    font-size: 20px;
-    color: #1f8f3a;
+    margin-top:14px;
+    border-top:1px solid #eee;
+    padding-top:14px;
+    text-align:center;
+    font-weight:900;
+    font-size:20px;
+    color:#1f8f3a;
   }
 
   .pay-box{
-    margin-top: 10px;
-    border-top: 1px solid #eee;
-    padding-top: 12px;
+    margin-top:10px;
+    border-top:1px solid #eee;
+    padding-top:12px;
   }
-
-  .pay-options{
-    display: grid;
-    gap: 10px;
-    margin-top: 10px;
-  }
-
+  .pay-options{ display:grid; gap:10px; margin-top:10px; }
   .pay-option{
-    border: 1px solid #ddd;
-    border-radius: 12px;
-    padding: 12px 14px;
-    display: flex;
-    gap: 10px;
-    align-items: center;
+    border:1px solid #ddd;
+    border-radius:12px;
+    padding:12px 14px;
+    display:flex;
+    gap:10px;
+    align-items:center;
   }
 
   .actions{
-    margin-top: 16px;
-    display: flex;
-    gap: 12px;
-    justify-content: center;
-    flex-wrap: wrap;
+    margin-top:16px;
+    display:flex;
+    gap:12px;
+    justify-content:center;
+    flex-wrap:wrap;
   }
-
   .btn{
-    padding: 12px 20px;
-    border-radius: 10px;
-    border: 1px solid #333;
-    background: #f2f2f2;
-    cursor: pointer;
-    text-decoration: none;
-    color: #111;
-    font-weight: 700;
+    padding:12px 20px;
+    border-radius:10px;
+    border:1px solid #333;
+    background:#f2f2f2;
+    cursor:pointer;
+    text-decoration:none;
+    color:#111;
+    font-weight:700;
   }
-
   .btn-primary{
-    background: #111;
-    color: #fff;
-    border-color: #111;
+    background:#111;
+    color:#fff;
+    border-color:#111;
   }
 
   @media (max-width: 900px){
@@ -184,6 +143,7 @@
         <div class="error">{{ error }}</div>
       {% endif %}
 
+      {# חשוב: ה-route הוא /checkout בלי פרמטרים, אז action הוא רק checkout #}
       <form action="{{ url_for('checkout') }}" method="POST" novalidate>
         <input type="hidden" name="flight_number" value="{{ flight_number }}">
 
@@ -193,12 +153,26 @@
 
         <div class="field">
           <label for="first_name">שם פרטי</label>
-          <input id="first_name" type="text" name="first_name" value="{{ prefill.get('first_name','') }}" required>
+          <input
+            id="first_name"
+            type="text"
+            name="first_name"
+            value="{{ prefill.get('first_name','') }}"
+            required
+            {% if lock_fields %}readonly aria-readonly="true"{% endif %}
+          >
         </div>
 
         <div class="field">
           <label for="last_name">שם משפחה</label>
-          <input id="last_name" type="text" name="last_name" value="{{ prefill.get('last_name','') }}" required>
+          <input
+            id="last_name"
+            type="text"
+            name="last_name"
+            value="{{ prefill.get('last_name','') }}"
+            required
+            {% if lock_fields %}readonly aria-readonly="true"{% endif %}
+          >
         </div>
 
         <div class="field">
@@ -209,7 +183,7 @@
             name="email"
             value="{{ prefill.get('email','') }}"
             required
-            {% if lock_email %}readonly aria-readonly="true"{% endif %}
+            {% if lock_fields %}readonly aria-readonly="true"{% endif %}
             style="direction:ltr; text-align:left;"
           >
         </div>
@@ -243,24 +217,12 @@
 
       <div class="seat-list">
 
-        {# Preferred: render computed details (seat/class/price) #}
         {% if details and details|length > 0 %}
           {% for d in details %}
             {% if d is mapping %}
-              {% set seat_no = (d.get('seat_no')
-                                or d.get('seat_number')
-                                or d.get('seat')
-                                or d.get('seat_label')
-                                or d.get('label')
-                                or '') %}
-              {% set class_type = (d.get('class_type')
-                                   or d.get('class_name')
-                                   or d.get('class')
-                                   or '') %}
-              {% set price_val = (d.get('price')
-                                  if d.get('price') is not none else
-                                  (d.get('class_price') if d.get('class_price') is not none else
-                                   (d.get('base_price') if d.get('base_price') is not none else 0))) %}
+              {% set seat_no = d.get('seat_no', d.get('seat', '')) %}
+              {% set class_type = d.get('class_type', d.get('class', '')) %}
+              {% set price_val = d.get('price', 0) %}
             {% else %}
               {% set seat_no = d[0] if d|length > 0 else '' %}
               {% set class_type = d[1] if d|length > 1 else '' %}
@@ -276,7 +238,6 @@
             </div>
           {% endfor %}
 
-        {# Fallback: if details were not computed, at least show the raw selected_seats list #}
         {% elif selected_seats and selected_seats|length > 0 %}
           {% for s in selected_seats %}
             <div class="seat-item">
@@ -287,7 +248,6 @@
               <div class="price">—</div>
             </div>
           {% endfor %}
-
         {% else %}
           <div class="seat-item">
             <div class="seat-meta">

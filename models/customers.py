@@ -10,6 +10,55 @@ class RegisteredUser:
         self.birth_date = birth_date
         self.passport = passport_number
 
+    # ----------------------------
+    # Debug helper
+    # ----------------------------
+    @staticmethod
+    def _dbg(msg: str):
+        print(f"[DBG][RegisteredUser] {msg}")
+
+    # ----------------------------
+    # Lookup helpers
+    # ----------------------------
+    @staticmethod
+    def get_by_email(email: str):
+        email = (email or "").strip().lower()
+        if not email:
+            return None
+
+        with DB.get_cursor() as cursor:
+            cursor.execute("SELECT * FROM RegisteredUser WHERE LOWER(email) = %s", (email,))
+            row = cursor.fetchone()
+
+            if not row:
+                return None
+
+            return RegisteredUser(
+                email=row.get("email"),
+                first_name_en=row.get("first_name_en"),
+                last_name_en=row.get("last_name_en"),
+                password=row.get("password"),
+                birth_date=row.get("birth_date"),
+                passport_number=row.get("passport_number"),
+            )
+
+    @staticmethod
+    def email_exists(email: str) -> bool:
+        email = (email or "").strip().lower()
+        RegisteredUser._dbg(f"email_exists(email={email})")
+        if not email:
+            RegisteredUser._dbg("email_exists: empty -> False")
+            return False
+
+        with DB.get_cursor() as cursor:
+            cursor.execute(
+                "SELECT 1 FROM RegisteredUser WHERE LOWER(email) = %s LIMIT 1",
+                (email,),
+            )
+            exists = cursor.fetchone() is not None
+            RegisteredUser._dbg(f"email_exists: {exists}")
+            return exists
+
     @staticmethod
     def register(data):
         """פונקציה שמרכזת את כל לוגיקת ההרשמה"""
