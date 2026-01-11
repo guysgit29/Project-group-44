@@ -5,7 +5,7 @@ from datetime import timedelta, datetime
 from database import DB
 from models.customers import RegisteredUser
 from models.booking import Booking
-from models.employees import Manager
+from models.employees import Manager, Pilot, FlightAttendant
 from models.flight import Flight
 
 app = Flask(__name__)
@@ -241,6 +241,7 @@ def manager_login():
 
         manager = Manager.login(emp_id, password)
         if manager:
+            session.permanent = True  # ✅ חשוב
             session["user_id"] = manager.id
             session["role"] = "manager"
             session["first_name"] = manager.first_name_he
@@ -261,38 +262,16 @@ def manager_dashboard():
 
 @app.route("/manager_flights")
 def manager_flights():
-    # הגנה: רק מנהל יכול להיכנס
     if session.get("role") != "manager":
         return redirect(url_for("manager_login"))
 
-    # 1) קודם כל לסנכרן טיסות שנחתו -> Completed
+    # סנכרון טיסות שנחתו -> Completed
     Flight.sync_completed_flights()
 
-    # 2) פילטר לפי סטטוס (אופציונלי)
     selected_status = request.args.get("status", "").strip()
 
-    query = """
-        SELECT
-            flight_number,
-            aircraft_id,
-            origin,
-            destination,
-            departure_time,
-            arrival_time,
-            flight_status
-        FROM Flight
-    """
-    params = ()
-
-    if selected_status:
-        query += " WHERE flight_status = %s"
-        params = (selected_status,)
-
-    query += " ORDER BY departure_time DESC"
-
-    with DB.get_cursor() as cursor:
-        cursor.execute(query, params)
-        flights = cursor.fetchall()
+    # ✅ בלי SQL ב-route
+    flights = Flight.list_for_manager(selected_status)
 
     return render_template(
         "manager_flights.html",
@@ -300,7 +279,9 @@ def manager_flights():
         selected_status=selected_status
     )
 
-@app.route("/checkדout", methods=["GET", "POST"])
+# --- Checkout ---
+
+@app.route("/checkout", methods=["GET", "POST"])
 def checkout():
     flight_number = (
         request.form.get("flight_number")
@@ -402,66 +383,28 @@ def order_confirmation(booking_id):
         return redirect(url_for("home_page"))
 
     return render_template("order_confirmation.html", order=order_data, seats=seats)
+
+
+# --- Manager: flight view (Completed only) ---
+
 @app.route("/manager_flight_view/<int:flight_number>")
 def manager_flight_view(flight_number):
     if session.get("role") != "manager":
         return redirect(url_for("manager_login"))
 
-    # מסנכרן לפני צפייה כדי שטיסות שעברו זמן יסומנו Completed
     Flight.sync_completed_flights()
 
-    with DB.get_cursor() as cursor:
-        # --- Flight ---
-        cursor.execute("""
-            SELECT
-                flight_number,
-                aircraft_id,
-                origin,
-                destination,
-                departure_time,
-                arrival_time,
-                flight_status
-            FROM Flight
-            WHERE flight_number = %s
-        """, (flight_number,))
-        flight = cursor.fetchone()
+    # ✅ בלי SQL ב-route
+    flight = Flight.get_by_number(flight_number)
+    if not flight:
+        return redirect(url_for("manager_flights"))
 
-        if not flight:
-            return redirect(url_for("manager_flights"))
+    if (flight.get("flight_status") or "").strip() != "Completed":
+        return redirect(url_for("manager_flights"))
 
-        # עמוד תצוגה רק לטיסות Completed
-        if (flight.get("flight_status") or "").strip() != "Completed":
-            return redirect(url_for("manager_flights"))
-
-        # --- Aircraft ---
-        cursor.execute("""
-            SELECT *
-            FROM Aircraft
-            WHERE aircraft_id = %s
-        """, (flight["aircraft_id"],))
-        aircraft = cursor.fetchone()
-
-        # --- Flight Attendants ---
-        cursor.execute("""
-            SELECT fa.*
-            FROM FlightAttendant fa
-            JOIN flightattendants_on_flights fof
-              ON fa.id = fof.id
-            WHERE fof.flight_number = %s
-            ORDER BY fa.id
-        """, (flight_number,))
-        attendants = cursor.fetchall()
-
-        # --- Pilots (תיקון! pof.id ולא pof.pilot_id) ---
-        cursor.execute("""
-            SELECT p.*
-            FROM Pilot p
-            JOIN pilots_on_flights pof
-              ON p.id = pof.id
-            WHERE pof.flight_number = %s
-            ORDER BY p.id
-        """, (flight_number,))
-        pilots = cursor.fetchall()
+    aircraft = Flight.get_aircraft_by_id(flight["aircraft_id"])
+    attendants = FlightAttendant.get_assigned_for_flight(flight_number)
+    pilots = Pilot.get_assigned_for_flight(flight_number)
 
     return render_template(
         "manager_flight_view.html",
@@ -471,6 +414,83 @@ def manager_flight_view(flight_number):
         pilots=pilots
     )
 
+@app.route("/manager_flight_manage/<int:flight_number>", methods=["GET", "POST"])
+def manager_flight_manage(flight_number):
+    if session.get("role") != "manager":
+        return redirect(url_for("manager_login"))
+
+    # סנכרון טיסות שנחתו
+    Flight.sync_completed_flights()
+
+    # פרטי טיסה
+    flight = Flight.get_by_number(flight_number)
+    if not flight:
+        return redirect(url_for("manager_flights"))
+
+    # טיסה שהושלמה – למסך צפייה בלבד
+    if (flight.get("flight_status") or "").strip() == "Completed":
+        return redirect(url_for("manager_flight_view", flight_number=flight_number))
+
+    # --------
+    # POST – שיבוץ / הסרה
+    # --------
+    if request.method == "POST":
+        action = (request.form.get("action") or "").strip()
+
+        if action == "assign_pilot":
+            pid = int(request.form.get("pilot_id"))
+            Pilot.assign_to_flight(pid, flight_number)
+
+        elif action == "remove_pilot":
+            pid = int(request.form.get("pilot_id"))
+            Pilot.remove_from_flight(pid, flight_number)
+
+        elif action == "assign_attendant":
+            aid = int(request.form.get("attendant_id"))
+            FlightAttendant.assign_to_flight(aid, flight_number)
+
+        elif action == "remove_attendant":
+            aid = int(request.form.get("attendant_id"))
+            FlightAttendant.remove_from_flight(aid, flight_number)
+
+        return redirect(url_for("manager_flight_manage", flight_number=flight_number))
+
+    # --------
+    # GET – טעינת נתונים למסך
+    # --------
+
+    # משובצים בפועל
+    assigned_pilots = Pilot.get_assigned_for_flight(flight_number)
+    assigned_attendants = FlightAttendant.get_assigned_for_flight(flight_number)
+
+    # ✅ זמינים בלבד (שינוי מרכזי)
+    all_pilots = Pilot.list_all(flight_number)
+    all_attendants = FlightAttendant.list_all(flight_number)
+
+    # חישובי נדרש / שובצו / חסר
+    required = Flight.get_required_crew_counts(flight_number)
+
+    assigned_counts = {
+        "pilots": len(assigned_pilots),
+        "attendants": len(assigned_attendants)
+    }
+
+    missing_counts = {
+        "pilots": max(0, required["pilots"] - assigned_counts["pilots"]),
+        "attendants": max(0, required["attendants"] - assigned_counts["attendants"])
+    }
+
+    return render_template(
+        "manager_flight_manage.html",
+        flight=flight,                      # פרטי טיסה
+        assigned_pilots=assigned_pilots,
+        assigned_attendants=assigned_attendants,
+        all_pilots=all_pilots,              # זמינים בלבד
+        all_attendants=all_attendants,      # זמינים בלבד
+        required=required,                  # נדרש
+        assigned_counts=assigned_counts,    # שובצו
+        missing_counts=missing_counts       # חסר שיבוץ
+    )
+
 if __name__ == '__main__':
     app.run(debug=True)
-

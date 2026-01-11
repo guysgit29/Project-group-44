@@ -11,6 +11,10 @@ class Flight:
         self.arrival = arrival
         self.status = status
 
+    # -------------------------
+    # Customer helpers
+    # -------------------------
+
     @staticmethod
     def get_all_origins_and_destinations():
         with DB.get_cursor() as cursor:
@@ -22,16 +26,8 @@ class Flight:
 
             return origins, destinations
 
-    # ------------------------------------------------------------
-    # NEW: mark flights as Completed when arrival_time has passed
-    # ------------------------------------------------------------
     @staticmethod
     def sync_completed_flights() -> int:
-        """
-        Sets Flight.flight_status = 'Completed' for flights that already landed.
-        Works only for rows where arrival_time IS NOT NULL.
-        Returns number of rows updated.
-        """
         with DB.get_cursor() as cursor:
             cursor.execute("""
                 UPDATE Flight
@@ -44,12 +40,6 @@ class Flight:
 
     @staticmethod
     def search(origin, destination):
-        """
-        Search flights for customers:
-        show only flights that are not Completed and not Full.
-        (Usually you want only bookable flights)
-        """
-        # לפני חיפוש אפשר לסנכרן טיסות שנחתו (לא חובה, אבל מומלץ)
         Flight.sync_completed_flights()
 
         query = """
@@ -69,7 +59,7 @@ class Flight:
         with DB.get_cursor() as cursor:
             cursor.execute(
                 "SELECT aircraft_id FROM Flight WHERE flight_number = %s",
-                (flight_number,)
+                (int(flight_number),)
             )
             f = cursor.fetchone()
             if not f:
@@ -103,22 +93,11 @@ class Flight:
                     s.row_num,
                     s.column_number
             """
-            cursor.execute(query, (flight_number, flight_number, aircraft_id))
+            cursor.execute(query, (int(flight_number), int(flight_number), aircraft_id))
             return cursor.fetchall()
 
-    # ------------------------------------------------------------
-    # Flight capacity status updater (Full <-> Active)
-    # ------------------------------------------------------------
     @staticmethod
     def update_status_by_capacity(flight_number: int) -> str | None:
-        """
-        Sets Flight.flight_status to:
-          - 'Full'   if sold seats == total seats
-          - 'Active' if there is at least 1 free seat
-
-        IMPORTANT:
-        If the flight already Completed, we do NOT change it back.
-        """
         if not flight_number:
             return None
 
@@ -132,8 +111,6 @@ class Flight:
                 return None
 
             current_status = (f.get("flight_status") or "").strip()
-
-            # אם כבר נחתה/Completed — לא נוגעים
             if current_status == "Completed":
                 return "Completed"
 
@@ -160,3 +137,124 @@ class Flight:
                 )
 
             return new_status
+
+    # -------------------------
+    # Manager helpers
+    # -------------------------
+
+    @staticmethod
+    def list_for_manager(selected_status: str = ""):
+        query = """
+            SELECT
+                flight_number,
+                aircraft_id,
+                origin,
+                destination,
+                departure_time,
+                arrival_time,
+                flight_status
+            FROM Flight
+        """
+        params = ()
+
+        selected_status = (selected_status or "").strip()
+        if selected_status:
+            query += " WHERE flight_status = %s"
+            params = (selected_status,)
+
+        query += " ORDER BY departure_time DESC"
+
+        with DB.get_cursor() as cursor:
+            cursor.execute(query, params)
+            return cursor.fetchall()
+
+    @staticmethod
+    def get_by_number(flight_number: int):
+        with DB.get_cursor() as cursor:
+            cursor.execute("""
+                SELECT
+                    flight_number,
+                    aircraft_id,
+                    origin,
+                    destination,
+                    departure_time,
+                    arrival_time,
+                    flight_status
+                FROM Flight
+                WHERE flight_number = %s
+            """, (int(flight_number),))
+            return cursor.fetchone()
+
+    @staticmethod
+    def get_aircraft_by_id(aircraft_id: int):
+        with DB.get_cursor() as cursor:
+            cursor.execute("SELECT * FROM Aircraft WHERE aircraft_id = %s", (int(aircraft_id),))
+            return cursor.fetchone()
+
+    @staticmethod
+    def get_aircraft_size_for_flight(flight_number: int) -> str | None:
+        with DB.get_cursor() as cursor:
+            cursor.execute("""
+                SELECT a.aircraft_size
+                FROM Flight f
+                JOIN Aircraft a ON a.aircraft_id = f.aircraft_id
+                WHERE f.flight_number = %s
+            """, (int(flight_number),))
+            row = cursor.fetchone()
+            return row.get("aircraft_size") if row else None
+
+    @staticmethod
+    def get_flight_window(flight_number: int):
+        """
+        start = departure_time
+        end   = arrival_time אם יש, אחרת departure_time + FlightLength.length_minutes
+        (בונה "חלון זמן" לטובת בדיקת חפיפות)
+        """
+        with DB.get_cursor() as cursor:
+            cursor.execute("""
+                SELECT
+                    f.departure_time AS start_time,
+                    COALESCE(
+                        f.arrival_time,
+                        ADDTIME(f.departure_time, fl.length_minutes)
+                    ) AS end_time
+                FROM Flight f
+                LEFT JOIN FlightLength fl
+                    ON fl.origin = f.origin AND fl.destination = f.destination
+                WHERE f.flight_number = %s
+            """, (int(flight_number),))
+            row = cursor.fetchone()
+
+        if not row:
+            return None, None
+
+        return row.get("start_time"), row.get("end_time")
+
+    # -------------------------
+    # Crew capacity rules (NO buffer)
+    # -------------------------
+
+    @staticmethod
+    def get_required_crew_counts(flight_number: int) -> dict:
+        """
+        Large: 2 pilots, 6 attendants
+        Small: 2 pilots, 3 attendants
+        """
+        size = (Flight.get_aircraft_size_for_flight(flight_number) or "").strip().lower()
+        if size == "large":
+            return {"pilots": 2, "attendants": 6}
+        return {"pilots": 2, "attendants": 3}
+
+    @staticmethod
+    def count_assigned_pilots(flight_number: int) -> int:
+        with DB.get_cursor() as cursor:
+            cursor.execute("SELECT COUNT(*) AS c FROM pilots_on_flights WHERE flight_number=%s", (int(flight_number),))
+            row = cursor.fetchone() or {}
+        return int(row.get("c") or 0)
+
+    @staticmethod
+    def count_assigned_attendants(flight_number: int) -> int:
+        with DB.get_cursor() as cursor:
+            cursor.execute("SELECT COUNT(*) AS c FROM flightattendants_on_flights WHERE flight_number=%s", (int(flight_number),))
+            row = cursor.fetchone() or {}
+        return int(row.get("c") or 0)
