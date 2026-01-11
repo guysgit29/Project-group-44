@@ -1,0 +1,232 @@
+{% extends "base.html" %}
+{% block content %}
+
+<style>
+.page-wrap{
+    max-width: 1100px;
+    margin: 60px auto;
+    padding: 0 20px;
+    direction: rtl;          /* ✅ חשוב לעברית */
+    text-align: right;
+}
+
+.header-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap: 15px;
+    margin-bottom: 25px;
+    flex-wrap: wrap;
+}
+
+.title{
+    font-size: 30px;
+    font-weight: 800;
+}
+
+.badge{
+    display:inline-block;
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-weight: 700;
+    background: #e8f0ff;
+    color: #1e40ff;
+    font-size: 14px;
+    margin-top: 8px;
+}
+
+.card{
+    background:#fff;
+    border-radius: 16px;
+    padding: 22px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+    margin-bottom: 22px;
+}
+
+.card h3{
+    margin: 0 0 12px 0;
+    font-size: 18px;
+    font-weight: 800;
+}
+
+.grid{
+    display:grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 12px 24px;
+}
+
+.item{
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: #f7f7f7;
+}
+
+.item .k{
+    font-size: 13px;
+    color:#666;
+    margin-bottom: 4px;
+}
+
+.item .v{
+    font-size: 16px;
+    font-weight: 700;
+    word-break: break-word;
+}
+
+.table{
+    width:100%;
+    border-collapse: collapse;
+    overflow:hidden;
+    border-radius: 12px;
+}
+
+.table th, .table td{
+    padding: 12px 10px;
+    border-bottom: 1px solid #e9e9e9;
+    text-align: right;
+    vertical-align: middle;
+}
+
+.table th{
+    background:#f3f4f6;
+    font-weight: 800;
+}
+
+.back-link{
+    display:inline-block;
+    text-decoration:none;
+    padding: 10px 14px;
+    border-radius: 12px;
+    border: 2px solid #1e40ff;
+    color:#1e40ff;
+    font-weight: 800;
+    white-space: nowrap;
+}
+</style>
+
+<div class="page-wrap">
+
+    <div class="header-row">
+        <div>
+            <div class="title">פרטי טיסה #{{ flight.flight_number }}</div>
+            <div class="badge">תצוגה בלבד — טיסה הושלמה</div>
+        </div>
+
+        <a class="back-link" href="{{ url_for('manager_flights') }}">⬅ חזרה לכל הטיסות</a>
+    </div>
+
+    <!-- פרטי טיסה -->
+    <div class="card">
+        <h3>פרטי טיסה</h3>
+        <div class="grid">
+            <div class="item">
+                <div class="k">סטטוס</div>
+                <div class="v">{{ flight.flight_status|default('') }}</div>
+            </div>
+            <div class="item">
+                <div class="k">מוצא</div>
+                <div class="v">{{ flight.origin|default('') }}</div>
+            </div>
+            <div class="item">
+                <div class="k">יעד</div>
+                <div class="v">{{ flight.destination|default('') }}</div>
+            </div>
+            <div class="item">
+                <div class="k">המראה</div>
+                <div class="v">{{ flight.departure_time|default('') }}</div>
+            </div>
+            <div class="item">
+                <div class="k">נחיתה</div>
+                <div class="v">{{ flight.arrival_time|default('') }}</div>
+            </div>
+            <div class="item">
+                <div class="k">מספר מטוס</div>
+                <div class="v">{{ flight.aircraft_id|default('') }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- פרטי מטוס -->
+    <div class="card">
+        <h3>פרטי מטוס</h3>
+
+        {% if aircraft %}
+            {# ✅ אם aircraft הוא Row ולא dict, ננסה להפוך אותו ל-dict #}
+            {% set a = aircraft if aircraft is mapping else dict(aircraft) %}
+
+            <div class="grid">
+                {% for key, val in a.items() %}
+                    <div class="item">
+                        <div class="k">{{ key }}</div>
+                        <div class="v">{{ val|default('') }}</div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="item">
+                <div class="v">לא נמצא מידע על מטוס</div>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- טייסים -->
+    <div class="card">
+        <h3>טייסים בטיסה</h3>
+        {% if pilots and pilots|length > 0 %}
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>ת"ז</th>
+                        <th>שם פרטי</th>
+                        <th>שם משפחה</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for p in pilots %}
+                    <tr>
+                        <td>{{ p.id|default('') }}</td>
+                        <td>{{ p.first_name_he|default('') }}</td>
+                        <td>{{ p.last_name_he|default('') }}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <div class="item">
+                <div class="v">אין טייסים משובצים לטיסה הזו</div>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- דיילים -->
+    <div class="card">
+        <h3>דיילים בטיסה</h3>
+        {% if attendants and attendants|length > 0 %}
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>ת"ז</th>
+                        <th>שם פרטי</th>
+                        <th>שם משפחה</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for a in attendants %}
+                    <tr>
+                        <td>{{ a.id|default('') }}</td>
+                        <td>{{ a.first_name_he|default('') }}</td>
+                        <td>{{ a.last_name_he|default('') }}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <div class="item">
+                <div class="v">אין דיילים משובצים לטיסה הזו</div>
+            </div>
+        {% endif %}
+    </div>
+
+</div>
+
+{% endblock %}

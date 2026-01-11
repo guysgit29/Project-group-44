@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, redirect, session, url_for, flash
 from flask_session import Session
 from datetime import timedelta
+
 from database import DB
 from models.customers import RegisteredUser
 from models.booking import Booking
@@ -29,6 +30,7 @@ def home_page():
 
     origins, destinations = Flight.get_all_origins_and_destinations()
     return render_template('home_page.html', origins=origins, destinations=destinations)
+
 #
 @app.route('/search')
 def search_flights():
@@ -171,8 +173,10 @@ def seat_selection(flight_id):
     destination = request.args.get("destination", "")
 
     max_col = 0
+    max_row = 0
     if seats:
         max_col = max(int(s["column_number"]) for s in seats)
+        max_row = max(int(s["row_num"]) for s in seats)
 
     return render_template(
         "seat_selection.html",
@@ -180,7 +184,8 @@ def seat_selection(flight_id):
         origin=origin,
         destination=destination,
         all_seats=seats,
-        max_col=max_col
+        max_col=max_col,
+        max_row=max_row
     )
 
 @app.route('/process_booking', methods=['POST'])
@@ -248,6 +253,7 @@ def manager_login():
 
         manager = Manager.login(emp_id, password)
         if manager:
+            session.permanent = True  # ✅ חשוב
             session["user_id"] = manager.id
             session["role"] = "manager"
             session["first_name"] = manager.first_name_he
@@ -265,6 +271,29 @@ def manager_dashboard():
         return redirect("/manager_login")
 
     return render_template("manager_dashboard.html")
+
+
+@app.route("/manager_flights")
+def manager_flights():
+    if session.get("role") != "manager":
+        return redirect(url_for("manager_login"))
+
+    # סנכרון טיסות שנחתו -> Completed
+    Flight.sync_completed_flights()
+
+    selected_status = request.args.get("status", "").strip()
+
+    # ✅ בלי SQL ב-route
+    flights = Flight.list_for_manager(selected_status)
+
+    return render_template(
+        "manager_flights.html",
+        flights=flights,
+        selected_status=selected_status
+    )
+
+# --- Checkout ---
+
 @app.route("/checkout", methods=["GET", "POST"])
 def checkout():
     # GET: מגיע עם querystring: ?flight_number=1360&selected_seats=...
@@ -372,6 +401,115 @@ def order_confirmation(booking_id):
         return redirect(url_for("home_page"))
 
     return render_template("order_confirmation.html", order=order_data, seats=seats)
+
+
+# --- Manager: flight view (Completed only) ---
+
+@app.route("/manager_flight_view/<int:flight_number>")
+def manager_flight_view(flight_number):
+    if session.get("role") != "manager":
+        return redirect(url_for("manager_login"))
+
+    Flight.sync_completed_flights()
+
+    # ✅ בלי SQL ב-route
+    flight = Flight.get_by_number(flight_number)
+    if not flight:
+        return redirect(url_for("manager_flights"))
+
+    if (flight.get("flight_status") or "").strip() != "Completed":
+        return redirect(url_for("manager_flights"))
+
+    aircraft = Flight.get_aircraft_by_id(flight["aircraft_id"])
+    attendants = FlightAttendant.get_assigned_for_flight(flight_number)
+    pilots = Pilot.get_assigned_for_flight(flight_number)
+
+    return render_template(
+        "manager_flight_view.html",
+        flight=flight,
+        aircraft=aircraft,
+        attendants=attendants,
+        pilots=pilots
+    )
+
+@app.route("/manager_flight_manage/<int:flight_number>", methods=["GET", "POST"])
+def manager_flight_manage(flight_number):
+    if session.get("role") != "manager":
+        return redirect(url_for("manager_login"))
+
+    # סנכרון טיסות שנחתו
+    Flight.sync_completed_flights()
+
+    # פרטי טיסה
+    flight = Flight.get_by_number(flight_number)
+    if not flight:
+        return redirect(url_for("manager_flights"))
+
+    # טיסה שהושלמה – למסך צפייה בלבד
+    if (flight.get("flight_status") or "").strip() == "Completed":
+        return redirect(url_for("manager_flight_view", flight_number=flight_number))
+
+    # --------
+    # POST – שיבוץ / הסרה
+    # --------
+    if request.method == "POST":
+        action = (request.form.get("action") or "").strip()
+
+        if action == "assign_pilot":
+            pid = int(request.form.get("pilot_id"))
+            Pilot.assign_to_flight(pid, flight_number)
+
+        elif action == "remove_pilot":
+            pid = int(request.form.get("pilot_id"))
+            Pilot.remove_from_flight(pid, flight_number)
+
+        elif action == "assign_attendant":
+            aid = int(request.form.get("attendant_id"))
+            FlightAttendant.assign_to_flight(aid, flight_number)
+
+        elif action == "remove_attendant":
+            aid = int(request.form.get("attendant_id"))
+            FlightAttendant.remove_from_flight(aid, flight_number)
+
+        return redirect(url_for("manager_flight_manage", flight_number=flight_number))
+
+    # --------
+    # GET – טעינת נתונים למסך
+    # --------
+
+    # משובצים בפועל
+    assigned_pilots = Pilot.get_assigned_for_flight(flight_number)
+    assigned_attendants = FlightAttendant.get_assigned_for_flight(flight_number)
+
+    # ✅ זמינים בלבד (שינוי מרכזי)
+    all_pilots = Pilot.list_all(flight_number)
+    all_attendants = FlightAttendant.list_all(flight_number)
+
+    # חישובי נדרש / שובצו / חסר
+    required = Flight.get_required_crew_counts(flight_number)
+
+    assigned_counts = {
+        "pilots": len(assigned_pilots),
+        "attendants": len(assigned_attendants)
+    }
+
+    missing_counts = {
+        "pilots": max(0, required["pilots"] - assigned_counts["pilots"]),
+        "attendants": max(0, required["attendants"] - assigned_counts["attendants"])
+    }
+
+    return render_template(
+        "manager_flight_manage.html",
+        flight=flight,                      # פרטי טיסה
+        assigned_pilots=assigned_pilots,
+        assigned_attendants=assigned_attendants,
+        all_pilots=all_pilots,              # זמינים בלבד
+        all_attendants=all_attendants,      # זמינים בלבד
+        required=required,                  # נדרש
+        assigned_counts=assigned_counts,    # שובצו
+        missing_counts=missing_counts       # חסר שיבוץ
+    )
+
 
 from models.aircrafts import Aircraft
 @app.route("/aircrafts")
