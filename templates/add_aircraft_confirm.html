@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}אישור פרטי מטוס{% endblock %}
+{% block content %}
+
+<style>
+  .wrap{max-width:900px;margin:40px auto;background:#fff;padding:24px;border-radius:14px;box-shadow:0 8px 24px rgba(0,0,0,.08)}
+  .title{font-size:28px;font-weight:800;margin:0 0 18px 0}
+  .box{border:1px solid #eee;border-radius:12px;padding:16px;background:#fafafa}
+  .row{display:flex;justify-content:space-between;gap:16px;padding:10px 0;border-bottom:1px solid #e9e9e9}
+  .row:last-child{border-bottom:none}
+  .k{font-weight:900;color:#333}
+  .v{color:#111;direction:ltr;text-align:left}
+  .actions{margin-top:18px;display:flex;gap:12px;justify-content:flex-start;flex-wrap:wrap}
+  .btn{padding:12px 18px;border-radius:10px;border:1px solid #111;background:#f2f2f2;color:#111;text-decoration:none;font-weight:800;cursor:pointer}
+  .btn.primary{background:#111;color:#fff}
+</style>
+
+<div class="wrap">
+  <div class="title">האם הפרטים נכונים?</div>
+
+  <div class="box">
+    <div class="row"><div class="k">מזהה מטוס</div><div class="v">{{ a.aircraft_id }}</div></div>
+    <div class="row"><div class="k">יצרן</div><div class="v">{{ a.manufacturer }}</div></div>
+    <div class="row"><div class="k">תאריך רכישה</div><div class="v">{{ a.purchase_date }}</div></div>
+    <div class="row"><div class="k">גודל</div><div class="v">{{ a.aircraft_size }}</div></div>
+
+    <div class="row"><div class="k">Economy – שורות</div><div class="v">{{ a.economy_rows }}</div></div>
+    <div class="row"><div class="k">Economy – עמודות</div><div class="v">{{ a.economy_cols }}</div></div>
+    <div class="row"><div class="k">Economy – סה״כ מושבים</div><div class="v">{{ a.economy_rows * a.economy_cols }}</div></div>
+
+    {% if a.business_rows and a.business_cols %}
+      <div class="row"><div class="k">Business – שורות</div><div class="v">{{ a.business_rows }}</div></div>
+      <div class="row"><div class="k">Business – עמודות</div><div class="v">{{ a.business_cols }}</div></div>
+      <div class="row"><div class="k">Business – סה״כ מושבים</div><div class="v">{{ a.business_rows * a.business_cols }}</div></div>
+    {% else %}
+      <div class="row"><div class="k">Business</div><div class="v">לא הוגדר</div></div>
+    {% endif %}
+  </div>
+
+  <div class="actions">
+    <a class="btn" href="{{ url_for('add_aircraft') }}">חזרה לעריכה</a>
+    <form method="POST" style="margin:0;">
+      <button class="btn primary" type="submit">אישור והוספה</button>
+    </form>
+  </div>
+</div>
+
+{% endblock %}

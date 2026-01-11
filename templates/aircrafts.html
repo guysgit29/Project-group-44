@@ -1,0 +1,396 @@
+{% extends "base.html" %}
+{% block content %}
+
+<style>
+  .page {
+    max-width: 1200px;
+    margin: 22px auto;
+    padding: 0 10px;
+  }
+
+  /* Top bar */
+  .topbar{
+    display:flex;
+    justify-content: space-between; /* ב-RTL זה שם את הכפתור בשמאל */
+    align-items:center;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .title{
+    margin:0;
+    font-size: 1.6rem;
+    font-weight: 900;
+    color:#111827;
+  }
+
+  /* Button: add aircraft */
+  .btn-add{
+    display:inline-flex;
+    align-items:center;
+    gap:10px;
+    padding: 12px 18px;
+    border-radius: 12px;
+    text-decoration:none;
+    font-weight: 900;
+    border: 1px solid #0b3d91;
+    background: #0b3d91;
+    color: #fff;
+    box-shadow: 0 6px 16px rgba(11, 61, 145, 0.18);
+    transition: background-color .15s ease, transform .15s ease, box-shadow .15s ease;
+    white-space: nowrap;
+  }
+  .btn-add:hover{
+    background:#1d4ed8; /* Royal Blue */
+    transform: translateY(-1px);
+    box-shadow: 0 10px 22px rgba(11, 61, 145, 0.25);
+  }
+  .btn-add:active{
+    transform: translateY(0px);
+    box-shadow: 0 6px 16px rgba(11, 61, 145, 0.18);
+  }
+
+  /* Flash messages */
+  .flash-wrap{ margin: 14px 0 16px; }
+  .flash{
+    padding: 12px 16px;
+    border-radius: 12px;
+    font-weight: 900;
+    border: 1px solid transparent;
+    margin-bottom: 10px;
+  }
+  .flash.success{
+    background:#e9f7ef;
+    border-color:#b7e4c7;
+    color:#1e7e34;
+  }
+  .flash.error{
+    background:#ffecec;
+    border-color:#ffb3b3;
+    color:#8a0000;
+  }
+
+  /* Filters */
+  .filters{
+    background:#fff;
+    border-radius: 14px;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.06);
+    padding: 14px 16px;
+    margin-bottom: 18px;
+  }
+  .filters-grid{
+    display:grid;
+    grid-template-columns: 1fr 1fr 1fr auto auto;
+    gap: 12px;
+    align-items:end;
+  }
+  .field label{
+    font-weight: 900;
+    color:#111827;
+    display:block;
+    margin-bottom: 6px;
+  }
+  .field input, .field select{
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid #d1d5db;
+    outline: none;
+    background:#fff;
+  }
+  .field input:focus, .field select:focus{
+    border-color:#1d4ed8;
+    box-shadow: 0 0 0 3px rgba(29,78,216,0.12);
+  }
+
+  .btn{
+    padding: 10px 14px;
+    border-radius: 10px;
+    border: 1px solid #111827;
+    background:#111827;
+    color:#fff;
+    font-weight: 900;
+    cursor:pointer;
+    text-decoration:none;
+    text-align:center;
+    display:inline-block;
+    white-space: nowrap;
+  }
+  .btn:hover{ background:#1d4ed8; border-color:#1d4ed8; } /* hover royal */
+  .btn.secondary{
+    background:#f3f4f6;
+    color:#111827;
+    border-color:#d1d5db;
+  }
+  .btn.secondary:hover{
+    background:#e5e7eb;
+    border-color:#d1d5db;
+  }
+
+  /* Aircraft cards */
+  .aircraft-card{
+    background:#fff;
+    border-radius: 14px;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.06);
+    margin-bottom: 14px;
+    overflow:hidden;
+    border: 1px solid #eef2f7;
+  }
+
+  .toggle{ display:none; }
+
+  .aircraft-header{
+    display:flex;
+    justify-content: space-between;
+    align-items:center;
+    padding: 16px 18px;
+    cursor:pointer;
+    background:#f9fafb;
+    user-select:none;
+  }
+  .aircraft-header:hover{ background:#eaf0ff; }
+
+  /* Header text (no bubbles) */
+  .aircraft-title{
+    font-weight: 900;
+    color:#111827;
+    font-size: 1.05rem;
+    line-height: 1.2;
+  }
+
+  .arrow{
+    font-size: 1.3rem;
+    transition: transform .2s ease;
+    color:#111827;
+  }
+  .toggle:checked + label .arrow{ transform: rotate(180deg); }
+
+  .aircraft-body{
+    display:none;
+    padding: 16px 18px;
+    border-top: 1px solid #eef2f7;
+  }
+  .toggle:checked + label + .aircraft-body{ display:block; }
+
+  .info-box{
+    background:#f9fafb;
+    border:1px solid #e5e7eb;
+    border-radius:12px;
+    padding:14px 16px;
+    margin-bottom:14px;
+  }
+  .info-title{
+    font-weight: 900;
+    margin-bottom: 8px;
+    color:#111827;
+  }
+  .info-grid{
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    color:#111827;
+    font-weight: 700;
+  }
+  .info-grid b{ font-weight: 900; }
+
+  .section-title{
+    margin: 12px 0 8px;
+    font-weight: 900;
+    color:#111827;
+  }
+
+  table{
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 12px;
+    overflow:hidden;
+    border-radius: 12px;
+  }
+  th, td{
+    padding: 10px 10px;
+    border-bottom: 1px solid #eef2f7;
+    text-align: right;
+    color:#111827;
+    font-size: 0.95rem;
+  }
+  th{
+    background:#f3f4f6;
+    font-weight: 900;
+  }
+  tr:last-child td{ border-bottom:none; }
+
+  .muted{
+    color:#6b7280;
+    font-weight: 700;
+    font-size: 0.95rem;
+    padding: 8px 0 4px;
+  }
+
+  @media (max-width: 980px){
+    .filters-grid{
+      grid-template-columns: 1fr;
+    }
+    .topbar{
+      flex-direction: column;
+      align-items: stretch;
+    }
+    .btn-add{
+      justify-content:center;
+      width: 100%;
+    }
+    .info-grid{
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+
+<div class="page">
+
+  <div class="topbar">
+    <h2 class="title">ניהול צי מטוסים</h2>
+    <a class="btn-add" href="{{ url_for('add_aircraft') }}">+ הוספת מטוס חדש</a>
+  </div>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="flash-wrap">
+        {% for category, msg in messages %}
+          <div class="flash {% if category == 'success' %}success{% else %}error{% endif %}">
+            {{ msg }}
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  <div class="filters">
+    <form method="get" class="filters-grid">
+      <div class="field">
+        <label>מזהה מטוס</label>
+        <input type="text" name="aircraft_id" value="{{ filters.aircraft_id }}" placeholder="לדוגמה 101">
+      </div>
+
+      <div class="field">
+        <label>יצרן</label>
+        <select name="manufacturer">
+          <option value="">הכל</option>
+          <option value="Boeing"   {% if filters.manufacturer=='Boeing' %}selected{% endif %}>Boeing</option>
+          <option value="Airbus"   {% if filters.manufacturer=='Airbus' %}selected{% endif %}>Airbus</option>
+          <option value="Dassault" {% if filters.manufacturer=='Dassault' %}selected{% endif %}>Dassault</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label>גודל</label>
+        <select name="size">
+          <option value="">הכל</option>
+          <option value="Small" {% if filters.size=='Small' %}selected{% endif %}>Small</option>
+          <option value="Big"   {% if filters.size=='Big' %}selected{% endif %}>Big</option>
+        </select>
+      </div>
+
+      <button class="btn" type="submit">סנן</button>
+      <a class="btn secondary" href="{{ url_for('aircrafts') }}">כל המטוסים</a>
+    </form>
+  </div>
+
+  {% if not aircrafts or aircrafts|length == 0 %}
+    <div class="aircraft-card">
+      <div class="aircraft-body" style="display:block;">
+        <div class="muted">לא נמצאו מטוסים לפי הסינון הנוכחי.</div>
+      </div>
+    </div>
+  {% endif %}
+
+  {% for a in aircrafts %}
+    <div class="aircraft-card">
+      <input type="checkbox" id="air{{ a.aircraft_id }}" class="toggle">
+
+      <!-- Clean header: no pills/bubbles -->
+      <label class="aircraft-header" for="air{{ a.aircraft_id }}">
+        <div class="aircraft-title">
+          {{ a.aircraft_id }} — {{ a.aircraft_size }} {{ a.manufacturer }}
+        </div>
+        <span class="arrow">⌄</span>
+      </label>
+
+      <div class="aircraft-body">
+
+        <!-- Purchase date moved INSIDE details -->
+        <div class="info-box">
+          <div class="info-title">פרטי מטוס</div>
+          <div class="info-grid">
+            <div><b>מזהה:</b> {{ a.aircraft_id }}</div>
+            <div><b>יצרן:</b> {{ a.manufacturer }}</div>
+            <div><b>גודל:</b> {{ a.aircraft_size }}</div>
+            <div><b>תאריך רכישה:</b> {{ a.purchase_date }}</div>
+          </div>
+        </div>
+
+        <div class="section-title">מחלקות ומושבים</div>
+        <table>
+          <thead>
+            <tr>
+              <th>מחלקה</th>
+              <th>שורות</th>
+              <th>עמודות</th>
+              <th>סה״כ מושבים</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% set cls = classes_map.get(a.aircraft_id, []) %}
+            {% if cls and cls|length > 0 %}
+              {% for c in cls %}
+                <tr>
+                  <td>{{ c.class_type }}</td>
+                  <td>{{ c.total_rows }}</td>
+                  <td>{{ c.total_columns }}</td>
+                  <td>{{ c.seats_count }}</td>
+                </tr>
+              {% endfor %}
+            {% else %}
+              <tr>
+                <td colspan="4" class="muted">לא נמצאו מחלקות למטוס זה.</td>
+              </tr>
+            {% endif %}
+          </tbody>
+        </table>
+
+        <div class="section-title">היסטוריית טיסות</div>
+        <table>
+          <thead>
+            <tr>
+              <th>טיסה</th>
+              <th>מוצא</th>
+              <th>יעד</th>
+              <th>המראה</th>
+              <th>סטטוס</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% set fls = flights_map.get(a.aircraft_id, []) %}
+            {% if fls and fls|length > 0 %}
+              {% for f in fls %}
+                <tr>
+                  <td>{{ f.flight_number }}</td>
+                  <td>{{ f.origin }}</td>
+                  <td>{{ f.destination }}</td>
+                  <td>{{ f.departure_time }}</td>
+                  <td>{{ f.flight_status }}</td>
+                </tr>
+              {% endfor %}
+            {% else %}
+              <tr>
+                <td colspan="5" class="muted">אין היסטוריית טיסות למטוס זה.</td>
+              </tr>
+            {% endif %}
+          </tbody>
+        </table>
+
+      </div>
+    </div>
+  {% endfor %}
+
+</div>
+
+{% endblock %}
