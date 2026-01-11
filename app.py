@@ -402,7 +402,75 @@ def order_confirmation(booking_id):
         return redirect(url_for("home_page"))
 
     return render_template("order_confirmation.html", order=order_data, seats=seats)
+@app.route("/manager_flight_view/<int:flight_number>")
+def manager_flight_view(flight_number):
+    if session.get("role") != "manager":
+        return redirect(url_for("manager_login"))
 
+    # מסנכרן לפני צפייה כדי שטיסות שעברו זמן יסומנו Completed
+    Flight.sync_completed_flights()
+
+    with DB.get_cursor() as cursor:
+        # --- Flight ---
+        cursor.execute("""
+            SELECT
+                flight_number,
+                aircraft_id,
+                origin,
+                destination,
+                departure_time,
+                arrival_time,
+                flight_status
+            FROM Flight
+            WHERE flight_number = %s
+        """, (flight_number,))
+        flight = cursor.fetchone()
+
+        if not flight:
+            return redirect(url_for("manager_flights"))
+
+        # עמוד תצוגה רק לטיסות Completed
+        if (flight.get("flight_status") or "").strip() != "Completed":
+            return redirect(url_for("manager_flights"))
+
+        # --- Aircraft ---
+        cursor.execute("""
+            SELECT *
+            FROM Aircraft
+            WHERE aircraft_id = %s
+        """, (flight["aircraft_id"],))
+        aircraft = cursor.fetchone()
+
+        # --- Flight Attendants ---
+        cursor.execute("""
+            SELECT fa.*
+            FROM FlightAttendant fa
+            JOIN flightattendants_on_flights fof
+              ON fa.id = fof.id
+            WHERE fof.flight_number = %s
+            ORDER BY fa.id
+        """, (flight_number,))
+        attendants = cursor.fetchall()
+
+        # --- Pilots (תיקון! pof.id ולא pof.pilot_id) ---
+        cursor.execute("""
+            SELECT p.*
+            FROM Pilot p
+            JOIN pilots_on_flights pof
+              ON p.id = pof.id
+            WHERE pof.flight_number = %s
+            ORDER BY p.id
+        """, (flight_number,))
+        pilots = cursor.fetchall()
+
+    return render_template(
+        "manager_flight_view.html",
+        flight=flight,
+        aircraft=aircraft,
+        attendants=attendants,
+        pilots=pilots
+    )
 
 if __name__ == '__main__':
     app.run(debug=True)
+
