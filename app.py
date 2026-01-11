@@ -106,31 +106,51 @@ def cancel_booking_execute(booking_id):
 # --- Authentication Routes ---
 
 @app.route('/registration', methods=['GET', 'POST'])
+@app.route('/registration', methods=['GET', 'POST'])
 def registration():
-    """User registration."""
+    # מאיפה המשתמש הגיע (למשל מה-checkout)
+    next_url = request.args.get("next") if request.method == "GET" else request.form.get("next")
+
     if request.method == 'POST':
         user, error = RegisteredUser.register(request.form)
-        if error:
-            return render_template('registration.html', error=error)
-        return redirect(url_for('home_page'))
-    return render_template('registration.html')
 
+        if error:
+            return render_template('registration.html', error=error, next=next_url)
+
+        session['user_id'] = user.email
+        session['role'] = 'customer'
+
+        if next_url:
+            return redirect(next_url)
+
+        return redirect(url_for('home_page'))
+
+    return render_template('registration.html', next=next_url)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login_page():
-    """Login route - For Registered Users (Customers) only."""
-    if request.method == 'POST':
-        email = request.form.get('username')
-        pwd = request.form.get('password')
-        user = RegisteredUser.login(email, pwd)
-        if user:
-            # בלקוחות רשומים המזהה הוא ה-email
-            session['user_id'] = user.email
-            session['role'] = 'customer'
-            return redirect(url_for('home_page'))
-        return render_template('login.html', error="Invalid Email or Password")
-    return render_template('login.html')
+    if request.method == 'GET':
+        next_url = request.args.get("next")
+        return render_template("login.html", error=None, next=next_url)
 
+    # POST
+    email = request.form.get("username")
+    pwd = request.form.get("password")
+    next_url = request.form.get("next")
+
+    user = RegisteredUser.login(email, pwd)
+    if user:
+        session["user_id"] = user.email
+        session["role"] = "customer"
+
+        # אם הגיע מ־checkout — חזור לשם
+        if next_url:
+            return redirect(next_url)
+
+        # אחרת רגיל
+        return redirect(url_for("home_page"))
+
+    return render_template("login.html", error="Invalid Email or Password", next=next_url)
 
 @app.route('/logout')
 def logout():
