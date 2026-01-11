@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, redirect, session, url_for
 from flask_session import Session
-from datetime import timedelta
+from datetime import timedelta, datetime
 
 from database import DB
 from models.customers import RegisteredUser
@@ -27,7 +27,7 @@ def home_page():
     origins, destinations = Flight.get_all_origins_and_destinations()
     return render_template('home_page.html', origins=origins, destinations=destinations)
 
-#
+
 @app.route('/search')
 def search_flights():
     """Flight search."""
@@ -45,20 +45,21 @@ def search_flights():
 def my_flights():
     if 'user_id' not in session:
         return redirect(url_for('login_page'))
+
     Booking.sync_past_bookings()
     all_bookings = Booking.get_user_flights(session['user_id'])
-    from datetime import datetime
+
     now = datetime.now()
     active_bookings = []
     history_bookings = []
+
     for b in all_bookings:
         if b['departure_time'] > now and b['booking_status'] == 'Active':
             active_bookings.append(b)
         else:
             history_bookings.append(b)
-    return render_template('my_flights.html',
-                           active=active_bookings,
-                           history=history_bookings)
+
+    return render_template('my_flights.html', active=active_bookings, history=history_bookings)
 
 # --- Booking Management Routes ---
 
@@ -83,8 +84,10 @@ def manage_booking(booking_id):
     """Booking details page."""
     booking = Booking(booking_id, None, None)
     order_data, seats = booking.get_details()
+
     if order_data:
         return render_template('manage_booking.html', order=order_data, seats=seats)
+
     return redirect(url_for('home_page'))
 
 # --- Cancellation Flow ---
@@ -106,7 +109,6 @@ def cancel_booking_execute(booking_id):
 # --- Authentication Routes ---
 
 @app.route('/registration', methods=['GET', 'POST'])
-@app.route('/registration', methods=['GET', 'POST'])
 def registration():
     # מאיפה המשתמש הגיע (למשל מה-checkout)
     next_url = request.args.get("next") if request.method == "GET" else request.form.get("next")
@@ -127,6 +129,7 @@ def registration():
 
     return render_template('registration.html', next=next_url)
 
+
 @app.route('/login', methods=['GET', 'POST'])
 def login_page():
     if request.method == 'GET':
@@ -143,14 +146,13 @@ def login_page():
         session["user_id"] = user.email
         session["role"] = "customer"
 
-        # אם הגיע מ־checkout — חזור לשם
         if next_url:
             return redirect(next_url)
 
-        # אחרת רגיל
         return redirect(url_for("home_page"))
 
     return render_template("login.html", error="Invalid Email or Password", next=next_url)
+
 
 @app.route('/logout')
 def logout():
@@ -165,7 +167,6 @@ def seat_selection(flight_id):
     flight_id_int = int(flight_id)
     seats = Flight.get_seat_map(flight_id_int)
 
-    # Dynamic columns/rows from actual data
     max_col = 0
     max_row = 0
     if seats:
@@ -180,19 +181,15 @@ def seat_selection(flight_id):
         max_row=max_row
     )
 
+
 @app.route('/process_booking', methods=['POST'])
 def process_booking():
-    """
-    Calculates total price by class_type per selected seat.
-    No Seat.seat_number/base_price usage.
-    """
     flight_num = request.form.get('flight_number')
     selected_seats = request.form.getlist('selected_seats')  # e.g. Economy-2-3
 
     if not selected_seats:
         return redirect(url_for('seat_selection', flight_id=flight_num))
 
-    # Recommended: keep the user's choices for the checkout step as well
     session["flight_number"] = flight_num
     session["selected_seats"] = selected_seats
 
@@ -226,17 +223,16 @@ def process_booking():
         details=details,
         total=total_price,
         flight_number=flight_num,
-        selected_seats=selected_seats   # REQUIRED for the updated payment_summary.html
+        selected_seats=selected_seats
     )
+
+# --- Manager Routes ---
 
 @app.route("/manager_login", methods=["GET", "POST"])
 def manager_login():
     if request.method == "POST":
-        emp_id_raw = request.form.get("id", "")
-        password = request.form.get("password", "")
-
-        emp_id_raw = emp_id_raw.strip()
-        password = password.strip()
+        emp_id_raw = (request.form.get("id", "") or "").strip()
+        password = (request.form.get("password", "") or "").strip()
 
         if not emp_id_raw.isdigit():
             return render_template("manager_login.html", error="תעודת עובד חייבת להיות מספר")
@@ -249,23 +245,63 @@ def manager_login():
             session["role"] = "manager"
             session["first_name"] = manager.first_name_he
             session["last_name"] = manager.last_name_he
-            return redirect("/manager_dashboard")
+            return redirect(url_for("manager_dashboard"))
 
         return render_template("manager_login.html", error="תעודת עובד או סיסמה שגויים")
 
     return render_template("manager_login.html")
 
+
 @app.route("/manager_dashboard")
 def manager_dashboard():
+    if session.get("role") != "manager":
+        return redirect(url_for("manager_login"))
+    return render_template("manager_dashboard.html")
+
+
+@app.route("/manager_flights")
+def manager_flights():
     # הגנה: רק מנהל יכול להיכנס
     if session.get("role") != "manager":
-        return redirect("/manager_login")
+        return redirect(url_for("manager_login"))
 
-    return render_template("manager_dashboard.html")
-@app.route("/checkout", methods=["GET", "POST"])
+    # 1) קודם כל לסנכרן טיסות שנחתו -> Completed
+    Flight.sync_completed_flights()
+
+    # 2) פילטר לפי סטטוס (אופציונלי)
+    selected_status = request.args.get("status", "").strip()
+
+    query = """
+        SELECT
+            flight_number,
+            aircraft_id,
+            origin,
+            destination,
+            departure_time,
+            arrival_time,
+            flight_status
+        FROM Flight
+    """
+    params = ()
+
+    if selected_status:
+        query += " WHERE flight_status = %s"
+        params = (selected_status,)
+
+    query += " ORDER BY departure_time DESC"
+
+    with DB.get_cursor() as cursor:
+        cursor.execute(query, params)
+        flights = cursor.fetchall()
+
+    return render_template(
+        "manager_flights.html",
+        flights=flights,
+        selected_status=selected_status
+    )
+
+@app.route("/checkדout", methods=["GET", "POST"])
 def checkout():
-    # GET: מגיע עם querystring: ?flight_number=1360&selected_seats=...
-    # POST: מגיע מהטופס עם hidden inputs
     flight_number = (
         request.form.get("flight_number")
         if request.method == "POST"
@@ -284,7 +320,6 @@ def checkout():
     flight_id = int(flight_number)
     details, total = Booking.get_pricing_for_selected_seats(flight_id, selected_seats)
 
-    # ---- prefill + lock all fields when logged in ----
     prefill = {"first_name": "", "last_name": "", "email": "", "lock_fields": False}
 
     if session.get("role") == "customer" and session.get("user_id"):
@@ -316,16 +351,13 @@ def checkout():
             error=None,
         )
 
-    # POST
-    # אם נעול (מחובר) — אל תסמוך על מה שהגיע מהטופס, תיקח מה-prefill
     lock = prefill["lock_fields"]
     first_name = prefill["first_name"] if lock else (request.form.get("first_name") or "").strip()
-    last_name  = prefill["last_name"]  if lock else (request.form.get("last_name") or "").strip()
-    email      = prefill["email"]      if lock else (request.form.get("email") or "").strip().lower()
+    last_name = prefill["last_name"] if lock else (request.form.get("last_name") or "").strip()
+    email = prefill["email"] if lock else (request.form.get("email") or "").strip().lower()
 
     payment_method = request.form.get("payment_method") or "card"
 
-    # Guest מנסה להזמין עם מייל רשום
     if session.get("role") != "customer" and RegisteredUser.email_exists(email):
         return render_template(
             "checkout.html",
@@ -360,6 +392,7 @@ def checkout():
 
     return redirect(url_for("order_confirmation", booking_id=created_id))
 
+
 @app.route("/order_confirmation/<booking_id>")
 def order_confirmation(booking_id):
     booking = Booking(booking_id, None, None)
@@ -369,5 +402,7 @@ def order_confirmation(booking_id):
         return redirect(url_for("home_page"))
 
     return render_template("order_confirmation.html", order=order_data, seats=seats)
+
+
 if __name__ == '__main__':
     app.run(debug=True)

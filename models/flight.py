@@ -16,16 +16,42 @@ class Flight:
         with DB.get_cursor() as cursor:
             cursor.execute("SELECT DISTINCT origin FROM Flight ORDER BY origin ASC")
             origins = cursor.fetchall()
+
             cursor.execute("SELECT DISTINCT destination FROM Flight ORDER BY destination ASC")
             destinations = cursor.fetchall()
+
             return origins, destinations
+
+    # ------------------------------------------------------------
+    # NEW: mark flights as Completed when arrival_time has passed
+    # ------------------------------------------------------------
+    @staticmethod
+    def sync_completed_flights() -> int:
+        """
+        Sets Flight.flight_status = 'Completed' for flights that already landed.
+        Works only for rows where arrival_time IS NOT NULL.
+        Returns number of rows updated.
+        """
+        with DB.get_cursor() as cursor:
+            cursor.execute("""
+                UPDATE Flight
+                SET flight_status = 'Completed'
+                WHERE arrival_time IS NOT NULL
+                  AND arrival_time < NOW()
+                  AND flight_status <> 'Completed'
+            """)
+            return cursor.rowcount
 
     @staticmethod
     def search(origin, destination):
         """
-        Search only ACTIVE flights.
-        (So 'Full' flights will not appear.)
+        Search flights for customers:
+        show only flights that are not Completed and not Full.
+        (Usually you want only bookable flights)
         """
+        # לפני חיפוש אפשר לסנכרן טיסות שנחתו (לא חובה, אבל מומלץ)
+        Flight.sync_completed_flights()
+
         query = """
             SELECT *
             FROM Flight
@@ -81,7 +107,7 @@ class Flight:
             return cursor.fetchall()
 
     # ------------------------------------------------------------
-    # NEW: Flight capacity status updater (Full <-> Active)
+    # Flight capacity status updater (Full <-> Active)
     # ------------------------------------------------------------
     @staticmethod
     def update_status_by_capacity(flight_number: int) -> str | None:
@@ -90,7 +116,8 @@ class Flight:
           - 'Full'   if sold seats == total seats
           - 'Active' if there is at least 1 free seat
 
-        Returns the new status or None if flight not found.
+        IMPORTANT:
+        If the flight already Completed, we do NOT change it back.
         """
         if not flight_number:
             return None
@@ -104,16 +131,20 @@ class Flight:
             if not f or f.get("aircraft_id") is None:
                 return None
 
+            current_status = (f.get("flight_status") or "").strip()
+
+            # אם כבר נחתה/Completed — לא נוגעים
+            if current_status == "Completed":
+                return "Completed"
+
             aircraft_id = int(f["aircraft_id"])
 
-            # total seats in aircraft
             cursor.execute(
                 "SELECT COUNT(*) AS total_seats FROM Seat WHERE aircraft_id = %s",
                 (aircraft_id,)
             )
             total = int((cursor.fetchone() or {}).get("total_seats") or 0)
 
-            # sold seats for this flight
             cursor.execute(
                 "SELECT COUNT(*) AS sold_seats FROM Ticket WHERE flight_number = %s",
                 (int(flight_number),)
@@ -122,8 +153,7 @@ class Flight:
 
             new_status = "Full" if total > 0 and sold >= total else "Active"
 
-            # Update only if changed (optional but cleaner)
-            if (f.get("flight_status") or "").strip() != new_status:
+            if current_status != new_status:
                 cursor.execute(
                     "UPDATE Flight SET flight_status = %s WHERE flight_number = %s",
                     (new_status, int(flight_number))
