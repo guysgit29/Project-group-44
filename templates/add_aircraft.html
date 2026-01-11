@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}הוספת מטוס חדש{% endblock %}
+{% block content %}
+
+<style>
+  .wrap{max-width:900px;margin:40px auto;background:#fff;padding:24px;border-radius:14px;box-shadow:0 8px 24px rgba(0,0,0,.08)}
+  .title{font-size:28px;font-weight:800;margin:0 0 18px 0}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .field{display:grid;gap:6px}
+  label{font-weight:800}
+  input, select{padding:12px;border-radius:10px;border:1px solid #ddd;outline:none}
+  .card{margin-top:18px;padding:16px;border:1px solid #eee;border-radius:12px;background:#fafafa}
+  .card h3{margin:0 0 12px 0}
+  .actions{margin-top:18px;display:flex;gap:12px;justify-content:flex-start;flex-wrap:wrap}
+  .btn{padding:12px 18px;border-radius:10px;border:1px solid #111;background:#f2f2f2;color:#111;text-decoration:none;font-weight:800;cursor:pointer}
+  .btn.primary{background:#111;color:#fff}
+  .error{background:#ffecec;border:1px solid #ffb3b3;color:#8a0000;padding:10px 12px;border-radius:10px;margin-bottom:12px;font-weight:800}
+</style>
+
+<div class="wrap">
+  <div class="title">הוספת מטוס חדש</div>
+
+  {% if error %}
+    <div class="error">{{ error }}</div>
+  {% endif %}
+
+  <form method="POST">
+    <div class="grid">
+      <div class="field">
+        <label>יצרן</label>
+        <select name="manufacturer" required>
+          <option value="" selected disabled>בחר יצרן</option>
+          {% for m in manufacturers %}
+            <option value="{{ m }}">{{ m }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="field">
+        <label>תאריך רכישה</label>
+        <input type="date" name="purchase_date" required>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>מחלקת נוסעים (Economy) – חובה</h3>
+      <div class="grid">
+        <div class="field">
+          <label>מספר שורות</label>
+          <input type="number" name="economy_rows" min="1" required>
+        </div>
+        <div class="field">
+          <label>מספר עמודות</label>
+          <input type="number" name="economy_cols" min="1" required>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>מחלקת עסקים (Business) – אופציונלי</h3>
+      <div style="color:#555;margin-bottom:12px;">
+        אם משאירים ריק – המטוס יוגדר כ־Small. אם ממלאים – חייבים גם שורות וגם עמודות ואז יוגדר כ־Big.
+      </div>
+      <div class="grid">
+        <div class="field">
+          <label>מספר שורות</label>
+          <input type="number" name="business_rows" min="1" placeholder="לא חובה">
+        </div>
+        <div class="field">
+          <label>מספר עמודות</label>
+          <input type="number" name="business_cols" min="1" placeholder="לא חובה">
+        </div>
+      </div>
+    </div>
+
+    <div class="actions">
+      <a class="btn" href="{{ url_for('aircrafts') }}">חזרה לניהול מטוסים</a>
+      <button class="btn primary" type="submit">המשך לסיכום</button>
+    </div>
+  </form>
+</div>
+
+{% endblock %}
