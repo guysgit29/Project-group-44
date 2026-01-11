@@ -4,7 +4,7 @@
 
 {% block content %}
     <style>
-        .info-section { border: 1px solid #ddd; padding: 15px; margin: 15px 0; border-radius: 8px; background-color: #f9f9f9; }
+        .info-section { border: 1px solid #ddd; padding: 15px; margin: 15px 0; border-radius: 8px; background-color: #ffffff; }
         .seat-item { background: #007bff; color: white; padding: 4px 8px; border-radius: 4px; display: inline-block; margin: 2px; }
         .price-tag { font-size: 1.4em; color: #28a745; font-weight: bold; }
         .btn { padding: 10px 20px; cursor: pointer; font-size: 1.1em; border-radius: 5px; text-decoration: none; display: inline-block; font-weight: bold; }
@@ -14,8 +14,7 @@
 
     <div style="max-width: 800px; margin: 0 auto; padding: 20px;">
         <h1 style="text-align: center;">פרטי הזמנה: {{ order.booking_id }}</h1>
-        <h3>שלום, {{ order.registered_email or order.guest_email or order.email }}</h3>
-
+        <h3>שלום, {{ order.first_name }}</h3>
         <div class="info-section">
             <h2>✈️ פרטי הטיסה:</h2>
             <p><strong>מספר טיסה:</strong> {{ order.flight_number }}</p>

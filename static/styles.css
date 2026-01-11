@@ -1,92 +1,783 @@
-/* ייבוא פונט מקצועי מ-Google */
-@import url('https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;600;700&display=swap');
+/* =========================================================
+   FLYTAU – Unified styles.css (Design System + Minimal Overrides)
+   - Merged your OVERRIDES + styles.css
+   - Removed duplicates (kept the LAST behavior)
+   - Does NOT remove any styling intent; only de-duplicates / consolidates
+   File: /static/styles.css
+   ========================================================= */
 
-:root {
-    --primary-navy: #1a2a6c;     /* כחול עמוק "רציני" */
-    --accent-gold: #b39359;      /* צבע דגש יוקרתי (אופציונלי) */
-    --text-main: #2d3436;
-    --bg-soft: #f1f3f6;
-    --white: #ffffff;
-    --shadow-sm: 0 2px 4px rgba(0,0,0,0.05);
-    --shadow-md: 0 10px 15px -3px rgba(0,0,0,0.1);
+/* -----------------------------
+   Design Tokens
+----------------------------- */
+:root{
+  --bg: #f6f9ff;
+  --bg2: #eef5ff;
+  --surface: #ffffff;
+  --text: #0f172a;
+  --muted: #64748b;
+  --border: #e2e8f0;
+
+  --primary: #0b3d91;        /* navy */
+  --primary2: #1d4ed8;       /* royal hover */
+  --accent: #0284c7;         /* sky */
+  --accent2: #06b6d4;
+
+  --success: #16a34a;
+  --warning: #f59e0b;
+  --danger:  #ef4444;
+
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, .06);
+  --shadow-md: 0 10px 28px rgba(15, 23, 42, .10);
+  --shadow-lg: 0 18px 40px rgba(15, 23, 42, .14);
+
+  --radius: 14px;
+
+  /* OVERRIDES tokens (centering) */
+  --page-max: 1200px;
+  --page-pad: 24px;
 }
 
-body {
-    font-family: 'Assistant', sans-serif;
-    background-color: var(--bg-soft);
-    margin: 0;
-    color: var(--text-main);
-    line-height: 1.6;
+/* -----------------------------
+   Reset / Base
+----------------------------- */
+*{ box-sizing: border-box; }
+
+html, body{ height: 100%; }
+
+html{
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
+               Arial, "Noto Sans Hebrew", "Noto Sans", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* קונטיינר רציני עם רווחים נכונים */
-.container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 2rem;
+body{
+  margin: 0;
+  color: var(--text);
+  background: #f6f9ff; /* keep uniform background (no mid-page gradient shift) */
 }
 
-/* כפתור מקצועי עם Transition */
-.btn-premium {
-    background-color: var(--primary-navy);
-    color: white;
-    padding: 10px 24px;
-    border-radius: 6px;
-    text-decoration: none;
-    font-weight: 600;
-    transition: all 0.3s ease;
-    border: none;
-    cursor: pointer;
-    display: inline-block;
+/* RTL – keep direction, don’t force weird centering */
+[dir="rtl"]{ text-align: right; }
+
+a{ color: inherit; text-decoration: none; }
+a:hover{ text-decoration: none; }
+
+select, input, button{ font-family: inherit; }
+
+.muted{ color: var(--muted) !important; }
+
+/* -----------------------------
+   Global Layout / Centering
+   (Consolidated from OVERRIDES)
+----------------------------- */
+.flytau-app{
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
 
-.btn-premium:hover {
-    background-color: #0d1a4d;
-    transform: translateY(-1px);
-    box-shadow: var(--shadow-md);
+/* main grows, footer pushed down naturally */
+.flytau-main{
+  flex: 1;
+  padding: 22px 0 48px;
 }
 
-/* עיצוב טבלאות מודרני - ללא קווים גסים */
-.professional-table {
+/* Unified page width: container + main inner wrapper */
+.container{
+  width: min(var(--page-max), calc(100% - (var(--page-pad) * 2)));
+  margin-left: auto;
+  margin-right: auto;
+  padding: 0; /* we use page-pad via width calc to avoid double padding */
+}
+
+/* Responsive padding token */
+@media (max-width: 720px){
+  :root{ --page-pad: 14px; }
+}
+
+/* -----------------------------
+   Header / Nav
+----------------------------- */
+.flytau-header{
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  background: rgba(255,255,255,.82);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border-bottom: 1px solid rgba(226,232,240,.9);
+  box-shadow: var(--shadow-sm);
+}
+
+.flytau-nav{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 0; /* container handles side spacing */
+  width: min(var(--page-max), calc(100% - (var(--page-pad) * 2)));
+  margin: 0 auto;
+}
+
+.flytau-brand{
+  font-size: 1.6rem;
+  font-weight: 900;
+  letter-spacing: -0.5px;
+  color: var(--primary) !important;
+}
+.flytau-brand span{
+  color: var(--accent) !important;
+  margin-inline-start: 2px;
+}
+
+.flytau-menu{
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+}
+
+.nav-link{
+  font-weight: 800;
+  color: var(--text) !important;
+  padding: 8px 10px;
+  border-radius: 10px;
+  transition: background .15s ease, color .15s ease;
+}
+.nav-link:hover{
+  background: rgba(29, 78, 216, .10) !important;
+  color: var(--primary2) !important;
+}
+.nav-link.subtle{ color: var(--muted) !important; }
+
+.nav-text{
+  color: var(--muted) !important;
+  font-weight: 800;
+  padding: 8px 10px;
+}
+
+/* -----------------------------
+   Footer (normal, not overlapping)
+----------------------------- */
+.site-footer{
+  position: static !important;
+  width: 100%;
+  margin-top: 28px;
+  padding: 18px 0;
+  background: linear-gradient(135deg, var(--primary), #07306f);
+  color: rgba(255,255,255,0.92);
+  box-shadow: 0 -10px 26px rgba(11, 61, 145, 0.18);
+}
+
+.footer-inner{
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.site-footer .muted{
+  color: rgba(255,255,255,.78) !important;
+}
+
+/* -----------------------------
+   Cards / Sections
+----------------------------- */
+.card, .flytau-card{
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius) !important;
+  box-shadow: var(--shadow-md) !important;
+}
+
+.section{
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius) !important;
+  padding: 18px !important;
+  box-shadow: var(--shadow-sm) !important;
+}
+
+/* Allow common blocks to center without breaking layouts */
+.hero,
+.search-box,
+.card,
+.panel,
+.form-card{
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* -----------------------------
+   Buttons (site-wide override)
+----------------------------- */
+button,
+input[type="submit"],
+input[type="button"],
+a.btn,
+.btn,
+.btn-premium{
+  appearance: none;
+  -webkit-appearance: none;
+  border: 1px solid transparent !important;
+  border-radius: 12px !important;
+  padding: 10px 16px !important;
+  font-weight: 900 !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  transition: transform .12s ease, box-shadow .12s ease, background .12s ease, border-color .12s ease !important;
+  text-decoration: none !important;
+  line-height: 1.1 !important;
+}
+
+.btn-primary,
+.btn.btn-primary,
+.btn-premium,
+a.btn-primary{
+  background: var(--primary) !important;
+  color: #fff !important;
+  border-color: var(--primary) !important;
+  box-shadow: 0 10px 22px rgba(11, 61, 145, .18) !important;
+}
+.btn-primary:hover,
+.btn.btn-primary:hover,
+.btn-premium:hover,
+a.btn-primary:hover{
+  background: var(--primary2) !important;
+  border-color: var(--primary2) !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 16px 30px rgba(11, 61, 145, .22) !important;
+}
+
+.btn-secondary,
+.btn.secondary,
+a.btn.secondary{
+  background: #f1f5f9 !important;
+  color: var(--text) !important;
+  border-color: var(--border) !important;
+  box-shadow: var(--shadow-sm) !important;
+}
+.btn-secondary:hover,
+.btn.secondary:hover,
+a.btn.secondary:hover{
+  background: #e9effa !important;
+  border-color: #cfe0ff !important;
+}
+
+.btn-danger,
+a.btn-danger{
+  background: #fee2e2 !important;
+  color: #991b1b !important;
+  border-color: #fecaca !important;
+}
+.btn-danger:hover,
+a.btn-danger:hover{
+  background: #fecaca !important;
+  border-color: #fca5a5 !important;
+}
+
+/* -----------------------------
+   Forms / Inputs
+----------------------------- */
+label{
+  font-weight: 900 !important;
+  color: var(--text) !important;
+}
+
+/* Apply width:100% only to normal fields, NOT radios/checkboxes */
+input:not([type="radio"]):not([type="checkbox"]),
+select,
+textarea{
+  width: 100%;
+  padding: 10px 12px !important;
+  border-radius: 12px !important;
+  border: 1px solid var(--border) !important;
+  background: #fff !important;
+  color: var(--text) !important;
+  outline: none !important;
+  box-shadow: none !important;
+  font: inherit !important;
+}
+
+input:focus,
+select:focus,
+textarea:focus{
+  border-color: rgba(29, 78, 216, .55) !important;
+  box-shadow: 0 0 0 4px rgba(29, 78, 216, .14) !important;
+}
+
+select, option{
+  color: var(--text) !important;
+  background: #fff !important;
+}
+
+input[readonly]{
+  background: #f3f6fb !important;
+  color: #334155 !important;
+  cursor: not-allowed !important;
+}
+
+/* Keep forms centered but not destructive */
+form{
+  max-width: 900px;
+  margin-left: auto;
+  margin-right: auto;
+}
+@media (max-width: 720px){
+  form{ max-width: 100%; }
+}
+
+/* -----------------------------
+   Checkout Payment Options (RTL fix)
+----------------------------- */
+.pay-options{
+  display: grid;
+  gap: 10px;
+}
+
+.pay-option{
+  display: flex;
+  align-items: center;
+  justify-content: space-between; /* text right, radio left in RTL */
+  gap: 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 14px;
+  background: #fff;
+}
+
+.pay-option span{
+  flex: 1;
+  font-weight: 900;
+  text-align: right;
+}
+
+.pay-option input[type="radio"]{
+  width: auto !important;
+  flex: 0 0 auto;
+  margin: 0 !important;
+  transform: scale(1.05);
+}
+
+/* -----------------------------
+   Tables
+----------------------------- */
+table{
+  width: 100% !important;
+  border-collapse: collapse !important;
+  overflow: hidden !important;
+  border-radius: 12px !important;
+  border: 1px solid var(--border) !important;
+  background: #fff !important;
+  box-shadow: var(--shadow-sm) !important;
+}
+
+th, td{
+  padding: 10px 12px !important;
+  border-bottom: 1px solid var(--border) !important;
+  text-align: right !important;
+  color: var(--text) !important;
+  font-weight: 800;
+}
+th{
+  background: #f1f6ff !important;
+  font-weight: 900 !important;
+}
+tr:last-child td{ border-bottom: none !important; }
+
+/* -----------------------------
+   Home Page helpers (search layout)
+----------------------------- */
+.hero{
+  text-align: center !important;
+  padding: 44px 0 !important;
+}
+.hero h1{
+  margin: 0 0 10px;
+  font-size: clamp(1.8rem, 3.2vw, 2.6rem);
+  font-weight: 900;
+  letter-spacing: -0.5px;
+  color: var(--text);
+}
+.hero p{
+  margin: 0;
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.home-search{
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.home-search-grid{
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  align-items: end;
+}
+
+.home-search-actions{
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: center;
+  margin-top: 8px;
+}
+
+@media (max-width: 900px){
+  .flytau-nav{
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .flytau-menu{
+    justify-content: center;
+  }
+
+  .home-search-grid{
+    grid-template-columns: 1fr;
+  }
+  .home-search-actions{
+    justify-content: stretch;
+  }
+  .home-search-actions .btn,
+  .home-search-actions button{
     width: 100%;
-    border-collapse: separate;
-    border-spacing: 0 8px; /* ריווח בין שורות */
-    margin: 20px 0;
+  }
 }
 
-.professional-table th {
-    background: transparent;
-    color: #636e72;
-    text-transform: uppercase;
-    font-size: 0.85rem;
-    letter-spacing: 1px;
-    padding: 15px;
+/* “Card” style for centered home search (kept) */
+.home-search-wrap{
+  max-width: 900px;
+  margin: 0 auto;
+}
+.home-search-card{
+  background: #ffffff;
+  border-radius: 22px;
+  padding: 36px 42px;
+  box-shadow: 0 20px 60px rgba(15, 23, 42, 0.10);
+  border: 1px solid #e2e8f0;
+}
+.search-row{
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  margin-top: 24px;
+}
+.search-field{
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.search-field label{
+  font-weight: 800;
+  color: #0f172a;
+}
+.search-field select{
+  height: 56px;
+  border-radius: 14px;
+  padding: 0 14px;
+  font-size: 16px;
+}
+.home-hero{
+  text-align: center;
+  padding: 60px 0 20px;
 }
 
-.professional-table tr {
-    background: var(--white);
-    box-shadow: var(--shadow-sm);
-    transition: transform 0.2s;
+/* Ensure we do NOT accidentally paint backgrounds per-section */
+.flytau-main,
+.container,
+section,
+.section,
+.home-search{
+  background: transparent !important;
 }
 
-.professional-table tr:hover {
-    transform: scale(1.01);
+/* -----------------------------
+   Seat Selection – CTA (keep)
+----------------------------- */
+.seat-actions{
+  margin: 34px 0 10px;
+  display:flex;
+  justify-content:center;
 }
 
-.professional-table td {
-    padding: 15px;
-    border: none;
+.btn-continue{
+  font-size: 1.15rem !important;
+  padding: 16px 42px !important;
+  border-radius: 18px !important;
+  background: linear-gradient(135deg, #0b3d91, #1d4ed8) !important;
+  border: 1px solid rgba(11, 61, 145, .25) !important;
+  box-shadow: 0 18px 44px rgba(11, 61, 145, 0.30) !important;
+  min-width: 320px;
+}
+.btn-continue:hover{
+  transform: translateY(-2px) !important;
+  box-shadow: 0 22px 54px rgba(11, 61, 145, 0.38) !important;
 }
 
-.professional-table td:first-child { border-radius: 0 8px 8px 0; }
-.professional-table td:last-child { border-radius: 8px 0 0 8px; }
-
-/* תגיות סטטוס מודרניות */
-.badge {
-    padding: 5px 12px;
-    border-radius: 20px;
-    font-size: 0.85rem;
-    font-weight: bold;
+/* Seat selection helpers (kept as-is; only one set) */
+.seat-page{
+  max-width: 1100px;
+  margin: 0 auto;
 }
-.badge-active { background: #e3fcef; color: #00875a; }
-.badge-history { background: #f4f5f7; color: #42526e; }
+
+.seat-class-tabs{
+  display:flex;
+  justify-content:center;
+  gap:10px;
+  margin: 14px 0 18px;
+  flex-wrap: wrap;
+}
+.seat-class-tabs a,
+.seat-class-tabs button{
+  padding: 10px 14px !important;
+  border-radius: 999px !important;
+  border: 1px solid var(--border) !important;
+  background: #fff !important;
+  font-weight: 900 !important;
+  box-shadow: var(--shadow-sm) !important;
+}
+.seat-class-tabs .active{
+  background: rgba(11, 61, 145, .10) !important;
+  border-color: rgba(11, 61, 145, .22) !important;
+}
+
+.seat-grid{
+  display:grid;
+  grid-template-columns: repeat(4, minmax(150px, 1fr));
+  gap: 14px;
+  justify-items: stretch;
+  align-items: stretch;
+  margin: 18px auto 10px;
+}
+
+.seat{
+  border-radius: 10px;
+  border: 2px solid var(--border);
+  background: #fff;
+  padding: 10px 12px;
+  text-align: center;
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  user-select: none;
+  transition: transform .12s ease, box-shadow .12s ease, background .12s ease, border-color .12s ease;
+}
+.seat:hover{
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.seat .seat-no{
+  font-weight: 900;
+  font-size: 1.05rem;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.seat .seat-price{
+  font-weight: 900;
+  color: var(--text);
+  direction: ltr;
+}
+
+/* Economy – light blue */
+.seat.economy{
+  border-color: #60a5fa;
+  background: #eff6ff;
+}
+.seat.economy:hover{
+  border-color: #3b82f6;
+  background: #e0f2fe;
+}
+
+/* Business – royal/premium blue */
+.seat.business{
+  border-color: #1d4ed8;
+  background: #eaf2ff;
+}
+.seat.business:hover{
+  border-color: #0b3d91;
+  background: #dbeafe;
+}
+
+/* unavailable */
+.seat.unavailable,
+.seat.disabled{
+  border-color: #e5e7eb !important;
+  background: #f3f4f6 !important;
+  color: #9ca3af !important;
+  cursor: not-allowed !important;
+  box-shadow: none !important;
+  transform: none !important;
+  opacity: .9;
+}
+
+/* selected (if you add class selected) */
+.seat.selected.economy{
+  background: #3b82f6 !important;
+  border-color: #1d4ed8 !important;
+  color: #fff !important;
+}
+.seat.selected.business{
+  background: #0b3d91 !important;
+  border-color: #0b3d91 !important;
+  color: #fff !important;
+}
+.seat.selected .seat-no,
+.seat.selected .seat-price{
+  color: #fff !important;
+}
+
+@media (max-width: 900px){
+  .seat-grid{
+    grid-template-columns: repeat(2, minmax(150px, 1fr));
+  }
+  .btn-continue{
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+.page-wrap{
+  width:100%;
+  max-width:1200px;
+  margin:0 auto;
+}
+
+.checkout{
+  width:100%;
+  max-width:1050px;
+  margin:0 auto;
+  justify-items:stretch;
+  align-items:start;
+}
+
+.checkout .card{
+  width:100%;
+  max-width:none;
+}
+
+.checkout form{
+  max-width:none !important;
+  margin:0 !important;
+}
+
+.checkout .field{
+  width:100%;
+}
+
+@media (max-width:900px){
+  .page-wrap{
+    padding:24px 14px;
+  }
+  .checkout{
+    max-width:100%;
+  }
+}
+
+.manage-booking-page,
+.checkout-page {
+  background: #ffffff;
+  border-radius: 22px;
+  padding: 36px 40px;
+  max-width: 900px;
+  margin: 40px auto;
+  box-shadow: 0 20px 50px rgba(15,23,42,.10);
+}
+
+/* Make all pages clean white cards on light background */
+
+body{
+  background: #f6f9ff;
+}
+
+.flytau-main,
+.container,
+main{
+  background: transparent !important;
+}
+
+/* כל הדפים המרכזיים יהיו לבנים ונקיים */
+.results-container,
+.section,
+.card,
+.flytau-card,
+.form-card,
+.panel,
+.search-box,
+.checkout-card,
+.booking-card,
+.manage-card{
+  background: #ffffff !important;
+  border-radius: 16px;
+  box-shadow: 0 12px 32px rgba(15,23,42,0.08);
+}
+
+/* טפסים כמו חיפוש הזמנה */
+form{
+  background: transparent !important;
+}
+
+/* ביטול אפור פנימי שהתווסף ע"י Lovable */
+div[class*="bg-"],
+div[class*="background"]{
+  background: transparent !important;
+}
+
+/* רקע כללי של האתר */
+body{
+  background: #f6f9ff;
+}
+
+/* המעטפת הראשית תמיד שקופה */
+.flytau-main,
+main,
+.container{
+  background: transparent !important;
+}
+
+/* כל בלוק תוכן מרכזי = לבן */
+.results-container,
+.section,
+.card,
+.flytau-card,
+.form-card,
+.panel,
+.search-box,
+.checkout-card,
+.booking-card,
+.manage-card,
+.home-search,
+.home-search-card{
+  background: #ffffff !important;
+  border-radius: 18px;
+  box-shadow: 0 16px 40px rgba(15,23,42,0.08);
+}
+
+/* ביטול רקעים אפורים פנימיים ש-Lovable שתל */
+[class*="bg-"],
+[class*="background"],
+[class*="gray"],
+[class*="grey"]{
+  background: transparent !important;
+}
+
+/* Cancel confirm – make danger button same size & shape as secondary */
+.cancel-confirm .btn-danger,
+.cancel-confirm a.btn-danger,
+.cancel-confirm button.btn-danger {
+  padding: 10px 16px !important;
+  border-radius: 12px !important;
+  font-weight: 900 !important;
+  min-height: 44px;
+  min-width: 160px;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-shadow: var(--shadow-sm) !important;
+}
+

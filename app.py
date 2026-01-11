@@ -166,19 +166,20 @@ def seat_selection(flight_id):
     flight_id_int = int(flight_id)
     seats = Flight.get_seat_map(flight_id_int)
 
-    # Dynamic columns/rows from actual data
+    origin = request.args.get("origin", "")
+    destination = request.args.get("destination", "")
+
     max_col = 0
-    max_row = 0
     if seats:
         max_col = max(int(s["column_number"]) for s in seats)
-        max_row = max(int(s["row_num"]) for s in seats)
 
     return render_template(
         "seat_selection.html",
         flight_number=flight_id_int,
+        origin=origin,
+        destination=destination,
         all_seats=seats,
-        max_col=max_col,
-        max_row=max_row
+        max_col=max_col
     )
 
 @app.route('/process_booking', methods=['POST'])
