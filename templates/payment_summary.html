@@ -145,9 +145,19 @@
     <div class="actions">
       <a class="btn" href="{{ url_for('seat_selection', flight_id=flight_number) }}">חזרה לבחירת מקומות</a>
 
+      {# ------------------------------------------------------------
+         Updated: Option 2 checkout (no path param).
+         We call /checkout and pass flight_number + selected_seats as query params.
+         Requires: you pass selected_seats into this template (and ideally save to session too).
+         ------------------------------------------------------------ #}
+
+      {% set seats_qs = ('selected_seats=' ~ (selected_seats|join('&selected_seats='))) if selected_seats else '' %}
+      {% set checkout_url = url_for('checkout') ~ '?flight_number=' ~ flight_number ~ (('&' ~ seats_qs) if seats_qs else '') %}
+
       {% if session.get('role') == 'customer' and session.get('user_id') %}
         {# Logged-in customer: go directly to checkout #}
-        <form action="{{ url_for('checkout', flight_id=flight_number) }}" method="GET" style="margin:0;">
+        <form action="{{ url_for('checkout') }}" method="GET" style="margin:0;">
+          <input type="hidden" name="flight_number" value="{{ flight_number }}">
           {% for s in selected_seats %}
             <input type="hidden" name="selected_seats" value="{{ s }}">
           {% endfor %}
@@ -155,10 +165,7 @@
         </form>
 
       {% else %}
-        {# Guest: show 3 options here (no continue_booking page) #}
-        {# Build checkout url with seats #}
-        {% set checkout_url = url_for('checkout', flight_id=flight_number) ~ '?' ~ ('selected_seats=' ~ (selected_seats|join('&selected_seats='))) %}
-
+        {# Guest: show login/registration options, or continue as guest #}
         <a class="btn" href="{{ url_for('login_page', next=checkout_url) }}">התחברות</a>
         <a class="btn" href="{{ url_for('registration', next=checkout_url) }}">הרשמה</a>
         <a class="btn btn-primary" href="{{ checkout_url }}">המשך כאורח</a>

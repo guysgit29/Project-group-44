@@ -106,31 +106,51 @@ def cancel_booking_execute(booking_id):
 # --- Authentication Routes ---
 
 @app.route('/registration', methods=['GET', 'POST'])
+@app.route('/registration', methods=['GET', 'POST'])
 def registration():
-    """User registration."""
+    # מאיפה המשתמש הגיע (למשל מה-checkout)
+    next_url = request.args.get("next") if request.method == "GET" else request.form.get("next")
+
     if request.method == 'POST':
         user, error = RegisteredUser.register(request.form)
-        if error:
-            return render_template('registration.html', error=error)
-        return redirect(url_for('home_page'))
-    return render_template('registration.html')
 
+        if error:
+            return render_template('registration.html', error=error, next=next_url)
+
+        session['user_id'] = user.email
+        session['role'] = 'customer'
+
+        if next_url:
+            return redirect(next_url)
+
+        return redirect(url_for('home_page'))
+
+    return render_template('registration.html', next=next_url)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login_page():
-    """Login route - For Registered Users (Customers) only."""
-    if request.method == 'POST':
-        email = request.form.get('username')
-        pwd = request.form.get('password')
-        user = RegisteredUser.login(email, pwd)
-        if user:
-            # בלקוחות רשומים המזהה הוא ה-email
-            session['user_id'] = user.email
-            session['role'] = 'customer'
-            return redirect(url_for('home_page'))
-        return render_template('login.html', error="Invalid Email or Password")
-    return render_template('login.html')
+    if request.method == 'GET':
+        next_url = request.args.get("next")
+        return render_template("login.html", error=None, next=next_url)
 
+    # POST
+    email = request.form.get("username")
+    pwd = request.form.get("password")
+    next_url = request.form.get("next")
+
+    user = RegisteredUser.login(email, pwd)
+    if user:
+        session["user_id"] = user.email
+        session["role"] = "customer"
+
+        # אם הגיע מ־checkout — חזור לשם
+        if next_url:
+            return redirect(next_url)
+
+        # אחרת רגיל
+        return redirect(url_for("home_page"))
+
+    return render_template("login.html", error="Invalid Email or Password", next=next_url)
 
 @app.route('/logout')
 def logout():
@@ -172,6 +192,10 @@ def process_booking():
     if not selected_seats:
         return redirect(url_for('seat_selection', flight_id=flight_num))
 
+    # Recommended: keep the user's choices for the checkout step as well
+    session["flight_number"] = flight_num
+    session["selected_seats"] = selected_seats
+
     total_price = 0.0
     details = []
 
@@ -201,9 +225,9 @@ def process_booking():
         'payment_summary.html',
         details=details,
         total=total_price,
-        flight_number=flight_num
+        flight_number=flight_num,
+        selected_seats=selected_seats   # REQUIRED for the updated payment_summary.html
     )
-
 
 @app.route("/manager_login", methods=["GET", "POST"])
 def manager_login():
@@ -238,38 +262,112 @@ def manager_dashboard():
         return redirect("/manager_login")
 
     return render_template("manager_dashboard.html")
-
-@app.route("/manager_flights")
-def manager_flights():
-    if session.get("role") != "manager":
-        return redirect("/manager_login")
-
-    status = request.args.get("status", "").strip()  # Active / Delayed / Canceled / ""
-
-    with DB.get_cursor() as cursor:
-        if status:
-            cursor.execute("""
-                SELECT flight_number, aircraft_id, origin, destination,
-                       departure_time, arrival_time, flight_duration, flight_status
-                FROM flight
-                WHERE flight_status = %s
-                ORDER BY departure_time DESC
-            """, (status,))
-        else:
-            cursor.execute("""
-                SELECT flight_number, aircraft_id, origin, destination,
-                       departure_time, arrival_time, flight_duration, flight_status
-                FROM flight
-                ORDER BY departure_time DESC
-            """)
-
-        flights = cursor.fetchall()
-
-    return render_template(
-        "manager_flights.html",
-        flights=flights,
-        selected_status=status
+@app.route("/checkout", methods=["GET", "POST"])
+def checkout():
+    # GET: מגיע עם querystring: ?flight_number=1360&selected_seats=...
+    # POST: מגיע מהטופס עם hidden inputs
+    flight_number = (
+        request.form.get("flight_number")
+        if request.method == "POST"
+        else request.args.get("flight_number")
     )
 
+    selected_seats = (
+        request.form.getlist("selected_seats")
+        if request.method == "POST"
+        else request.args.getlist("selected_seats")
+    )
+
+    if not flight_number or not selected_seats:
+        return redirect(url_for("home_page"))
+
+    flight_id = int(flight_number)
+    details, total = Booking.get_pricing_for_selected_seats(flight_id, selected_seats)
+
+    # ---- prefill + lock all fields when logged in ----
+    prefill = {"first_name": "", "last_name": "", "email": "", "lock_fields": False}
+
+    if session.get("role") == "customer" and session.get("user_id"):
+        with DB.get_cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT email, first_name_en, last_name_en
+                FROM RegisteredUser
+                WHERE email = %s
+                """,
+                (session["user_id"],),
+            )
+            row = cursor.fetchone()
+
+        if row:
+            prefill["first_name"] = row.get("first_name_en", "") or ""
+            prefill["last_name"] = row.get("last_name_en", "") or ""
+            prefill["email"] = row.get("email", "") or session["user_id"]
+            prefill["lock_fields"] = True
+
+    if request.method == "GET":
+        return render_template(
+            "checkout.html",
+            flight_number=flight_id,
+            selected_seats=selected_seats,
+            details=details,
+            total=total,
+            prefill=prefill,
+            error=None,
+        )
+
+    # POST
+    # אם נעול (מחובר) — אל תסמוך על מה שהגיע מהטופס, תיקח מה-prefill
+    lock = prefill["lock_fields"]
+    first_name = prefill["first_name"] if lock else (request.form.get("first_name") or "").strip()
+    last_name  = prefill["last_name"]  if lock else (request.form.get("last_name") or "").strip()
+    email      = prefill["email"]      if lock else (request.form.get("email") or "").strip().lower()
+
+    payment_method = request.form.get("payment_method") or "card"
+
+    # Guest מנסה להזמין עם מייל רשום
+    if session.get("role") != "customer" and RegisteredUser.email_exists(email):
+        return render_template(
+            "checkout.html",
+            flight_number=flight_id,
+            selected_seats=selected_seats,
+            details=details,
+            total=total,
+            prefill={"first_name": first_name, "last_name": last_name, "email": email, "lock_fields": False},
+            error="עליך להתחבר לחשבונך כדי לבצע הזמנה עם כתובת מייל זו",
+        )
+
+    created_id = Booking.create_booking_with_tickets(
+        flight_number=flight_id,
+        first_name=first_name,
+        last_name=last_name,
+        email=email,
+        selected_seats=selected_seats,
+        payment_method=payment_method,
+        logged_in_registered=(session.get("role") == "customer"),
+    )
+
+    if not created_id:
+        return render_template(
+            "checkout.html",
+            flight_number=flight_id,
+            selected_seats=selected_seats,
+            details=details,
+            total=total,
+            prefill={"first_name": first_name, "last_name": last_name, "email": email, "lock_fields": False},
+            error="לא ניתן להשלים הזמנה. ייתכן שמושב נתפס או שיש חוסר התאמה בנתוני מושבים לטיסה.",
+        )
+
+    return redirect(url_for("order_confirmation", booking_id=created_id))
+
+@app.route("/order_confirmation/<booking_id>")
+def order_confirmation(booking_id):
+    booking = Booking(booking_id, None, None)
+    order_data, seats = booking.get_details()
+
+    if not order_data:
+        return redirect(url_for("home_page"))
+
+    return render_template("order_confirmation.html", order=order_data, seats=seats)
 if __name__ == '__main__':
     app.run(debug=True)
