@@ -122,7 +122,9 @@
                                     <button type="button" class="btn-disabled" disabled>טיסה מלאה</button>
                                 {% else %}
                                     <form action="{{ url_for('seat_selection', flight_id=flight.flight_number) }}" method="GET" style="margin:0;">
-                                        <button type="submit" class="btn-select">בחר טיסה</button>
+                                      <input type="hidden" name="origin" value="{{ flight.origin }}">
+                                      <input type="hidden" name="destination" value="{{ flight.destination }}">
+                                      <button type="submit" class="btn-select">בחר טיסה</button>
                                     </form>
                                 {% endif %}
                             </td>

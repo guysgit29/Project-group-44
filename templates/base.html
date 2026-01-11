@@ -1,66 +1,62 @@
 <!DOCTYPE html>
 <html lang="he" dir="rtl">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}FlyTau{% endblock %}</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <style>
-        header nav { padding: 20px; background-color: #f8f9fa; border-bottom: 1px solid #ddd; text-align: center; }
-        header nav a { text-decoration: none; color: purple; font-weight: bold; margin: 0 10px; font-size: 1.2em; }
-        header nav a:hover { text-decoration: underline; }
-        .user-greeting { margin-left: 15px; font-weight: normal; color: #333; }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}FlyTau{% endblock %}</title>
+
+  <!-- Single source of truth -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}?v=4">
 </head>
-<body>
-<header style="background: var(--white); box-shadow: var(--shadow-sm); position: sticky; top: 0; z-index: 1000;">
-  <nav style="display: flex; justify-content: space-between; align-items: center; padding: 15px 50px;">
-    <a href="/" style="font-size: 1.8rem; font-weight: 800; color: var(--primary-navy); text-decoration: none; letter-spacing: -1px;">
-      FLY<span style="color: var(--accent-gold);">TAU</span>
-    </a>
 
-    <div style="display: flex; align-items: center; gap: 30px;">
+<body class="flytau-app">
 
-      {% if session.get('role') == 'manager' %}
+  <header class="flytau-header">
+    <nav class="flytau-nav">
+      <a class="flytau-brand" href="{{ url_for('home_page') }}">
+        FLY<span>TAU</span>
+      </a>
 
-        <!-- MANAGER: only manager menu -->
-        <a href="/manager_dashboard" style="text-decoration: none; color: var(--primary-navy); font-weight: 700;">לוח בקרה מנהל</a>
-        <span style="color: #666;">
-          שלום,
-          <b>{{ session.get('first_name','') }}</b>
-          <b>{{ session.get('last_name','') }}</b>
-        </span>
-        <a href="/logout" class="btn-premium" style="background: #f8d7da; color: #721c24; padding: 8px 15px;">התנתק</a>
+      <div class="flytau-menu">
+        {% if session.get('role') == 'manager' %}
+          <a class="nav-link" href="{{ url_for('manager_dashboard') }}">לוח בקרה מנהל</a>
+          <a class="nav-link" href="{{ url_for('aircrafts') }}">ניהול צי מטוסים</a>
 
-      {% else %}
+          <span class="nav-text">
+            שלום, <b>{{ session.get('first_name','') }}</b> <b>{{ session.get('last_name','') }}</b>
+          </span>
 
-        <!-- CUSTOMER / GUEST: normal menu -->
-        <a href="/" style="text-decoration: none; color: var(--text-main); font-weight: 600;">חיפוש טיסות</a>
-        <a href="/search_booking" style="text-decoration: none; color: var(--text-main); font-weight: 600;">ניהול הזמנה</a>
+          <a class="btn btn-danger" href="{{ url_for('logout') }}">התנתק</a>
 
-        {% if session.get('user_id') %}
-          <div style="height: 30px; width: 1px; background: #ddd;"></div>
-          <a href="/my_flights" style="text-decoration: none; color: var(--primary-navy); font-weight: 700;">הטיסות שלי</a>
-          <a href="/logout" class="btn-premium" style="background: #f8d7da; color: #721c24; padding: 8px 15px;">התנתק</a>
         {% else %}
-          <a href="/login" style="text-decoration: none; color: var(--text-main); font-weight: 600;">התחברות לקוח</a>
-          <a href="/registration" class="btn-premium">להרשמה</a>
-          <div style="height: 30px; width: 1px; background: #ddd;"></div>
-          <a href="/manager_login" style="text-decoration: none; color: #636e72; font-size: 0.9rem; font-weight: 500;">כניסת צוות ➔</a>
+          <a class="nav-link" href="{{ url_for('home_page') }}">חיפוש טיסות</a>
+          <a class="nav-link" href="{{ url_for('search_booking') }}">ניהול הזמנה</a>
+
+          {% if session.get('user_id') %}
+            <a class="nav-link" href="{{ url_for('my_flights') }}">הטיסות שלי</a>
+            <a class="btn btn-danger" href="{{ url_for('logout') }}">התנתק</a>
+          {% else %}
+            <a class="nav-link" href="{{ url_for('login_page') }}">התחברות לקוח</a>
+            <a class="btn btn-primary" href="{{ url_for('registration') }}">להרשמה</a>
+            <a class="nav-link subtle" href="{{ url_for('manager_login') }}">כניסת צוות ➔</a>
+          {% endif %}
         {% endif %}
+      </div>
+    </nav>
+  </header>
 
-      {% endif %}
-
+  <main class="flytau-main">
+    <div class="container">
+      {% block content %}{% endblock %}
     </div>
-  </nav>
-</header>
+  </main>
 
-<main class="container" style="padding: 20px;">
-  {% block content %}{% endblock %}
-</main>
+  <footer class="site-footer">
+    <div class="container footer-inner">
+      <div class="muted">By group 44, leads you all the way to 100</div>
+      <div>© FLYTAU 2026</div>
+    </div>
+  </footer>
 
-<footer style="text-align: center; padding: 20px; border-top: 1px solid #ddd; margin-top: 50px;">
-  <p>&copy; 2026 פרויקט FLYTAU</p>
-</footer>
 </body>
 </html>

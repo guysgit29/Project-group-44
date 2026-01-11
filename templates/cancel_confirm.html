@@ -1,28 +1,118 @@
 {% extends "base.html" %}
-
 {% block title %}אישור ביטול הזמנה - {{ booking_id }}{% endblock %}
 
 {% block content %}
-<div style="text-align: center; padding: 50px;">
-    <div style="max-width: 600px; margin: 0 auto; border: 2px solid #ddd; padding: 30px; border-radius: 15px; background-color: #fff5f5;">
-        <h1 style="color: #d9534f;">ביטול הזמנה {{ booking_id }}</h1>
 
-        <p style="font-size: 1.3em; margin: 30px 0; line-height: 1.6;">
-            בעת ביטול הזמנה זו אני מודע כי ביטול ההזמנה יגרור דמי ביטול בגובה 5% מסך מחיר ההזמנה הכולל.
-            אני מודע כי פעולה זו הינה סופית ולא יהיה ניתן לשחזר את ההזמנה המקורית.
-        </p>
+<style>
+.cancel-page {
+  text-align: center;
+  padding: 60px 20px;
+}
 
-        <div style="display: flex; justify-content: center; gap: 20px;">
-            <form action="{{ url_for('cancel_booking_execute', booking_id=booking_id) }}" method="POST">
-         <button type="submit" style="background-color: #d9534f; color: white; padding: 12px 25px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">
-        ביטול הזמנה
-        </button>
-            </form>
+.cancel-card {
+  max-width: 680px;
+  margin: 0 auto;
+  background: #ffffff;
+  border-radius: 22px;
+  padding: 46px 48px;
+  box-shadow: 0 25px 60px rgba(15,23,42,.12);
+  border: 1px solid #e2e8f0;
+}
 
-            <a href="/manage_booking/{{ booking_id }}" style="background-color: #6c757d; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-size: 1.1em;">
-                השאירו את ההזמנה כפי שהיא
-            </a>
-        </div>
+.cancel-title {
+  font-size: 2rem;
+  font-weight: 900;
+  color: #b91c1c;
+  margin-bottom: 24px;
+}
+
+.cancel-text {
+  font-size: 1.25rem;
+  line-height: 1.7;
+  color: #0f172a;
+  max-width: 560px;
+  margin: 0 auto 36px;
+}
+
+/* סידור הכפתורים */
+.cancel-confirm {
+  display: flex;
+  justify-content: center;
+  gap: 18px;
+  margin-top: 20px;
+  align-items: center; /* יישור אנכי מושלם */
+}
+
+/* גורם לפורם לא לתפוס מקום ומרשה לכפתור שבתוכו להיות חלק מה-Flex */
+.cancel-confirm form {
+  display: contents;
+}
+
+/* עיצוב אחיד וסימטרי לשני הכפתורים */
+.cancel-confirm button,
+.cancel-confirm a {
+  width: 240px;          /* רוחב זהה */
+  height: 60px;          /* גובה זהה */
+  border-radius: 16px;
+  font-size: 1.05rem;
+  font-weight: 900;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+  box-sizing: border-box;
+  margin: 0;
+  transition: all 0.2s ease;
+  border: none;
+}
+
+/* כפתור ביטול הזמנה (אדום) */
+.btn-red {
+  background: #ef4444;
+  color: #ffffff !important;
+  box-shadow: 0 10px 24px rgba(239,68,68,.35);
+}
+
+.btn-red:hover {
+  background: #dc2626;
+  transform: translateY(-2px);
+}
+
+/* כפתור השארת ההזמנה (אפור) */
+.btn-gray {
+  background: #f1f5f9;
+  color: #0f172a !important;
+  border: 1px solid #cbd5e1 !important;
+  box-shadow: 0 10px 16px rgba(15,23,42,.08);
+}
+
+.btn-gray:hover {
+  background: #e2e8f0;
+  transform: translateY(-2px);
+}
+</style>
+
+<div class="cancel-page">
+  <div class="cancel-card">
+    <h1 class="cancel-title">ביטול הזמנה {{ booking_id }}</h1>
+
+    <p class="cancel-text">
+      בעת ביטול הזמנה זו אני מודע כי ביטול ההזמנה יגרור דמי ביטול בגובה 5% מסך מחיר ההזמנה הכולל.
+      פעולה זו הינה סופית ולא ניתן יהיה לשחזר את ההזמנה המקורית.
+    </p>
+
+    <div class="cancel-confirm">
+      <form action="{{ url_for('cancel_booking_execute', booking_id=booking_id) }}" method="POST">
+        <button type="submit" class="btn-red">ביטול הזמנה</button>
+      </form>
+
+      <a href="/manage_booking/{{ booking_id }}" class="btn-gray">
+        השאירו את ההזמנה כפי שהיא
+      </a>
     </div>
+  </div>
 </div>
+
 {% endblock %}
