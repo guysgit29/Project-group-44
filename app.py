@@ -19,13 +19,15 @@ app.config.update(
 Session(app)
 
 # --- Main Routes ---
-
 @app.route('/')
 def home_page():
-    """Landing page with search dropdowns."""
+
+    # אם מחובר מנהל – לעבור ישר לדשבורד שלו
+    if session.get("role") == "manager":
+        return redirect(url_for("manager_dashboard"))
+
     origins, destinations = Flight.get_all_origins_and_destinations()
     return render_template('home_page.html', origins=origins, destinations=destinations)
-
 #
 @app.route('/search')
 def search_flights():
