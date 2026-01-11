@@ -3,19 +3,178 @@
 
 {% block content %}
 
+<style>
+  .home-hero{
+    padding: 54px 0 26px;
+    text-align: center;
+    border-radius: 26px;
+    background:
+      radial-gradient(1200px 420px at 50% 0%, rgba(2,132,199,.18), transparent 60%),
+      radial-gradient(900px 360px at 20% 20%, rgba(29,78,216,.10), transparent 55%),
+      linear-gradient(180deg, #f7fbff 0%, #f6f9ff 70%, #f6f9ff 100%);
+  }
+
+  .home-hero h1{
+    margin: 0 0 10px;
+    font-size: clamp(2.1rem, 3.2vw, 3.1rem);
+    font-weight: 900;
+    letter-spacing: -0.6px;
+    color: #0f172a;
+  }
+
+  .home-hero h1 .accent{
+    color: #1d4ed8;
+  }
+
+  .home-hero p{
+    margin: 0;
+    color: #64748b;
+    font-weight: 800;
+    font-size: 1.05rem;
+  }
+
+  .home-search-card{
+    max-width: 980px;
+    margin: 26px auto 0;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 18px;
+    box-shadow: 0 22px 60px rgba(15,23,42,0.10);
+    padding: 18px;
+  }
+
+  .home-search-row{
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: 14px;
+    align-items: center;
+  }
+
+  .home-field{
+    display: grid;
+    gap: 8px;
+    text-align: right;
+  }
+
+  .home-field label{
+    font-weight: 900;
+    color: #0f172a;
+  }
+
+  .home-field select{
+    height: 56px;
+    border-radius: 14px !important;
+    padding: 0 14px !important;
+    font-size: 16px;
+  }
+
+  .home-search-actions{
+    display: flex;
+    align-items: stretch;
+    justify-content: center;
+  }
+
+  .home-search-actions .btn{
+    height: 56px;
+    padding: 0 26px !important;
+    border-radius: 14px !important;
+    font-size: 1.05rem !important;
+    min-width: 170px;
+    box-shadow: 0 16px 34px rgba(11,61,145,0.22) !important;
+  }
+
+  .home-features{
+    margin: 38px auto 10px;
+    text-align: center;
+    max-width: 1100px;
+  }
+
+  .home-features h2{
+    margin: 0 0 8px;
+    font-size: 2rem;
+    font-weight: 900;
+    color: #0f172a;
+  }
+
+  .home-features p{
+    margin: 0 0 22px;
+    color: #64748b;
+    font-weight: 800;
+  }
+
+  .feature-grid{
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 18px;
+    align-items: stretch;
+  }
+
+  .feature-card{
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 18px;
+    box-shadow: 0 14px 34px rgba(15,23,42,0.08);
+    padding: 20px 18px;
+    text-align: right;
+  }
+
+  .feature-icon{
+    width: 54px;
+    height: 54px;
+    border-radius: 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(29,78,216,0.10);
+    border: 1px solid rgba(29,78,216,0.18);
+    color: #1d4ed8;
+    font-size: 24px;
+    margin-bottom: 14px;
+  }
+
+  .feature-card h3{
+    margin: 0 0 8px;
+    font-size: 1.12rem;
+    font-weight: 900;
+    color: #0f172a;
+  }
+
+  .feature-card .muted{
+    margin: 0;
+    color: #64748b;
+    font-weight: 800;
+    line-height: 1.55;
+  }
+
+  @media (max-width: 980px){
+    .home-search-row{
+      grid-template-columns: 1fr;
+    }
+    .home-search-actions .btn{
+      width: 100%;
+      min-width: 0;
+    }
+    .feature-grid{
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (max-width: 520px){
+    .feature-grid{
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+
 <section class="home-hero">
-  <h1>המסע שלך מתחיל כאן</h1>
-  <p>מצאו את הטיסה המושלמת ליעד הבא שלכם.</p>
-</section>
+  <h1>המסע שלך מתחיל <span class="accent">עכשיו</span></h1>
+  <p>מצאו את הטיסה המושלמת ליעד הבא שלכם. חוויית הזמנה יוקרתית במחירים נגישים גם לסטודנטים!</p>
 
-<div class="home-search-wrap">
-  <section class="home-search-card">
-    <h2 style="text-align:center; margin:0 0 18px;">חיפוש טיסות</h2>
-
+  <div class="home-search-card">
     <form action="{{ url_for('search_flights') }}" method="GET">
-      <div class="home-search-grid">
-        <div class="field">
-          <label for="origin">מוצא</label>
+      <div class="home-search-row">
+        <div class="home-field">
+          <label for="origin">שדה מוצא</label>
           <select name="origin" id="origin" required>
             <option value="" disabled selected>בחר מקור</option>
             {% for item in origins %}
@@ -24,8 +183,8 @@
           </select>
         </div>
 
-        <div class="field">
-          <label for="destination">יעד</label>
+        <div class="home-field">
+          <label for="destination">שדה יעד</label>
           <select name="destination" id="destination" required>
             <option value="" disabled selected>בחר יעד</option>
             {% for item in destinations %}
@@ -33,13 +192,44 @@
             {% endfor %}
           </select>
         </div>
-      </div>
 
-      <div class="home-search-actions">
-        <button class="btn btn-primary" type="submit">חפש טיסות</button>
+        <div class="home-search-actions">
+          <button class="btn btn-primary" type="submit">חפש טיסות</button>
+        </div>
       </div>
     </form>
-  </section>
-</div>
+  </div>
+</section>
+
+<section class="home-features">
+  <h2>למה לטוס איתנו?</h2>
+  <p>חוויית טיסה שתזכרו לתמיד</p>
+
+  <div class="feature-grid">
+    <div class="feature-card">
+      <div class="feature-icon">👥</div>
+      <h3>מחירים הוגנים</h3>
+      <p class="muted">מחירים תחרותיים ללא עלויות נסתרות, הצטפו עוד היום למועדון הסולסול המתמיד לקבלת הנחה נוספת!</p>
+    </div>
+
+    <div class="feature-card">
+      <div class="feature-icon">⭐</div>
+      <h3>שירות מעולה</h3>
+      <p class="muted">צוות אדיב (אבל לא כלכך מקצועי) לאורך כל הטיסה.</p>
+    </div>
+
+    <div class="feature-card">
+      <div class="feature-icon">🕒</div>
+      <h3>זמנים מדויקים</h3>
+      <p class="muted">עמידה גבוהה בזמני המראה ונחיתה כמו דודה שמגיעה 3 דקות לפני המבחן.</p>
+    </div>
+
+    <div class="feature-card">
+      <div class="feature-icon">🛡️</div>
+      <h3>בטיחות מירבית</h3>
+      <p class="muted">תקני בטיחות גבוהים וחוויית טיסה בטוחה רוב הזמן.</p>
+    </div>
+  </div>
+</section>
 
 {% endblock %}
