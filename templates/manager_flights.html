@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+
+{% block content %}
+<main class="container" style="max-width:1100px; margin:50px auto; text-align:right;">
+
+    <h2>ניהול טיסות – מנהל</h2>
+
+    <div style="margin-bottom:15px;">
+        <a href="{{ url_for('manager_dashboard') }}"
+           style="text-decoration:none; color:#003366; font-weight:bold;">
+            ← חזרה לדשבורד מנהל
+        </a>
+    </div>
+
+    <!-- סינון לפי סטטוס -->
+    <form method="GET" action="{{ url_for('manager_flights') }}" style="margin-bottom:20px;">
+        <label for="status" style="margin-left:10px;">סינון לפי סטטוס:</label>
+
+        <!-- ✅ תיקון קטן: select id -->
+        <select id="status" name="status" style="padding:6px;">
+            <option value="" {% if not selected_status %}selected{% endif %}>כל הטיסות</option>
+            <option value="Active" {% if selected_status == 'Active' %}selected{% endif %}>Active</option>
+            <option value="Delayed" {% if selected_status == 'Delayed' %}selected{% endif %}>Delayed</option>
+            <option value="Canceled" {% if selected_status == 'Canceled' %}selected{% endif %}>Canceled</option>
+            <option value="Completed" {% if selected_status == 'Completed' %}selected{% endif %}>Completed</option>
+        </select>
+
+        <button type="submit"
+                style="margin-right:10px; padding:6px 12px; background:#003366; color:white; border:none; cursor:pointer;">
+            סנן
+        </button>
+    </form>
+
+    <p style="color:#555; margin-bottom:10px;">
+        נמצאו {{ flights|length if flights else 0 }} טיסות
+    </p>
+
+    {% if flights and flights|length > 0 %}
+        <table style="width:100%; border-collapse:collapse;">
+            <thead>
+                <tr style="background:#f4f4f4;">
+                    <th style="border:1px solid #ddd; padding:8px;">מס׳ טיסה</th>
+                    <th style="border:1px solid #ddd; padding:8px;">מטוס</th>
+                    <th style="border:1px solid #ddd; padding:8px;">מוצא</th>
+                    <th style="border:1px solid #ddd; padding:8px;">יעד</th>
+                    <th style="border:1px solid #ddd; padding:8px;">המראה</th>
+                    <th style="border:1px solid #ddd; padding:8px;">נחיתה</th>
+                    <th style="border:1px solid #ddd; padding:8px;">סטטוס</th>
+                    <th style="border:1px solid #ddd; padding:8px; text-align:center;">פעולות</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for f in flights %}
+                <tr>
+                    <td style="border:1px solid #ddd; padding:8px;">{{ f.flight_number }}</td>
+                    <td style="border:1px solid #ddd; padding:8px;">{{ f.aircraft_id }}</td>
+                    <td style="border:1px solid #ddd; padding:8px;">{{ f.origin }}</td>
+                    <td style="border:1px solid #ddd; padding:8px;">{{ f.destination }}</td>
+                    <td style="border:1px solid #ddd; padding:8px;">{{ f.departure_time }}</td>
+                    <td style="border:1px solid #ddd; padding:8px;">{{ f.arrival_time }}</td>
+                    <td style="border:1px solid #ddd; padding:8px;">{{ f.flight_status }}</td>
+
+                    <td style="border:1px solid #ddd; padding:8px; text-align:center;">
+                        {% if f.flight_status == 'Completed' %}
+                            <a href="{{ url_for('manager_flight_view', flight_number=f.flight_number) }}"
+                               style="
+                                   display:inline-block;
+                                   padding:6px 12px;
+                                   background:#ffffff;
+                                   color:#003366;
+                                   text-decoration:none;
+                                   border-radius:6px;
+                                   font-size:14px;
+                                   border:1px solid #003366;
+                               ">
+                                צפייה בפרטים
+                            </a>
+                        {% else %}
+                            <!-- ✅ כאן התיקון: הולכים לניהול טיסה -->
+                            <a href="{{ url_for('manager_flight_manage', flight_number=f.flight_number) }}"
+                               style="
+                                   display:inline-block;
+                                   padding:6px 12px;
+                                   background:#003366;
+                                   color:white;
+                                   text-decoration:none;
+                                   border-radius:6px;
+                                   font-size:14px;
+                               ">
+                                ניהול טיסה
+                            </a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>אין טיסות להצגה</p>
+    {% endif %}
+
+</main>
+{% endblock %}
