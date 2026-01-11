@@ -6,7 +6,6 @@
     <title>{% block title %}FlyTau{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <style>
-        /* עיצוב בסיסי ל-Header כדי שייראה כמו בתמונה */
         header nav { padding: 20px; background-color: #f8f9fa; border-bottom: 1px solid #ddd; text-align: center; }
         header nav a { text-decoration: none; color: purple; font-weight: bold; margin: 0 10px; font-size: 1.2em; }
         header nav a:hover { text-decoration: underline; }
@@ -14,43 +13,54 @@
     </style>
 </head>
 <body>
-    <header style="background: var(--white); box-shadow: var(--shadow-sm); position: sticky; top: 0; z-index: 1000;">
-    <nav style="display: flex; justify-content: space-between; align-items: center; padding: 15px 50px;">
-        <a href="/" style="font-size: 1.8rem; font-weight: 800; color: var(--primary-navy); text-decoration: none; letter-spacing: -1px;">
-            FLY<span style="color: var(--accent-gold);">TAU</span>
-        </a>
+<header style="background: var(--white); box-shadow: var(--shadow-sm); position: sticky; top: 0; z-index: 1000;">
+  <nav style="display: flex; justify-content: space-between; align-items: center; padding: 15px 50px;">
+    <a href="/" style="font-size: 1.8rem; font-weight: 800; color: var(--primary-navy); text-decoration: none; letter-spacing: -1px;">
+      FLY<span style="color: var(--accent-gold);">TAU</span>
+    </a>
 
-        <div style="display: flex; align-items: center; gap: 30px;">
-            <a href="/" style="text-decoration: none; color: var(--text-main); font-weight: 600;">חיפוש טיסות</a>
-            <a href="/search_booking" style="text-decoration: none; color: var(--text-main); font-weight: 600;">ניהול הזמנה</a>
+    <div style="display: flex; align-items: center; gap: 30px;">
 
-            {% if session.get('role') == 'manager' %}
-                <div style="height: 30px; width: 1px; background: #ddd;"></div>
-                <a href="/manager_dashboard" style="text-decoration: none; color: var(--primary-navy); font-weight: 700;">לוח בקרה מנהל</a>
-                <span style="color: #666;">שלום, <b>{{ session['first_name'] }}</b></span>
-                <a href="/logout" class="btn-premium" style="background: #f8d7da; color: #721c24; padding: 8px 15px;">התנתק</a>
+      {% if session.get('role') == 'manager' %}
 
-            {% elif session.get('user_id') %}
-                <div style="height: 30px; width: 1px; background: #ddd;"></div>
-                <a href="/my_flights" style="text-decoration: none; color: var(--primary-navy); font-weight: 700;">הטיסות שלי</a>
-                <a href="/logout" class="btn-premium" style="background: #f8d7da; color: #721c24; padding: 8px 15px;">התנתק</a>
+        <!-- MANAGER: only manager menu -->
+        <a href="/manager_dashboard" style="text-decoration: none; color: var(--primary-navy); font-weight: 700;">לוח בקרה מנהל</a>
+        <span style="color: #666;">
+          שלום,
+          <b>{{ session.get('first_name','') }}</b>
+          <b>{{ session.get('last_name','') }}</b>
+        </span>
+        <a href="/logout" class="btn-premium" style="background: #f8d7da; color: #721c24; padding: 8px 15px;">התנתק</a>
 
-            {% else %}
-                <a href="/login" style="text-decoration: none; color: var(--text-main); font-weight: 600;">התחברות לקוח</a>
-                <a href="/registration" class="btn-premium">להרשמה</a>
-                <div style="height: 30px; width: 1px; background: #ddd;"></div>
-                <a href="/manager_login" style="text-decoration: none; color: #636e72; font-size: 0.9rem; font-weight: 500;">כניסת צוות ➔</a>
-            {% endif %}
-        </div>
-    </nav>
-    </header>
+      {% else %}
 
-    <main class="container" style="padding: 20px;">
-        {% block content %}{% endblock %}
-    </main>
+        <!-- CUSTOMER / GUEST: normal menu -->
+        <a href="/" style="text-decoration: none; color: var(--text-main); font-weight: 600;">חיפוש טיסות</a>
+        <a href="/search_booking" style="text-decoration: none; color: var(--text-main); font-weight: 600;">ניהול הזמנה</a>
 
-    <footer style="text-align: center; padding: 20px; border-top: 1px solid #ddd; margin-top: 50px;">
-        <p>&copy; 2026 פרויקט FLYTAU</p>
-    </footer>
+        {% if session.get('user_id') %}
+          <div style="height: 30px; width: 1px; background: #ddd;"></div>
+          <a href="/my_flights" style="text-decoration: none; color: var(--primary-navy); font-weight: 700;">הטיסות שלי</a>
+          <a href="/logout" class="btn-premium" style="background: #f8d7da; color: #721c24; padding: 8px 15px;">התנתק</a>
+        {% else %}
+          <a href="/login" style="text-decoration: none; color: var(--text-main); font-weight: 600;">התחברות לקוח</a>
+          <a href="/registration" class="btn-premium">להרשמה</a>
+          <div style="height: 30px; width: 1px; background: #ddd;"></div>
+          <a href="/manager_login" style="text-decoration: none; color: #636e72; font-size: 0.9rem; font-weight: 500;">כניסת צוות ➔</a>
+        {% endif %}
+
+      {% endif %}
+
+    </div>
+  </nav>
+</header>
+
+<main class="container" style="padding: 20px;">
+  {% block content %}{% endblock %}
+</main>
+
+<footer style="text-align: center; padding: 20px; border-top: 1px solid #ddd; margin-top: 50px;">
+  <p>&copy; 2026 פרויקט FLYTAU</p>
+</footer>
 </body>
 </html>
