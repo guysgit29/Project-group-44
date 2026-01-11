@@ -1,29 +1,94 @@
 {% extends "base.html" %}
 
 {% block content %}
-<main class="container" style="max-width: 800px; margin: 50px auto; text-align:right;">
 
-    <h2>דשבורד מנהל</h2>
+<style>
+.dashboard-container{
+    max-width: 1000px;
+    margin: 80px auto;
+    text-align: center;
+}
 
-    <p>שלום, {{ session.first_name }} {{ session.last_name }}</p>
+.dashboard-title{
+    font-size: 32px;
+    font-weight: 800;
+    margin-bottom: 10px;
+}
 
-    <ul style="list-style:none; padding:0; margin-top:20px;">
-        <li style="margin-bottom:15px;">
-            <a href="{{ url_for('manager_flights') }}"
-               style="display:inline-block; background:#003366; color:white;
-                      padding:10px 16px; border-radius:6px; text-decoration:none;">
-                ניהול טיסות
-            </a>
-        </li>
+.dashboard-subtitle{
+    color: #666;
+    margin-bottom: 40px;
+    font-size: 18px;
+}
 
-        <li style="margin-bottom:10px; color:#555;">
-            ניהול עובדים (בקרוב)
-        </li>
+.cards{
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 30px;
+}
 
-        <li style="color:#555;">
-            דוחות (בקרוב)
-        </li>
-    </ul>
+.manager-card{
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 40px 20px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+    transition: 0.3s ease;
+    text-decoration: none;
+    color: #111;
+    border: 2px solid transparent;
+}
 
-</main>
+.manager-card:hover{
+    transform: translateY(-6px);
+    box-shadow: 0 22px 55px rgba(20, 60, 160, 0.35);
+    border-color: #1e40ff;
+    background: linear-gradient(135deg, #f5f8ff, #eef3ff);
+}
+
+.manager-card h3{
+    margin-top: 15px;
+    font-size: 22px;
+    font-weight: 800;
+}
+
+.manager-card p{
+    margin-top: 10px;
+    color: #555;
+    font-size: 15px;
+}
+</style>
+
+<div class="dashboard-container">
+
+    <div class="dashboard-title">לוח בקרה למנהל</div>
+    <div class="dashboard-subtitle">
+        שלום {{ session.first_name }} {{ session.last_name }}
+    </div>
+
+    <div class="cards">
+
+        <a href="/add_flight" class="manager-card">
+            <h3>✈ הוספת טיסה חדשה</h3>
+            <p>יצירת טיסה חדשה למערכת</p>
+        </a>
+
+        <a href="/all_flights" class="manager-card">
+            <h3>📋 כל הטיסות</h3>
+            <p>צפייה וניהול טיסות קיימות</p>
+        </a>
+
+        <a href="/reports" class="manager-card">
+            <h3>📊 הנפקת דוחות</h3>
+            <p>נתונים, מכירות וסטטיסטיקות</p>
+        </a>
+
+        <a href="/aircrafts" class="manager-card">
+            <h3>🛫 ניהול צי מטוסים</h3>
+            <p>הוספה וניהול מטוסים</p>
+        </a>
+
+    </div>
+
+</div>
+
 {% endblock %}
