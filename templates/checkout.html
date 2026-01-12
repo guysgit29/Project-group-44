@@ -199,6 +199,34 @@
           >
         </div>
 
+        <div class="field">
+  <label for="passport_number">מספר דרכון</label>
+  <input
+    id="passport_number"
+    type="text"
+    name="passport_number"
+    value="{{ prefill.get('passport_number','') }}"
+    required
+    minlength="4"
+    {% if lock_fields %}readonly aria-readonly="true"{% endif %}
+    style="direction:ltr; text-align:left;"
+  >
+</div>
+
+<div class="field">
+  <label for="phone_number">מספר טלפון</label>
+  <input
+    id="phone_number"
+    type="tel"
+    name="phone_number"
+    value="{{ prefill.get('phone_number','') }}"
+    required
+    minlength="7"
+    {% if lock_fields %}readonly aria-readonly="true"{% endif %}
+    style="direction:ltr; text-align:left;"
+  >
+</div>
+
         <div class="pay-box">
           <div style="font-weight:800; text-align:center;">אמצעי תשלום</div>
 

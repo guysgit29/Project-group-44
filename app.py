@@ -362,7 +362,7 @@ def manager_flights():
 
 @app.route("/checkout", methods=["GET", "POST"])
 def checkout():
-    # GET: מגיע עם querystring: ?flight_number=1360&selected_seats=...
+    # GET: ?flight_number=1360&selected_seats=...
     # POST: מגיע מהטופס עם hidden inputs
     flight_number = (
         request.form.get("flight_number")
@@ -382,16 +382,39 @@ def checkout():
     flight_id = int(flight_number)
     details, total = Booking.get_pricing_for_selected_seats(flight_id, selected_seats)
 
-    # ---- prefill + lock all fields when logged in ----
-    prefill = {"first_name": "", "last_name": "", "email": "", "lock_fields": False}
+    # -------------------------------------------------
+    # Prefill + lock when logged in
+    # -------------------------------------------------
+    prefill = {
+        "first_name": "",
+        "last_name": "",
+        "email": "",
+        "passport_number": "",
+        "phone_number": "",
+        "lock_fields": False,
+    }
 
-    if session.get("role") == "customer" and session.get("user_id"):
+    logged_in_registered = (session.get("role") == "customer" and session.get("user_id"))
+
+    if logged_in_registered:
         with DB.get_cursor() as cursor:
             cursor.execute(
                 """
-                SELECT email, first_name_en, last_name_en
-                FROM RegisteredUser
-                WHERE email = %s
+                SELECT
+                    RU.email,
+                    RU.first_name_en,
+                    RU.last_name_en,
+                    RU.passport_number,
+                    (
+                        SELECT RP.phone_number
+                        FROM RegisteredPhone RP
+                        WHERE RP.email = RU.email
+                        ORDER BY RP.phone_number
+                        LIMIT 1
+                    ) AS phone_number
+                FROM RegisteredUser RU
+                WHERE RU.email = %s
+                LIMIT 1
                 """,
                 (session["user_id"],),
             )
@@ -401,8 +424,13 @@ def checkout():
             prefill["first_name"] = row.get("first_name_en", "") or ""
             prefill["last_name"] = row.get("last_name_en", "") or ""
             prefill["email"] = row.get("email", "") or session["user_id"]
+            prefill["passport_number"] = row.get("passport_number", "") or ""
+            prefill["phone_number"] = row.get("phone_number", "") or ""
             prefill["lock_fields"] = True
 
+    # -------------------------------------------------
+    # GET
+    # -------------------------------------------------
     if request.method == "GET":
         return render_template(
             "checkout.html",
@@ -414,24 +442,75 @@ def checkout():
             error=None,
         )
 
+    # -------------------------------------------------
     # POST
-    # אם נעול (מחובר) — אל תסמוך על מה שהגיע מהטופס, תיקח מה-prefill
+    # -------------------------------------------------
     lock = prefill["lock_fields"]
+
+    # אם נעול (מחובר) — לא סומכים על מה שהגיע מהטופס
     first_name = prefill["first_name"] if lock else (request.form.get("first_name") or "").strip()
     last_name  = prefill["last_name"]  if lock else (request.form.get("last_name") or "").strip()
     email      = prefill["email"]      if lock else (request.form.get("email") or "").strip().lower()
 
+    # שדות חדשים
+    passport_number = prefill["passport_number"] if lock else (request.form.get("passport_number") or "").strip()
+    phone_number    = prefill["phone_number"]    if lock else (request.form.get("phone_number") or "").strip()
+
     payment_method = request.form.get("payment_method") or "card"
 
-    # Guest מנסה להזמין עם מייל רשום
-    if session.get("role") != "customer" and RegisteredUser.email_exists(email):
+    # ולידציה בסיסית
+    if not first_name or not last_name or not email:
         return render_template(
             "checkout.html",
             flight_number=flight_id,
             selected_seats=selected_seats,
             details=details,
             total=total,
-            prefill={"first_name": first_name, "last_name": last_name, "email": email, "lock_fields": False},
+            prefill={
+                "first_name": first_name,
+                "last_name": last_name,
+                "email": email,
+                "passport_number": passport_number,
+                "phone_number": phone_number,
+                "lock_fields": lock,
+            },
+            error="אנא מלא את כל השדות הנדרשים.",
+        )
+
+    if not phone_number:
+        return render_template(
+            "checkout.html",
+            flight_number=flight_id,
+            selected_seats=selected_seats,
+            details=details,
+            total=total,
+            prefill={
+                "first_name": first_name,
+                "last_name": last_name,
+                "email": email,
+                "passport_number": passport_number,
+                "phone_number": phone_number,
+                "lock_fields": lock,
+            },
+            error="אנא הזן מספר טלפון.",
+        )
+
+    # Guest מנסה להזמין עם מייל רשום
+    if (not logged_in_registered) and RegisteredUser.email_exists(email):
+        return render_template(
+            "checkout.html",
+            flight_number=flight_id,
+            selected_seats=selected_seats,
+            details=details,
+            total=total,
+            prefill={
+                "first_name": first_name,
+                "last_name": last_name,
+                "email": email,
+                "passport_number": passport_number,
+                "phone_number": phone_number,
+                "lock_fields": False,
+            },
             error="עליך להתחבר לחשבונך כדי לבצע הזמנה עם כתובת מייל זו",
         )
 
@@ -442,7 +521,9 @@ def checkout():
         email=email,
         selected_seats=selected_seats,
         payment_method=payment_method,
-        logged_in_registered=(session.get("role") == "customer"),
+        logged_in_registered=bool(logged_in_registered),
+        phone_number=phone_number,          # חדש
+        passport_number=passport_number,    # חדש (לא נשמר; רק אם תרצה לוגיקה)
     )
 
     if not created_id:
@@ -452,7 +533,14 @@ def checkout():
             selected_seats=selected_seats,
             details=details,
             total=total,
-            prefill={"first_name": first_name, "last_name": last_name, "email": email, "lock_fields": False},
+            prefill={
+                "first_name": first_name,
+                "last_name": last_name,
+                "email": email,
+                "passport_number": passport_number,
+                "phone_number": phone_number,
+                "lock_fields": lock,
+            },
             error="לא ניתן להשלים הזמנה. ייתכן שמושב נתפס או שיש חוסר התאמה בנתוני מושבים לטיסה.",
         )
 
