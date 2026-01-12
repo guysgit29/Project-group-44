@@ -48,13 +48,21 @@ html{
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
                Arial, "Noto Sans Hebrew", "Noto Sans", sans-serif;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: ghtml{
+  font-family: "Assistant", "Heebo", "Rubik",
+               -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
+               Arial, "Noto Sans Hebrew", "Noto Sans", sans-serif;
+  -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}rayscale;
 }
 
 body{
   margin: 0;
   color: var(--text);
-  background: #f6f9ff; /* keep uniform background (no mid-page gradient shift) */
+  background: #f6f9ff;
+  font-family: inherit;
 }
 
 /* RTL – keep direction, don’t force weird centering */
