@@ -683,6 +683,23 @@ def add_aircraft_confirm():
     session.pop("pending_new_aircraft", None)
     flash("מטוס נוסף בהצלחה", "success")
     return redirect(url_for("aircrafts"))
+@app.route("/manager_flight_create", methods=["GET", "POST"])
+def manager_flight_create():
+    if session.get("role") != "manager":
+        return redirect(url_for("manager_login"))
 
+    # כרגע רק שלד – בהמשך נוסיף לוגיקת יצירה
+    if request.method == "POST":
+        pass
+
+    return render_template("manager_flight_create.html")
+
+@app.route("/add_flight_length", methods=["GET"])
+def add_flight_length():
+    if session.get("role") != "manager":
+        return redirect(url_for("manager_login"))
+
+    # כרגע רק מסך ריק/שלד
+    return render_template("add_flight_length.html")
 if __name__ == '__main__':
     app.run(debug=True)
