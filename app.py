@@ -688,12 +688,118 @@ def manager_flight_create():
     if session.get("role") != "manager":
         return redirect(url_for("manager_login"))
 
-    # כרגע רק שלד – בהמשך נוסיף לוגיקת יצירה
-    if request.method == "POST":
-        pass
+    aircrafts = Flight.get_all_aircrafts()
+    routes = Flight.get_all_routes()
 
-    return render_template("manager_flight_create.html")
+    error = None
+    preview = None
+    available_pilots = []
+    available_attendants = []
 
+    # נקלוט שדות (גם ב-GET וגם ב-POST)
+    flight_number = (request.values.get("flight_number") or "").strip()
+    aircraft_id = (request.values.get("aircraft_id") or "").strip()
+    origin = (request.values.get("origin") or "").strip()
+    destination = (request.values.get("destination") or "").strip()
+    departure_str = (request.values.get("departure_time") or "").strip()
+
+    # מצב "טעינת צוות" (GET/POST עם action=preview)
+    action = (request.values.get("action") or "").strip()
+
+    # אם יש לנו 4 שדות בסיסיים -> נחשב arrival ונביא צוות זמין
+    if aircraft_id and origin and destination and departure_str:
+        try:
+            dep_dt = datetime.strptime(departure_str, "%Y-%m-%dT%H:%M")
+            length = Flight.get_route_length(origin, destination)
+            if not length:
+                error = "הנתיב לא קיים ב-FlightLength. קודם הוסף קו טיסה."
+            else:
+                # compute arrival עם SQL כדי לא להסתבך עם TIME בפייתון
+                with DB.get_cursor() as cursor:
+                    cursor.execute("""
+                        SELECT ADDTIME(%s, length_minutes) AS arrival_dt,
+                               TIME_TO_SEC(length_minutes) AS sec
+                        FROM FlightLength
+                        WHERE origin=%s AND destination=%s
+                    """, (dep_dt, origin, destination))
+                    row = cursor.fetchone() or {}
+
+                arr_dt = row.get("arrival_dt")
+                duration_sec = int(row.get("sec") or 0)
+
+                size = Flight.get_aircraft_size(int(aircraft_id))
+                if duration_sec > 6 * 3600 and size != "large":
+                    error = "טיסה מעל 6 שעות חייבת להיות עם מטוס Large"
+
+                if not error:
+                    preview = {
+                        "dep": dep_dt,
+                        "arr": arr_dt,
+                        "aircraft_size": size
+                    }
+                    available_pilots = Pilot.list_available_for_new_flight(origin, dep_dt, arr_dt, size)
+                    available_attendants = FlightAttendant.list_available_for_new_flight(origin, dep_dt, arr_dt, size)
+        except ValueError:
+            error = "פורמט תאריך/שעה לא תקין"
+
+    # יצירת טיסה בפועל
+    if request.method == "POST" and action == "create":
+        if not (flight_number and aircraft_id and origin and destination and departure_str):
+            error = "חובה למלא מספר טיסה, מטוס, מקור, יעד ותאריך/שעה"
+        else:
+            try:
+                dep_dt = datetime.strptime(departure_str, "%Y-%m-%dT%H:%M")
+            except ValueError:
+                dep_dt = None
+                error = "פורמט תאריך/שעה לא תקין"
+
+        if not error:
+            ok, msg = Flight.create_flight(
+                flight_number=int(flight_number),
+                aircraft_id=int(aircraft_id),
+                origin=origin,
+                destination=destination,
+                departure_time=dep_dt,
+                flight_status="Active"
+            )
+            if not ok:
+                error = msg
+            else:
+                # צוות נבחר (אופציונלי)
+                chosen_pilots = request.form.getlist("pilot_ids")
+                chosen_attendants = request.form.getlist("attendant_ids")
+
+                # נשבץ רק מה שנבחר (אם לא בחרת כלום – בסדר)
+                with DB.get_cursor() as cursor:
+                    for pid in chosen_pilots:
+                        cursor.execute("""
+                            INSERT IGNORE INTO pilots_on_flights (id, flight_number)
+                            VALUES (%s,%s)
+                        """, (int(pid), int(flight_number)))
+
+                    for aid in chosen_attendants:
+                        cursor.execute("""
+                            INSERT IGNORE INTO flightattendants_on_flights (id, flight_number)
+                            VALUES (%s,%s)
+                        """, (int(aid), int(flight_number)))
+
+                return redirect(url_for("manager_flight_manage", flight_number=int(flight_number)))
+
+    return render_template(
+        "manager_flight_create.html",
+        aircrafts=aircrafts,
+        routes=routes,
+        error=error,
+        preview=preview,
+        available_pilots=available_pilots,
+        available_attendants=available_attendants,
+        # כדי לשמור ערכים בטופס אחרי רענון:
+        flight_number=flight_number,
+        aircraft_id=aircraft_id,
+        origin=origin,
+        destination=destination,
+        departure_time=departure_str
+    )
 @app.route("/add_flight_length", methods=["GET"])
 def add_flight_length():
     if session.get("role") != "manager":

@@ -1,6 +1,5 @@
-# ================================
-# models/flight.py  (רק מה שצריך לשינוי)
-# ================================
+from __future__ import annotations
+from datetime import datetime
 from database import DB
 
 
@@ -198,18 +197,24 @@ class Flight:
             return cursor.fetchone()
 
     @staticmethod
+    def get_aircraft_by_id(aircraft_id: int):
+        with DB.get_cursor() as cursor:
+            cursor.execute("SELECT * FROM Aircraft WHERE aircraft_id = %s", (int(aircraft_id),))
+            return cursor.fetchone()
+
     @staticmethod
     def get_all_aircraft_ids():
-        """מחזיר רשימת מספרי מטוסים שקיימים בטיסות (ל-drop-down)."""
+        """לדרופדאון סינון במסך manager_flights."""
         with DB.get_cursor() as cursor:
             cursor.execute("""
-                   SELECT DISTINCT aircraft_id
-                   FROM Flight
-                   WHERE aircraft_id IS NOT NULL
-                   ORDER BY aircraft_id ASC
-               """)
+                SELECT DISTINCT aircraft_id
+                FROM Flight
+                WHERE aircraft_id IS NOT NULL
+                ORDER BY aircraft_id ASC
+            """)
             rows = cursor.fetchall() or []
         return [r["aircraft_id"] for r in rows]
+
     @staticmethod
     def get_aircraft_size_for_flight(flight_number: int) -> str | None:
         with DB.get_cursor() as cursor:
@@ -224,6 +229,11 @@ class Flight:
 
     @staticmethod
     def get_flight_window(flight_number: int):
+        """
+        start = departure_time
+        end   = arrival_time אם יש, אחרת departure_time + FlightLength.length_minutes
+        (לבדיקת חפיפות לצוות)
+        """
         with DB.get_cursor() as cursor:
             cursor.execute("""
                 SELECT
@@ -250,6 +260,10 @@ class Flight:
 
     @staticmethod
     def get_required_crew_counts(flight_number: int) -> dict:
+        """
+        Large: 3 pilots, 6 attendants
+        Small: 2 pilots, 3 attendants
+        """
         size = (Flight.get_aircraft_size_for_flight(flight_number) or "").strip().lower()
         if size == "large":
             return {"pilots": 3, "attendants": 6}
@@ -268,3 +282,136 @@ class Flight:
             cursor.execute("SELECT COUNT(*) AS c FROM flightattendants_on_flights WHERE flight_number=%s", (int(flight_number),))
             row = cursor.fetchone() or {}
         return int(row.get("c") or 0)
+
+    # ==========================================================
+    # ✅ Helpers for "Create New Flight" (manager_flight_create)
+    # ==========================================================
+
+    @staticmethod
+    def get_all_aircrafts():
+        """למסך יצירת טיסה חדשה."""
+        with DB.get_cursor() as cursor:
+            cursor.execute("""
+                SELECT aircraft_id, aircraft_size, manufacturer
+                FROM Aircraft
+                ORDER BY aircraft_id
+            """)
+            return cursor.fetchall() or []
+
+    @staticmethod
+    def get_all_routes():
+        """נתיבים קיימים מתוך FlightLength."""
+        with DB.get_cursor() as cursor:
+            cursor.execute("""
+                SELECT origin, destination, length_minutes
+                FROM FlightLength
+                ORDER BY origin, destination
+            """)
+            return cursor.fetchall() or []
+
+    @staticmethod
+    def get_all_route_origins():
+        with DB.get_cursor() as cursor:
+            cursor.execute("""
+                SELECT DISTINCT origin
+                FROM FlightLength
+                ORDER BY origin
+            """)
+            rows = cursor.fetchall() or []
+        return [r["origin"] for r in rows]
+
+    @staticmethod
+    def get_destinations_for_origin(origin: str):
+        origin = (origin or "").strip()
+        with DB.get_cursor() as cursor:
+            cursor.execute("""
+                SELECT destination
+                FROM FlightLength
+                WHERE origin=%s
+                ORDER BY destination
+            """, (origin,))
+            rows = cursor.fetchall() or []
+        return [r["destination"] for r in rows]
+
+    @staticmethod
+    def get_route_length(origin: str, destination: str):
+        """מחזיר TIME של MySQL או None."""
+        with DB.get_cursor() as cursor:
+            cursor.execute("""
+                SELECT length_minutes
+                FROM FlightLength
+                WHERE origin=%s AND destination=%s
+            """, (origin, destination))
+            row = cursor.fetchone()
+        return row["length_minutes"] if row else None
+
+    @staticmethod
+    def get_route_duration_seconds(origin: str, destination: str) -> int:
+        with DB.get_cursor() as cursor:
+            cursor.execute("""
+                SELECT TIME_TO_SEC(length_minutes) AS sec
+                FROM FlightLength
+                WHERE origin=%s AND destination=%s
+            """, (origin, destination))
+            row = cursor.fetchone() or {}
+        return int(row.get("sec") or 0)
+
+    @staticmethod
+    def get_aircraft_size(aircraft_id: int) -> str:
+        with DB.get_cursor() as cursor:
+            cursor.execute("SELECT aircraft_size FROM Aircraft WHERE aircraft_id=%s", (int(aircraft_id),))
+            row = cursor.fetchone()
+        return (row["aircraft_size"] or "").strip().lower() if row else ""
+
+    @staticmethod
+    def flight_number_exists(flight_number: int) -> bool:
+        with DB.get_cursor() as cursor:
+            cursor.execute("SELECT 1 FROM Flight WHERE flight_number=%s LIMIT 1", (int(flight_number),))
+            return cursor.fetchone() is not None
+
+    @staticmethod
+    def create_flight(
+        flight_number: int,
+        aircraft_id: int,
+        origin: str,
+        destination: str,
+        departure_time: datetime,
+        flight_status: str = "Active",
+    ) -> tuple[bool, str]:
+        """
+        יוצר טיסה רק אם הנתיב קיים ב-FlightLength.
+        arrival_time ייקבע ע"י ה-trigger שלך (before insert).
+        """
+
+        origin = (origin or "").strip()
+        destination = (destination or "").strip()
+        flight_status = (flight_status or "Active").strip() or "Active"
+
+        if not origin or not destination:
+            return False, "חובה לבחור שדה מקור ושדה יעד"
+
+        if not isinstance(departure_time, datetime):
+            return False, "תאריך/שעת המראה לא תקין"
+
+        # ✅ נתיב חייב להיות קיים
+        length = Flight.get_route_length(origin, destination)
+        if not length:
+            return False, "לא ניתן להוסיף טיסה לנתיב שלא קיים. קודם הוסף קו טיסה (FlightLength)."
+
+        # ✅ מעל 6 שעות => חייב Large
+        duration_sec = Flight.get_route_duration_seconds(origin, destination)
+        size = Flight.get_aircraft_size(int(aircraft_id))
+        if duration_sec > 6 * 3600 and size != "large":
+            return False, "טיסה מעל 6 שעות חייבת להיות עם מטוס Large"
+
+        # ✅ מספר טיסה ייחודי
+        if Flight.flight_number_exists(int(flight_number)):
+            return False, "מספר טיסה כבר קיים במערכת"
+
+        with DB.get_cursor() as cursor:
+            cursor.execute("""
+                INSERT INTO Flight (flight_number, aircraft_id, origin, destination, departure_time, flight_status)
+                VALUES (%s,%s,%s,%s,%s,%s)
+            """, (int(flight_number), int(aircraft_id), origin, destination, departure_time, flight_status))
+
+        return True, "טיסה נוצרה בהצלחה"
