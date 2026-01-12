@@ -47,6 +47,15 @@
     cursor:not-allowed;
   }
 
+  /* Native validation styling */
+  .field input:invalid{
+    border-color:#ffb3b3;
+    box-shadow: 0 0 0 3px rgba(255, 179, 179, 0.25);
+  }
+  .field input:focus:invalid{
+    box-shadow: 0 0 0 3px rgba(255, 179, 179, 0.35);
+  }
+
   .error{
     background:#ffecec;
     border:1px solid #ffb3b3;
@@ -143,8 +152,8 @@
         <div class="error">{{ error }}</div>
       {% endif %}
 
-      {# חשוב: ה-route הוא /checkout בלי פרמטרים, אז action הוא רק checkout #}
-      <form action="{{ url_for('checkout') }}" method="POST" novalidate>
+      {# IMPORTANT: remove novalidate so required/email validation works in browser #}
+      <form action="{{ url_for('checkout') }}" method="POST">
         <input type="hidden" name="flight_number" value="{{ flight_number }}">
 
         {% for s in selected_seats %}
@@ -159,6 +168,7 @@
             name="first_name"
             value="{{ prefill.get('first_name','') }}"
             required
+            minlength="2"
             {% if lock_fields %}readonly aria-readonly="true"{% endif %}
           >
         </div>
@@ -171,6 +181,7 @@
             name="last_name"
             value="{{ prefill.get('last_name','') }}"
             required
+            minlength="2"
             {% if lock_fields %}readonly aria-readonly="true"{% endif %}
           >
         </div>
@@ -193,13 +204,18 @@
 
           <div class="pay-options">
             <label class="pay-option">
-              <input type="radio" name="payment_method" value="card" checked>
+              <input type="radio" name="payment_method" value="card" required checked>
               <span>כרטיס אשראי</span>
             </label>
 
             <label class="pay-option">
-              <input type="radio" name="payment_method" value="points">
-              <span>נקודות הסולסול המתמיד</span>
+              <input type="radio" name="payment_method" value="paypal" required>
+              <span>PayPal</span>
+            </label>
+
+            <label class="pay-option">
+              <input type="radio" name="payment_method" value="points" required>
+              <span>נקודות הסלסול המתמיד</span>
             </label>
           </div>
         </div>

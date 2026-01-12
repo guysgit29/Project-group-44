@@ -14,7 +14,7 @@
 
     <div style="max-width: 800px; margin: 0 auto; padding: 20px;">
         <h1 style="text-align: center;">פרטי הזמנה: {{ order.booking_id }}</h1>
-        <h3>שלום, {{ order.first_name }}</h3>
+        <h3>שלום {{ order.full_name }},</h3>
         <div class="info-section">
             <h2>✈️ פרטי הטיסה:</h2>
             <p><strong>מספר טיסה:</strong> {{ order.flight_number }}</p>
@@ -72,10 +72,14 @@
                 🖨️ הדפס כרטיס
             </button>
 
-            {% if order.booking_status != 'Canceled by Customer' %}
+            {% if can_cancel %}
                 <a href="{{ url_for('cancel_booking_confirm', booking_id=order.booking_id) }}" class="btn btn-cancel">
                    ❌ ביטול הזמנה
                 </a>
+            {% elif cancel_block_reason %}
+                <div style="margin-top: 15px; color: #d9534f; font-weight: bold;">
+                    {{ cancel_block_reason }}
+                </div>
             {% endif %}
         </div>
     </div>

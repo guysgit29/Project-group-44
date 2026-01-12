@@ -11,7 +11,7 @@
   /* Top bar */
   .topbar{
     display:flex;
-    justify-content: space-between; /* ב-RTL זה שם את הכפתור בשמאל */
+    justify-content: space-between;
     align-items:center;
     gap: 12px;
     margin-bottom: 16px;
@@ -41,7 +41,7 @@
     white-space: nowrap;
   }
   .btn-add:hover{
-    background:#1d4ed8; /* Royal Blue */
+    background:#1d4ed8;
     transform: translateY(-1px);
     box-shadow: 0 10px 22px rgba(11, 61, 145, 0.25);
   }
@@ -116,7 +116,7 @@
     display:inline-block;
     white-space: nowrap;
   }
-  .btn:hover{ background:#1d4ed8; border-color:#1d4ed8; } /* hover royal */
+  .btn:hover{ background:#1d4ed8; border-color:#1d4ed8; }
   .btn.secondary{
     background:#f3f4f6;
     color:#111827;
@@ -125,6 +125,33 @@
   .btn.secondary:hover{
     background:#e5e7eb;
     border-color:#d1d5db;
+  }
+
+  /* ✅ Flight portal button (same color as add aircraft) */
+  .flight-portal-btn{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    padding: 6px 10px;
+    border-radius: 10px;
+    text-decoration:none;
+    font-weight: 900;
+    font-size: 0.85rem;
+    border: 1px solid #0b3d91;
+    background: #0b3d91;
+    color: #fff;
+    box-shadow: 0 6px 16px rgba(11, 61, 145, 0.18);
+    transition: background-color .15s ease, transform .15s ease, box-shadow .15s ease;
+    white-space: nowrap;
+  }
+  .flight-portal-btn:hover{
+    background:#1d4ed8;
+    transform: translateY(-1px);
+    box-shadow: 0 10px 22px rgba(11, 61, 145, 0.25);
+  }
+  .flight-portal-btn:active{
+    transform: translateY(0px);
+    box-shadow: 0 6px 16px rgba(11, 61, 145, 0.18);
   }
 
   /* Aircraft cards */
@@ -150,7 +177,6 @@
   }
   .aircraft-header:hover{ background:#eaf0ff; }
 
-  /* Header text (no bubbles) */
   .aircraft-title{
     font-weight: 900;
     color:#111827;
@@ -227,9 +253,7 @@
   }
 
   @media (max-width: 980px){
-    .filters-grid{
-      grid-template-columns: 1fr;
-    }
+    .filters-grid{ grid-template-columns: 1fr; }
     .topbar{
       flex-direction: column;
       align-items: stretch;
@@ -238,9 +262,7 @@
       justify-content:center;
       width: 100%;
     }
-    .info-grid{
-      grid-template-columns: 1fr;
-    }
+    .info-grid{ grid-template-columns: 1fr; }
   }
 </style>
 
@@ -285,7 +307,7 @@
         <select name="size">
           <option value="">הכל</option>
           <option value="Small" {% if filters.size=='Small' %}selected{% endif %}>Small</option>
-          <option value="Big"   {% if filters.size=='Big' %}selected{% endif %}>Big</option>
+          <option value="Large" {% if filters.size=='Large' %}selected{% endif %}>Large</option>
         </select>
       </div>
 
@@ -306,7 +328,6 @@
     <div class="aircraft-card">
       <input type="checkbox" id="air{{ a.aircraft_id }}" class="toggle">
 
-      <!-- Clean header: no pills/bubbles -->
       <label class="aircraft-header" for="air{{ a.aircraft_id }}">
         <div class="aircraft-title">
           {{ a.aircraft_id }} - {{ a.aircraft_size }} {{ a.manufacturer }}
@@ -316,7 +337,6 @@
 
       <div class="aircraft-body">
 
-        <!-- Purchase date moved INSIDE details -->
         <div class="info-box">
           <div class="info-title">פרטי מטוס</div>
           <div class="info-grid">
@@ -365,6 +385,7 @@
               <th>יעד</th>
               <th>המראה</th>
               <th>סטטוס</th>
+              <th></th>
             </tr>
           </thead>
           <tbody>
@@ -377,11 +398,17 @@
                   <td>{{ f.destination }}</td>
                   <td>{{ f.departure_time }}</td>
                   <td>{{ f.flight_status }}</td>
+                  <td style="text-align:left;">
+                    <a href="{{ url_for('manager_flight_view', flight_number=f.flight_number) }}"
+                       class="flight-portal-btn">
+                       פורטל טיסה
+                    </a>
+                  </td>
                 </tr>
               {% endfor %}
             {% else %}
               <tr>
-                <td colspan="5" class="muted">אין היסטוריית טיסות למטוס זה.</td>
+                <td colspan="6" class="muted">אין היסטוריית טיסות למטוס זה.</td>
               </tr>
             {% endif %}
           </tbody>

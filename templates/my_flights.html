@@ -3,7 +3,16 @@
 {% block content %}
 <div class="container">
     <div style="margin-bottom: 40px;">
-        <h1 style="font-size: 2.2rem; color: var(--primary-navy); margin-bottom: 10px;">שלום, {{ session['user_id'] }}</h1>
+{% set user = (active[0] if active else (history[0] if history else None)) %}
+
+        <h1 style="font-size: 2.2rem; color: var(--primary-navy); margin-bottom: 10px;">
+            שלום,
+            {% if user %}
+                {{ user.first_name }} {{ user.last_name }}
+            {% else %}
+                {{ session['user_id'] }}
+            {% endif %}
+        </h1>
         <p style="color: #636e72;">נהל את הנסיעות שלך, צפה בכרטיסים ובצע שינויים בהזמנות קיימות.</p>
     </div>
 
@@ -48,24 +57,41 @@
     <section style="margin-top: 60px;">
         <h2 style="font-size: 1.4rem; color: #636e72; border-right: 4px solid #ddd; padding-right: 15px;">📜 היסטוריה וביטולים</h2>
         {% if history %}
-            <table class="professional-table" style="opacity: 0.8;">
-                <tbody>
-                    {% for flight in history %}
-                    <tr>
-                        <td style="width: 150px;">{{ flight.booking_id }}</td>
-                        <td>{{ flight.origin }} ➔ {{ flight.destination }}</td>
-                        <td style="direction: ltr;">{{ flight.departure_time.strftime('%d/%m/%Y') }}</td>
-                        <td>
-                            <span class="badge {{ 'badge-history' if flight.booking_status == 'Completed' else '' }}"
-                                  style="{{ 'background: #ffebe6; color: #bf2600;' if 'Canceled' in flight.booking_status else '' }}">
-                                {{ flight.booking_status }}
-                            </span>
-                        </td>
-                        <td style="text-align: left; font-weight: bold;">₪{{ "{:,.2f}".format(flight.price) }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+           <table class="professional-table" style="opacity: 0.8;">
+    <thead>
+        <tr>
+            <th>מספר הזמנה</th>
+            <th>יעד</th>
+            <th>תאריך</th>
+            <th>סטטוס</th>
+            <th>מחיר</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for flight in history %}
+        <tr>
+            <td>{{ flight.booking_id }}</td>
+            <td>{{ flight.origin }} ➔ {{ flight.destination }}</td>
+            <td style="direction: ltr;">{{ flight.departure_time.strftime('%d/%m/%Y') }}</td>
+            <td>
+                <span class="badge {{ 'badge-history' if flight.booking_status == 'Completed' else '' }}"
+                      style="{{ 'background: #ffebe6; color: #bf2600;' if 'Canceled' in flight.booking_status else '' }}">
+                    {{ flight.booking_status }}
+                </span>
+            </td>
+            <td style="text-align: left; font-weight: bold;">₪{{ "{:,.2f}".format(flight.price) }}</td>
+            <td style="text-align: left;">
+                <a href="{{ url_for('manage_booking', booking_id=flight.booking_id) }}"
+                   class="btn-premium"
+                   style="background:#f5f6fa; color:#2c3e50; border:1px solid #dcdde1;">
+                    צפייה בהזמנה
+                </a>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
         {% endif %}
     </section>
 </div>

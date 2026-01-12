@@ -1,11 +1,14 @@
 from datetime import date
 from database import DB
 
+
 class Aircraft:
+    MANUFACTURERS = ["Boeing", "Airbus", "Dassault"]
+    ALLOWED_SIZES = {"Large", "Small"}
     def __init__(self, aircraft_id, manufacturer, size):
         self.id = aircraft_id
         self.manufacturer = manufacturer
-        self.size = size  # 'Big' / 'Small'  (בעמודה DB: aircraft_size)
+        self.size = size  # Large or Small
 
     @staticmethod
     def get_by_id(aircraft_id):
@@ -154,7 +157,7 @@ class Aircraft:
         - Class rows (Economy always, Business optional)
         - Seat rows for each class
         Size rule:
-        - if Business provided -> Big
+        - if Business provided -> Large
         - else -> Small
         Returns aircraft_id
         """
@@ -166,7 +169,7 @@ class Aircraft:
                 and int(business_rows) > 0 and int(business_cols) > 0
         )
 
-        aircraft_size = "Big" if has_business else "Small"
+        aircraft_size = "Large" if has_business else "Small"
 
         with DB.get_cursor() as cursor:
             # 1) insert aircraft
@@ -219,3 +222,124 @@ class Aircraft:
                         )
 
         return aircraft_id
+
+
+    # ------------------------
+    # Helpers ל-UI (filters + page data)
+    # ------------------------
+    @staticmethod
+    def parse_filters(args) -> dict:
+        """
+        args: request.args (MultiDict) או dict
+        מחזיר dict נקי לשימוש ב-DB + ל-render_template
+        """
+        aircraft_id = (args.get("aircraft_id") or "").strip()
+        manufacturer = (args.get("manufacturer") or "").strip()
+        size = (args.get("size") or "").strip()
+
+        if manufacturer not in Aircraft.MANUFACTURERS:
+            manufacturer = ""
+
+        if size and size not in Aircraft.ALLOWED_SIZES:
+            size = ""
+
+        # aircraft_id נשאר כמחרוזת כי אתה משתמש LIKE
+        return {
+            "aircraft_id": aircraft_id,
+            "manufacturer": manufacturer,
+            "size": size
+        }
+
+    @staticmethod
+    def list_page_data(filters: dict):
+        """
+        מחזיר כל מה שהעמוד Aircrafts צריך:
+        aircrafts, classes_map, flights_map
+        """
+        aircrafts = Aircraft.get_filtered(
+            aircraft_id=filters.get("aircraft_id") or None,
+            manufacturer=filters.get("manufacturer") or None,
+            size=filters.get("size") or None,
+        )
+
+        aircraft_ids = [int(a["aircraft_id"]) for a in aircrafts] if aircrafts else []
+
+        classes_map = Aircraft.get_classes_for_aircrafts(aircraft_ids)
+        flights_map = Aircraft.get_flights_for_aircrafts(aircraft_ids)
+
+        return aircrafts, classes_map, flights_map
+
+    # ------------------------
+    # Helpers ליצירת מטוס חדש (validation + pending)
+    # ------------------------
+    @staticmethod
+    def build_pending_from_form(form) -> tuple[dict | None, str | None]:
+        """
+        form: request.form (dict-like)
+        מחזיר (pending, error)
+        pending זה בדיוק מה שאתה שומר ב-session
+        """
+
+        manufacturer = (form.get("manufacturer") or "").strip()
+        purchase_date = (form.get("purchase_date") or "").strip()
+
+        econ_rows = (form.get("economy_rows") or "").strip()
+        econ_cols = (form.get("economy_cols") or "").strip()
+
+        biz_rows = (form.get("business_rows") or "").strip()
+        biz_cols = (form.get("business_cols") or "").strip()
+
+        # validations
+        if manufacturer not in Aircraft.MANUFACTURERS:
+            return None, "יצרן לא תקין"
+
+        if not purchase_date:
+            return None, "חובה לבחור תאריך רכישה"
+
+        if not econ_rows.isdigit() or int(econ_rows) <= 0:
+            return None, "מספר שורות באקונומי חייב להיות מספר חיובי"
+
+        if not econ_cols.isdigit() or int(econ_cols) <= 0:
+            return None, "מספר עמודות באקונומי חייב להיות מספר חיובי"
+
+        business_rows_val = None
+        business_cols_val = None
+
+        # Business optional: אם אחד מולא -> חייבים שניהם תקינים
+        if biz_rows or biz_cols:
+            if (not biz_rows.isdigit()) or (not biz_cols.isdigit()) or int(biz_rows) <= 0 or int(biz_cols) <= 0:
+                return None, "אם ממלאים עסקים – חייבים גם שורות וגם עמודות במספר חיובי"
+
+            business_rows_val = int(biz_rows)
+            business_cols_val = int(biz_cols)
+
+        # נגזר
+        next_id = Aircraft.get_next_aircraft_id()
+        size = "Large" if (business_rows_val and business_cols_val) else "Small"
+
+        pending = {
+            "aircraft_id": next_id,
+            "manufacturer": manufacturer,
+            "purchase_date": purchase_date,
+            "aircraft_size": size,
+            "economy_rows": int(econ_rows),
+            "economy_cols": int(econ_cols),
+            "business_rows": business_rows_val,
+            "business_cols": business_cols_val,
+        }
+
+        return pending, None
+
+    @staticmethod
+    def create_from_pending(pending: dict) -> int:
+        """
+        מעטפת נוחה ל-confirm route
+        """
+        return Aircraft.create_aircraft_with_seats(
+            manufacturer=pending["manufacturer"],
+            purchase_date=pending["purchase_date"],
+            economy_rows=int(pending["economy_rows"]),
+            economy_cols=int(pending["economy_cols"]),
+            business_rows=pending.get("business_rows"),
+            business_cols=pending.get("business_cols"),
+        )
