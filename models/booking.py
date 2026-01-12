@@ -1,5 +1,6 @@
 from datetime import date
 from database import DB
+from datetime import datetime,timedelta
 
 
 class Booking:
@@ -384,3 +385,71 @@ class Booking:
         Flight.update_status_by_capacity(int(flight_number))
 
         return booking_id
+
+    @staticmethod
+    def get_user_flights_split(user_email: str, now=None):
+        """
+        Returns (active_bookings, history_bookings)
+        Active = departure_time > now AND booking_status == 'Active'
+        Everything else goes to history.
+        """
+        Booking.sync_past_bookings()
+        all_bookings = Booking.get_user_flights(user_email)
+
+        now = now or datetime.now()
+
+        active, history = [], []
+        for b in all_bookings:
+            dep = b.get("departure_time")
+            status = (b.get("booking_status") or "").strip()
+
+            if dep and dep > now and status == "Active":
+                active.append(b)
+            else:
+                history.append(b)
+
+        return active, history
+
+    @staticmethod
+    def calc_cancel_flags(order_data: dict, now=None):
+        """
+        Rules:
+        can_cancel iff:
+          - booking_status != 'Canceled by Customer'
+          - flight_status in ('Active','Full')
+          - departure_time - now > 72h
+
+        show_block_message iff:
+          - booking active (not canceled)
+          - flight not completed
+          - cannot cancel
+        """
+        now = now or datetime.now()
+
+        booking_status = (order_data.get("booking_status") or "").strip()
+        flight_status = (order_data.get("flight_status") or "").strip()
+        departure_time = order_data.get("departure_time")
+
+        booking_active = booking_status != "Canceled by Customer"
+        flight_cancelable_status = flight_status in ("Active", "Full")
+        flight_not_completed = flight_status != "Completed"
+
+        more_than_72h = False
+        if departure_time:
+            more_than_72h = (departure_time - now) > timedelta(hours=72)
+
+        can_cancel = booking_active and flight_cancelable_status and more_than_72h
+        show_block_message = booking_active and flight_not_completed and (not can_cancel)
+
+        block_message = (
+            "הזמנה זו לא ניתנת לביטול מאחר ונותרו פחות מ-72 שעות להמראה"
+            if show_block_message else None
+        )
+
+        return can_cancel, show_block_message, block_message
+
+    @staticmethod
+    def get_details_by_id(booking_id: str):
+        b = Booking(booking_id, None, None)
+        return b.get_details()
+

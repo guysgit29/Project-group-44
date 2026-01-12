@@ -1,7 +1,6 @@
 from flask import Flask, render_template, request, redirect, session, url_for, flash
 from flask_session import Session
-from datetime import timedelta
-
+from datetime import timedelta,datetime
 from database import DB
 from models.customers import RegisteredUser
 from models.booking import Booking
@@ -49,21 +48,14 @@ def search_flights():
 def my_flights():
     if 'user_id' not in session:
         return redirect(url_for('login_page'))
-    Booking.sync_past_bookings()
-    all_bookings = Booking.get_user_flights(session['user_id'])
-    from datetime import datetime
-    now = datetime.now()
-    active_bookings = []
-    history_bookings = []
-    for b in all_bookings:
-        if b['departure_time'] > now and b['booking_status'] == 'Active':
-            active_bookings.append(b)
-        else:
-            history_bookings.append(b)
-    return render_template('my_flights.html',
-                           active=active_bookings,
-                           history=history_bookings)
 
+    active_bookings, history_bookings = Booking.get_user_flights_split(session['user_id'])
+
+    return render_template(
+        'my_flights.html',
+        active=active_bookings,
+        history=history_bookings
+    )
 # --- Booking Management Routes ---
 
 @app.route('/search_booking', methods=['GET', 'POST'])
@@ -82,34 +74,69 @@ def search_booking():
     return render_template('search_booking.html')
 
 
+
+# ------------------------------------------------------------
+# Manage booking
+# ------------------------------------------------------------
 @app.route('/manage_booking/<booking_id>')
 def manage_booking(booking_id):
-    """Booking details page."""
     booking = Booking(booking_id, None, None)
     order_data, seats = booking.get_details()
-    if order_data:
-        return render_template('manage_booking.html', order=order_data, seats=seats)
-    return redirect(url_for('home_page'))
 
-# --- Cancellation Flow ---
+    if not order_data:
+        return redirect(url_for('home_page'))
 
+    can_cancel, show_block_message, cancel_block_reason = Booking.calc_cancel_flags(order_data)
+
+    return render_template(
+        'manage_booking.html',
+        order=order_data,
+        seats=seats,
+        can_cancel=can_cancel,
+        show_block_message=show_block_message,
+        cancel_block_reason=cancel_block_reason
+    )
+
+
+# ------------------------------------------------------------
+# Cancel confirmation page
+# ------------------------------------------------------------
 @app.route('/cancel_confirm/<booking_id>')
 def cancel_booking_confirm(booking_id):
-    """Cancel confirmation page."""
+    booking = Booking(booking_id, None, None)
+    order_data, _ = booking.get_details()
+
+    if not order_data:
+        return redirect(url_for('home_page'))
+
+    can_cancel, _, _ = Booking.calc_cancel_flags(order_data)
+
+    if not can_cancel:
+        return redirect(url_for('manage_booking', booking_id=booking_id))
+
     return render_template('cancel_confirm.html', booking_id=booking_id)
 
 
+# ------------------------------------------------------------
+# Execute cancellation
+# ------------------------------------------------------------
 @app.route('/cancel_booking_execute/<booking_id>', methods=['POST'])
 def cancel_booking_execute(booking_id):
-    """Executes cancellation."""
-    booking = Booking.get_by_id(booking_id)
-    if booking and booking.status != 'Canceled by Customer':
-        booking.cancel()
+    booking = Booking(booking_id, None, None)
+    order_data, _ = booking.get_details()
+
+    if not order_data:
+        return redirect(url_for('home_page'))
+
+    can_cancel, _, _ = Booking.calc_cancel_flags(order_data)
+
+    if can_cancel:
+        b = Booking.get_by_id(booking_id)
+        if b and b.status != "Canceled by Customer":
+            b.cancel()
+
     return redirect(url_for('manage_booking', booking_id=booking_id))
 
-# --- Authentication Routes ---
-
-@app.route('/registration', methods=['GET', 'POST'])
 @app.route('/registration', methods=['GET', 'POST'])
 def registration():
     # מאיפה המשתמש הגיע (למשל מה-checkout)
@@ -511,46 +538,22 @@ def manager_flight_manage(flight_number):
     )
 
 
-from models.aircrafts import Aircraft
 @app.route("/aircrafts")
 def aircrafts():
     if session.get("role") != "manager":
         return redirect(url_for("manager_login"))
 
-    aircraft_id = request.args.get("aircraft_id", "").strip()
-    manufacturer = request.args.get("manufacturer", "").strip()
-    size = request.args.get("size", "").strip()
-
-    ALLOWED_MANUFACTURERS = {"Boeing", "Airbus", "Dassault"}
-    if manufacturer not in ALLOWED_MANUFACTURERS:
-        manufacturer = ""
-
-    aircrafts = Aircraft.get_filtered(
-        aircraft_id=aircraft_id,
-        manufacturer=manufacturer,
-        size=size
-    )
-
-    aircraft_ids = [int(a["aircraft_id"]) for a in aircrafts]
-
-    classes_map = Aircraft.get_classes_for_aircrafts(aircraft_ids)
-    flights_map = Aircraft.get_flights_for_aircrafts(aircraft_ids)
+    filters = Aircraft.parse_filters(request.args)
+    aircrafts, classes_map, flights_map = Aircraft.list_page_data(filters)
 
     return render_template(
         "aircrafts.html",
         aircrafts=aircrafts,
         classes_map=classes_map,
         flights_map=flights_map,
-        filters={
-            "aircraft_id": aircraft_id,
-            "manufacturer": manufacturer,
-            "size": size
-        }
+        filters=filters
     )
 
-from models.aircrafts import Aircraft
-
-MANUFACTURERS = ["Boeing", "Airbus", "Dassault"]
 
 @app.route("/aircrafts/new", methods=["GET", "POST"])
 def add_aircraft():
@@ -558,60 +561,25 @@ def add_aircraft():
         return redirect(url_for("manager_login"))
 
     if request.method == "GET":
-        return render_template("add_aircraft.html", manufacturers=MANUFACTURERS, error=None)
+        return render_template(
+            "add_aircraft.html",
+            manufacturers=Aircraft.MANUFACTURERS,
+            error=None
+        )
 
-    # POST -> validate + store pending in session, then redirect to confirm
-    manufacturer = (request.form.get("manufacturer") or "").strip()
-    purchase_date = (request.form.get("purchase_date") or "").strip()
-
-    econ_rows = (request.form.get("economy_rows") or "").strip()
-    econ_cols = (request.form.get("economy_cols") or "").strip()
-
-    biz_rows = (request.form.get("business_rows") or "").strip()
-    biz_cols = (request.form.get("business_cols") or "").strip()
-
-    # basic validation
-    if manufacturer not in MANUFACTURERS:
-        return render_template("add_aircraft.html", manufacturers=MANUFACTURERS, error="יצרן לא תקין")
-
-    if not purchase_date:
-        return render_template("add_aircraft.html", manufacturers=MANUFACTURERS, error="חובה לבחור תאריך רכישה")
-
-    if not econ_rows.isdigit() or int(econ_rows) <= 0:
-        return render_template("add_aircraft.html", manufacturers=MANUFACTURERS, error="מספר שורות באקונומי חייב להיות מספר חיובי")
-
-    if not econ_cols.isdigit() or int(econ_cols) <= 0:
-        return render_template("add_aircraft.html", manufacturers=MANUFACTURERS, error="מספר עמודות באקונומי חייב להיות מספר חיובי")
-
-    # Business can be empty. If one filled -> require both valid.
-    business_rows_val = None
-    business_cols_val = None
-
-    if biz_rows or biz_cols:
-        if (not biz_rows.isdigit()) or (not biz_cols.isdigit()) or int(biz_rows) <= 0 or int(biz_cols) <= 0:
-            return render_template("add_aircraft.html", manufacturers=MANUFACTURERS, error="אם ממלאים עסקים – חייבים גם שורות וגם עמודות במספר חיובי")
-
-        business_rows_val = int(biz_rows)
-        business_cols_val = int(biz_cols)
-
-    # compute derived fields for summary
-    next_id = Aircraft.get_next_aircraft_id()
-    size = "Big" if (business_rows_val and business_cols_val) else "Small"
-
-    pending = {
-        "aircraft_id": next_id,
-        "manufacturer": manufacturer,
-        "purchase_date": purchase_date,
-        "aircraft_size": size,
-        "economy_rows": int(econ_rows),
-        "economy_cols": int(econ_cols),
-        "business_rows": business_rows_val,
-        "business_cols": business_cols_val,
-    }
+    pending, error = Aircraft.build_pending_from_form(request.form)
+    if error:
+        return render_template(
+            "add_aircraft.html",
+            manufacturers=Aircraft.MANUFACTURERS,
+            error=error
+        )
 
     session["pending_new_aircraft"] = pending
     return redirect(url_for("add_aircraft_confirm"))
 
+
+from models.aircrafts import Aircraft
 
 @app.route("/aircrafts/new/confirm", methods=["GET", "POST"])
 def add_aircraft_confirm():
@@ -625,15 +593,7 @@ def add_aircraft_confirm():
     if request.method == "GET":
         return render_template("add_aircraft_confirm.html", a=pending)
 
-    # POST -> create in DB
-    created_id = Aircraft.create_aircraft_with_seats(
-        manufacturer=pending["manufacturer"],
-        purchase_date=pending["purchase_date"],
-        economy_rows=int(pending["economy_rows"]),
-        economy_cols=int(pending["economy_cols"]),
-        business_rows=pending.get("business_rows"),
-        business_cols=pending.get("business_cols"),
-    )
+    Aircraft.create_from_pending(pending)
 
     session.pop("pending_new_aircraft", None)
     flash("מטוס נוסף בהצלחה", "success")

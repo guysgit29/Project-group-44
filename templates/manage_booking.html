@@ -72,10 +72,14 @@
                 🖨️ הדפס כרטיס
             </button>
 
-            {% if order.booking_status != 'Canceled by Customer' %}
+            {% if can_cancel %}
                 <a href="{{ url_for('cancel_booking_confirm', booking_id=order.booking_id) }}" class="btn btn-cancel">
                    ❌ ביטול הזמנה
                 </a>
+            {% elif cancel_block_reason %}
+                <div style="margin-top: 15px; color: #d9534f; font-weight: bold;">
+                    {{ cancel_block_reason }}
+                </div>
             {% endif %}
         </div>
     </div>
