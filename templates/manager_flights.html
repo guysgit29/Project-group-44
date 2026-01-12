@@ -1,3 +1,6 @@
+{# ================================
+   templates/manager_flights.html  (כל הקובץ מחדש עם שדה מטוס)
+   ================================ #}
 {% extends "base.html" %}
 
 {% block content %}
@@ -12,24 +15,38 @@
         </a>
     </div>
 
-    <!-- סינון לפי סטטוס -->
-    <form method="GET" action="{{ url_for('manager_flights') }}" style="margin-bottom:20px;">
-        <label for="status" style="margin-left:10px;">סינון לפי סטטוס:</label>
+    <!-- סינון לפי סטטוס + מספר מטוס -->
+    {# ================================
+   templates/manager_flights.html
+   (להחליף רק את חלק הטופס – כל השאר יכול להישאר כמו אצלך)
+   ================================ #}
 
-        <!-- ✅ תיקון קטן: select id -->
-        <select id="status" name="status" style="padding:6px;">
-            <option value="" {% if not selected_status %}selected{% endif %}>כל הטיסות</option>
-            <option value="Active" {% if selected_status == 'Active' %}selected{% endif %}>Active</option>
-            <option value="Delayed" {% if selected_status == 'Delayed' %}selected{% endif %}>Delayed</option>
-            <option value="Canceled" {% if selected_status == 'Canceled' %}selected{% endif %}>Canceled</option>
-            <option value="Completed" {% if selected_status == 'Completed' %}selected{% endif %}>Completed</option>
-        </select>
+<form method="GET" action="{{ url_for('manager_flights') }}" style="margin-bottom:20px;">
+    <label for="status" style="margin-left:10px;">סינון לפי סטטוס:</label>
 
-        <button type="submit"
-                style="margin-right:10px; padding:6px 12px; background:#003366; color:white; border:none; cursor:pointer;">
-            סנן
-        </button>
-    </form>
+    <select id="status" name="status" style="padding:6px;">
+        <option value="" {% if not selected_status %}selected{% endif %}>כל הטיסות</option>
+        <option value="Active" {% if selected_status == 'Active' %}selected{% endif %}>Active</option>
+        <option value="Full" {% if selected_status == 'Full' %}selected{% endif %}>Full</option>
+        <option value="Canceled" {% if selected_status == 'Canceled' %}selected{% endif %}>Canceled</option>
+        <option value="Completed" {% if selected_status == 'Completed' %}selected{% endif %}>Completed</option>
+    </select>
+
+    <label for="aircraft_id" style="margin-right:15px; margin-left:10px;">סינון לפי מספר מטוס:</label>
+
+    <!-- ✅ כמו dropdown הראשון -->
+    <select id="aircraft_id" name="aircraft_id" style="padding:6px;">
+        <option value="" {% if not selected_aircraft_id %}selected{% endif %}>כל המטוסים</option>
+        {% for aid in aircraft_ids %}
+            <option value="{{ aid }}" {% if selected_aircraft_id|int == aid %}selected{% endif %}>{{ aid }}</option>
+        {% endfor %}
+    </select>
+
+    <button type="submit"
+            style="margin-right:10px; padding:6px 12px; background:#003366; color:white; border:none; cursor:pointer;">
+        סנן
+    </button>
+</form>
 
     <p style="color:#555; margin-bottom:10px;">
         נמצאו {{ flights|length if flights else 0 }} טיסות
@@ -77,7 +94,6 @@
                                 צפייה בפרטים
                             </a>
                         {% else %}
-                            <!-- ✅ כאן התיקון: הולכים לניהול טיסה -->
                             <a href="{{ url_for('manager_flight_manage', flight_number=f.flight_number) }}"
                                style="
                                    display:inline-block;

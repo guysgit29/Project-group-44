@@ -9,14 +9,27 @@
   <!-- פרטי טיסה -->
   <div style="margin-top:16px; padding:14px; border:1px solid #e5e7eb; border-radius:12px; background:#fff;">
     <div style="display:flex; gap:18px; flex-wrap:wrap; align-items:center;">
+
       <div><b>מוצא:</b> {{ flight.origin }}</div>
       <div><b>יעד:</b> {{ flight.destination }}</div>
       <div><b>המראה:</b> {{ flight.departure_time }}</div>
       <div><b>נחיתה:</b> {{ flight.arrival_time or "לא ידוע" }}</div>
       <div><b>סטטוס:</b> {{ flight.flight_status }}</div>
-      {% if flight.aircraft_size %}
-        <div><b>גודל מטוס:</b> {{ flight.aircraft_size }}</div>
-      {% endif %}
+
+      <div>
+        <b>סוג מטוס:</b>
+        {% set s = (flight.aircraft_size or "")|lower %}
+        {% if s == "large" %}
+          גדול
+        {% elif s == "small" %}
+          קטן
+        {% elif flight.aircraft_size %}
+          {{ flight.aircraft_size }}
+        {% else %}
+          לא ידוע
+        {% endif %}
+      </div>
+
     </div>
   </div>
 
@@ -30,6 +43,7 @@
   <div style="margin-bottom:10px; padding:10px; border:1px solid #f1f5f9; border-radius:10px; background:#fafafa;">
     <span><b>נדרש:</b> {{ required.pilots }}</span>
     <span style="margin-right:14px;"><b>שובצו:</b> {{ assigned_counts.pilots }}</span>
+
     {% if missing_counts.pilots > 0 %}
       <span style="margin-right:14px; color:#b91c1c; font-weight:800;">
         חסר שיבוץ: {{ missing_counts.pilots }}
@@ -93,6 +107,7 @@
   <div style="margin-bottom:10px; padding:10px; border:1px solid #f1f5f9; border-radius:10px; background:#fafafa;">
     <span><b>נדרש:</b> {{ required.attendants }}</span>
     <span style="margin-right:14px;"><b>שובצו:</b> {{ assigned_counts.attendants }}</span>
+
     {% if missing_counts.attendants > 0 %}
       <span style="margin-right:14px; color:#b91c1c; font-weight:800;">
         חסר שיבוץ: {{ missing_counts.attendants }}

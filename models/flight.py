@@ -1,3 +1,6 @@
+# ================================
+# models/flight.py  (רק מה שצריך לשינוי)
+# ================================
 from database import DB
 
 
@@ -143,7 +146,7 @@ class Flight:
     # -------------------------
 
     @staticmethod
-    def list_for_manager(selected_status: str = ""):
+    def list_for_manager(selected_status: str = "", aircraft_id: int | None = None):
         query = """
             SELECT
                 flight_number,
@@ -155,17 +158,26 @@ class Flight:
                 flight_status
             FROM Flight
         """
-        params = ()
+
+        where = []
+        params = []
 
         selected_status = (selected_status or "").strip()
         if selected_status:
-            query += " WHERE flight_status = %s"
-            params = (selected_status,)
+            where.append("flight_status = %s")
+            params.append(selected_status)
+
+        if aircraft_id is not None:
+            where.append("aircraft_id = %s")
+            params.append(int(aircraft_id))
+
+        if where:
+            query += " WHERE " + " AND ".join(where)
 
         query += " ORDER BY departure_time DESC"
 
         with DB.get_cursor() as cursor:
-            cursor.execute(query, params)
+            cursor.execute(query, tuple(params))
             return cursor.fetchall()
 
     @staticmethod
@@ -186,11 +198,18 @@ class Flight:
             return cursor.fetchone()
 
     @staticmethod
-    def get_aircraft_by_id(aircraft_id: int):
+    @staticmethod
+    def get_all_aircraft_ids():
+        """מחזיר רשימת מספרי מטוסים שקיימים בטיסות (ל-drop-down)."""
         with DB.get_cursor() as cursor:
-            cursor.execute("SELECT * FROM Aircraft WHERE aircraft_id = %s", (int(aircraft_id),))
-            return cursor.fetchone()
-
+            cursor.execute("""
+                   SELECT DISTINCT aircraft_id
+                   FROM Flight
+                   WHERE aircraft_id IS NOT NULL
+                   ORDER BY aircraft_id ASC
+               """)
+            rows = cursor.fetchall() or []
+        return [r["aircraft_id"] for r in rows]
     @staticmethod
     def get_aircraft_size_for_flight(flight_number: int) -> str | None:
         with DB.get_cursor() as cursor:
@@ -205,11 +224,6 @@ class Flight:
 
     @staticmethod
     def get_flight_window(flight_number: int):
-        """
-        start = departure_time
-        end   = arrival_time אם יש, אחרת departure_time + FlightLength.length_minutes
-        (בונה "חלון זמן" לטובת בדיקת חפיפות)
-        """
         with DB.get_cursor() as cursor:
             cursor.execute("""
                 SELECT
@@ -236,13 +250,9 @@ class Flight:
 
     @staticmethod
     def get_required_crew_counts(flight_number: int) -> dict:
-        """
-        Large: 2 pilots, 6 attendants
-        Small: 2 pilots, 3 attendants
-        """
         size = (Flight.get_aircraft_size_for_flight(flight_number) or "").strip().lower()
         if size == "large":
-            return {"pilots": 2, "attendants": 6}
+            return {"pilots": 3, "attendants": 6}
         return {"pilots": 2, "attendants": 3}
 
     @staticmethod
