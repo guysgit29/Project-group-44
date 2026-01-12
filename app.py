@@ -896,3 +896,68 @@ def add_flight_length():
     return render_template("add_flight_length.html")
 if __name__ == '__main__':
     app.run(debug=True)
+
+    from flask import request, render_template, redirect, url_for, session
+    from models.flight import Flight
+
+
+    @app.route("/manage_flight_routes", methods=["GET", "POST"])
+    def manage_flight_routes():
+        # מומלץ: הרשאת מנהל
+        if session.get("role") != "manager":
+            return redirect(url_for("home_page"))
+
+        # פילטרים (GET)
+        filter_origin = (request.args.get("filter_origin") or "").strip()
+        filter_destination = (request.args.get("filter_destination") or "").strip()
+
+        # POST = הוספת קו חדש
+        if request.method == "POST":
+            origin = request.form.get("origin") or ""
+            destination = request.form.get("destination") or ""
+            length_minutes = request.form.get("length_minutes") or ""
+
+            ok, err = Flight.create_route(origin, destination, length_minutes)
+
+            if ok:
+                # PRG
+                return redirect(url_for(
+                    "manage_flight_routes",
+                    filter_origin=filter_origin,
+                    filter_destination=filter_destination,
+                    success="1"
+                ))
+
+            # במקרה שגיאה נציג את הדף עם הודעה ו-prefill
+            origins = Flight.get_all_route_origins()
+            destinations = Flight.get_destinations_for_origin(filter_origin) if filter_origin else []
+            routes = Flight.search_routes(filter_origin, filter_destination)
+
+            return render_template(
+                "manage_flight_routes.html",
+                routes=routes,
+                origins=origins,
+                destinations=destinations,
+                filter_origin=filter_origin,
+                filter_destination=filter_destination,
+                add_prefill={"origin": origin, "destination": destination, "length_minutes": length_minutes},
+                error=err,
+                success=None,
+            )
+
+        # GET = הצגה
+        origins = Flight.get_all_route_origins()
+        destinations = Flight.get_destinations_for_origin(filter_origin) if filter_origin else []
+        routes = Flight.search_routes(filter_origin, filter_destination)
+
+        return render_template(
+            "manage_flight_routes.html",
+            routes=routes,
+            origins=origins,
+            destinations=destinations,
+            filter_origin=filter_origin,
+            filter_destination=filter_destination,
+            add_prefill={"origin": "", "destination": "", "length_minutes": ""},
+            error=None,
+            success=("קו טיסה נוסף בהצלחה" if request.args.get("success") else None),
+        )

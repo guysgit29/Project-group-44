@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+{% block title %}ניהול קווי טיסה{% endblock %}
+
+{% block content %}
+<style>
+  .wrap{ max-width:1100px; margin:40px auto; padding:0 16px; direction:rtl; }
+  .header{ display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }
+  .card{ background:#fff; border-radius:14px; box-shadow:0 8px 24px rgba(0,0,0,.10); padding:18px; margin-top:16px; }
+  .grid{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; }
+  .grid-2{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .field{ display:grid; gap:6px; }
+  .field label{ font-weight:800; }
+  .field input, .field select{
+    padding:12px; border-radius:10px; border:1px solid #ddd; outline:none; text-align:right;
+  }
+  .btnrow{ display:flex; gap:10px; justify-content:flex-start; flex-wrap:wrap; margin-top:12px; }
+  .btn{
+    padding:10px 16px; border-radius:10px; border:1px solid #333;
+    background:#f2f2f2; cursor:pointer; font-weight:800; text-decoration:none; color:#111;
+  }
+  .btn-primary{ background:#111; color:#fff; border-color:#111; }
+  .msg{ text-align:center; font-weight:800; padding:10px 12px; border-radius:10px; margin-bottom:10px; }
+  .msg.err{ background:#ffecec; border:1px solid #ffb3b3; color:#8a0000; }
+  .msg.ok{ background:#eaffea; border:1px solid #b7efb7; color:#0a6b0a; }
+
+  table{ width:100%; border-collapse:collapse; }
+  th, td{ padding:12px 10px; border-bottom:1px solid #eee; text-align:right; }
+  th{ font-weight:900; background:#fafafa; }
+  .mono{ direction:ltr; text-align:left; font-weight:800; }
+  .empty{ text-align:center; color:#666; padding:18px 0; }
+  @media (max-width: 900px){
+    .grid{ grid-template-columns:1fr; }
+    .grid-2{ grid-template-columns:1fr; }
+  }
+</style>
+
+<div class="wrap">
+  <div class="header">
+    <div>
+      <h1 style="margin:0;">ניהול קווי טיסה</h1>
+      <div style="color:#666; margin-top:6px;">טבלת FlightLength</div>
+    </div>
+    <a class="btn" href="{{ url_for('manager_dashboard') }}">חזרה ללוח בקרה</a>
+  </div>
+
+  <div class="card">
+    {% if error %}<div class="msg err">{{ error }}</div>{% endif %}
+    {% if success %}<div class="msg ok">{{ success }}</div>{% endif %}
+
+    <h2 style="margin:0 0 12px 0;">סינון</h2>
+
+    <form method="GET" action="{{ url_for('manage_flight_routes') }}">
+      <div class="grid-2">
+        <div class="field">
+          <label for="filter_origin">מוצא</label>
+          <select id="filter_origin" name="filter_origin">
+            <option value="">הכל</option>
+            {% for o in origins %}
+              <option value="{{ o }}" {% if filter_origin == o %}selected{% endif %}>{{ o }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="filter_destination">יעד</label>
+          <select id="filter_destination" name="filter_destination">
+            <option value="">הכל</option>
+
+            {# אם נבחר origin - נציג יעדים רלוונטיים; אחרת נשאיר רק "הכל" #}
+            {% for d in destinations %}
+              <option value="{{ d }}" {% if filter_destination == d %}selected{% endif %}>{{ d }}</option>
+            {% endfor %}
+          </select>
+          <div style="color:#666; font-size:12px;">
+            * כדי לראות רשימת יעדים, בחר קודם מוצא
+          </div>
+        </div>
+      </div>
+
+      <div class="btnrow">
+        <button class="btn btn-primary" type="submit">סנן</button>
+        <a class="btn" href="{{ url_for('manage_flight_routes') }}">נקה סינון</a>
+      </div>
+    </form>
+  </div>
+
+  <div class="card">
+    <h2 style="margin:0 0 12px 0;">הוספת קו חדש</h2>
+
+    <form method="POST" action="{{ url_for('manage_flight_routes', filter_origin=filter_origin, filter_destination=filter_destination) }}">
+      <div class="grid">
+        <div class="field">
+          <label for="origin">מקור</label>
+          <input id="origin" name="origin" type="text" required value="{{ add_prefill.origin }}">
+        </div>
+
+        <div class="field">
+          <label for="destination">יעד</label>
+          <input id="destination" name="destination" type="text" required value="{{ add_prefill.destination }}">
+        </div>
+
+        <div class="field">
+          <label for="length_minutes">אורך טיסה (TIME)</label>
+          <input
+            id="length_minutes"
+            name="length_minutes"
+            type="text"
+            required
+            placeholder="HH:MM:SS (למשל 02:35:00)"
+            value="{{ add_prefill.length_minutes }}"
+            style="direction:ltr; text-align:left;"
+          >
+        </div>
+      </div>
+
+      <div class="btnrow">
+        <button class="btn btn-primary" type="submit">הוסף קו</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="card">
+    <h2 style="margin:0 0 12px 0;">כל קווי הטיסה</h2>
+
+    {% if routes and routes|length > 0 %}
+      <table>
+        <thead>
+          <tr>
+            <th>מוצא</th>
+            <th>יעד</th>
+            <th class="mono">אורך טיסה</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in routes %}
+            <tr>
+              <td>{{ r.origin }}</td>
+              <td>{{ r.destination }}</td>
+              <td class="mono">{{ r.length_minutes }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div class="empty">לא נמצאו קווי טיסה לפי הסינון הנוכחי.</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

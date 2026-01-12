@@ -415,3 +415,69 @@ class Flight:
             """, (int(flight_number), int(aircraft_id), origin, destination, departure_time, flight_status))
 
         return True, "טיסה נוצרה בהצלחה"
+
+
+    # ==========================================================
+    # ✅ Manage Flight Routes (FlightLength)
+    # ==========================================================
+
+    @staticmethod
+    def search_routes(origin: str = "", destination: str = ""):
+        origin = (origin or "").strip()
+        destination = (destination or "").strip()
+
+        query = """
+            SELECT origin, destination, length_minutes
+            FROM FlightLength
+        """
+        where = []
+        params = []
+
+        if origin:
+            where.append("origin = %s")
+            params.append(origin)
+        if destination:
+            where.append("destination = %s")
+            params.append(destination)
+
+        if where:
+            query += " WHERE " + " AND ".join(where)
+
+        query += " ORDER BY origin, destination"
+
+        with DB.get_cursor() as cursor:
+            cursor.execute(query, tuple(params))
+            return cursor.fetchall() or []
+
+    @staticmethod
+    def create_route(origin: str, destination: str, length_minutes: str) -> tuple[bool, str | None]:
+        origin = (origin or "").strip()
+        destination = (destination or "").strip()
+        length_minutes = (length_minutes or "").strip()
+
+        if not origin or not destination or not length_minutes:
+            return False, "יש למלא מקור, יעד ואורך טיסה"
+
+        if origin == destination:
+            return False, "מקור ויעד לא יכולים להיות זהים"
+
+        # אופציונלי: בדיקת פורמט בסיסית ל-TIME (מאפשר HH:MM או HH:MM:SS)
+        parts = length_minutes.split(":")
+        if len(parts) not in (2, 3):
+            return False, "פורמט אורך טיסה לא תקין. השתמש HH:MM או HH:MM:SS"
+
+        try:
+            with DB.get_cursor() as cursor:
+                cursor.execute(
+                    """
+                    INSERT INTO FlightLength (origin, destination, length_minutes)
+                    VALUES (%s, %s, %s)
+                    """,
+                    (origin, destination, length_minutes),
+                )
+            return True, None
+        except Exception as e:
+            msg = str(e)
+            if "Duplicate" in msg or "1062" in msg:
+                return False, "קו כזה כבר קיים (אותו מקור ואותו יעד)"
+            return False, f"שגיאת DB: {msg}"
