@@ -1,10 +1,11 @@
+from __future__ import annotations
+from datetime import datetime
 from database import DB
 from models.flight import Flight
 
 
 class Employee:
-    def __init__(self, id, first_name_he, last_name_he, start_date,
-                 city, street, house_number):
+    def __init__(self, id, first_name_he, last_name_he, start_date, city, street, house_number):
         self.id = id
         self.first_name_he = first_name_he
         self.last_name_he = last_name_he
@@ -15,46 +16,114 @@ class Employee:
 
 
 class Manager(Employee):
-    def __init__(self, id, first_name_he, last_name_he, start_date,
-                 city, street, house_number):
+    def __init__(self, id, first_name_he, last_name_he, start_date, city, street, house_number):
         super().__init__(id, first_name_he, last_name_he, start_date, city, street, house_number)
 
     @staticmethod
     def login(emp_id: int, password: str):
         with DB.get_cursor() as cursor:
             cursor.execute("""
-                SELECT id, first_name_he, last_name_he, start_date,
-                       city, street, house_number
+                SELECT id, first_name_he, last_name_he, start_date, city, street, house_number
                 FROM Manager
                 WHERE id = %s AND password = %s
             """, (int(emp_id), password))
-
             row = cursor.fetchone()
             if not row:
                 return None
 
             return Manager(
-                row["id"],
-                row["first_name_he"],
-                row["last_name_he"],
-                row.get("start_date"),
-                row.get("city"),
-                row.get("street"),
-                row.get("house_number")
+                row["id"], row["first_name_he"], row["last_name_he"],
+                row.get("start_date"), row.get("city"),
+                row.get("street"), row.get("house_number")
             )
 
 
-class Pilot(Employee):
-    def __init__(self, id, first_name_he, last_name_he, start_date,
-                 city, street, house_number, big_aircraft_cert=None):
-        super().__init__(id, first_name_he, last_name_he, start_date, city, street, house_number)
-        self.big_aircraft_cert = big_aircraft_cert
+# ==========================================================
+# PILOT
+# ==========================================================
 
-    # =========================
-    # ✅ LOCATION (DEFAULT TLV)
-    # =========================
+class Pilot(Employee):
+    def __init__(self, id, first_name_he, last_name_he, start_date, city, street, house_number, big_aircraft_cert=0):
+        super().__init__(id, first_name_he, last_name_he, start_date, city, street, house_number)
+        self.big_aircraft_cert = int(big_aircraft_cert or 0)
+
+    # -------------------------
+    # Assigned / List
+    # -------------------------
+
+    @staticmethod
+    def get_assigned_for_flight(flight_number: int):
+        with DB.get_cursor() as cursor:
+            cursor.execute("""
+                SELECT p.*
+                FROM Pilot p
+                JOIN pilots_on_flights pof ON p.id = pof.id
+                WHERE pof.flight_number = %s
+                ORDER BY p.id
+            """, (int(flight_number),))
+            rows = cursor.fetchall() or []
+
+        return [
+            Pilot(
+                r["id"], r["first_name_he"], r["last_name_he"],
+                r.get("start_date"), r.get("city"), r.get("street"), r.get("house_number"),
+                r.get("big_aircraft_cert")
+            )
+            for r in rows
+        ]
+
+    @staticmethod
+    def list_all(flight_number: int | None = None):
+        """
+        אם flight_number לא נשלח -> כל הטייסים.
+        אם כן -> רק טייסים זמינים + מתאימים (הסמכה + בלי חפיפה + בלי שיבוץ כפול + מיקום).
+        """
+        with DB.get_cursor() as cursor:
+            cursor.execute("""
+                SELECT id, first_name_he, last_name_he, start_date, city, street, house_number, big_aircraft_cert
+                FROM Pilot
+                ORDER BY id
+            """)
+            rows = cursor.fetchall() or []
+
+        pilots = [
+            Pilot(
+                r["id"], r["first_name_he"], r["last_name_he"],
+                r.get("start_date"), r.get("city"), r.get("street"), r.get("house_number"),
+                r.get("big_aircraft_cert")
+            )
+            for r in rows
+        ]
+
+        if not flight_number:
+            return pilots
+
+        flight_number = int(flight_number)
+        assigned_ids = {p.id for p in Pilot.get_assigned_for_flight(flight_number)}
+
+        filtered = []
+        for p in pilots:
+            if p.id in assigned_ids:
+                continue
+            if not Pilot._cert_ok_for_flight(p.id, flight_number):
+                continue
+            if Pilot._has_overlap(p.id, flight_number):
+                continue
+            if not Pilot._location_ok_for_flight(p.id, flight_number):
+                continue
+            filtered.append(p)
+
+        return filtered
+
+    # -------------------------
+    # Location / Rules
+    # -------------------------
+
     @staticmethod
     def get_current_location_before(pilot_id: int, before_dt) -> str:
+        """
+        יעד אחרון בטיסות Completed לפני before_dt, אחרת TLV.
+        """
         with DB.get_cursor() as cursor:
             cursor.execute("""
                 SELECT f.destination
@@ -87,72 +156,6 @@ class Pilot(Employee):
         current_location = Pilot.get_current_location_before(int(pilot_id), flight["departure_time"])
         return current_location == flight["origin"]
 
-    # =========================
-    # LIST / ASSIGNED
-    # =========================
-    @staticmethod
-    def list_all(flight_number: int | None = None):
-        """
-        אם flight_number לא נשלח -> מחזיר את כל הטייסים.
-        אם כן נשלח -> מחזיר רק טייסים זמינים + מתאימים (הסמכה + בלי חפיפה + בלי שיבוץ כפול + מיקום).
-        """
-        with DB.get_cursor() as cursor:
-            cursor.execute("""
-                SELECT id, first_name_he, last_name_he, start_date,
-                       city, street, house_number, big_aircraft_cert
-                FROM Pilot
-                ORDER BY id
-            """)
-            rows = cursor.fetchall() or []
-
-        pilots = [Pilot(
-            r["id"], r["first_name_he"], r["last_name_he"],
-            r.get("start_date"), r.get("city"), r.get("street"), r.get("house_number"),
-            r.get("big_aircraft_cert")
-        ) for r in rows]
-
-        if not flight_number:
-            return pilots
-
-        flight_number = int(flight_number)
-        assigned_ids = {p.id for p in Pilot.get_assigned_for_flight(flight_number)}
-
-        filtered = []
-        for p in pilots:
-            if p.id in assigned_ids:
-                continue
-            if not Pilot._cert_ok_for_flight(p.id, flight_number):
-                continue
-            if Pilot._has_overlap(p.id, flight_number):
-                continue
-            if not Pilot._location_ok_for_flight(p.id, flight_number):
-                continue
-            filtered.append(p)
-
-        return filtered
-
-    @staticmethod
-    def get_assigned_for_flight(flight_number: int):
-        with DB.get_cursor() as cursor:
-            cursor.execute("""
-                SELECT p.*
-                FROM Pilot p
-                JOIN pilots_on_flights pof
-                  ON p.id = pof.id
-                WHERE pof.flight_number = %s
-                ORDER BY p.id
-            """, (int(flight_number),))
-            rows = cursor.fetchall() or []
-
-        return [Pilot(
-            r["id"], r["first_name_he"], r["last_name_he"],
-            r.get("start_date"), r.get("city"), r.get("street"), r.get("house_number"),
-            r.get("big_aircraft_cert")
-        ) for r in rows]
-
-    # =========
-    # ✅ RULES
-    # =========
     @staticmethod
     def _cert_ok_for_flight(pilot_id: int, flight_number: int) -> bool:
         size = (Flight.get_aircraft_size_for_flight(flight_number) or "").strip().lower()
@@ -182,7 +185,7 @@ class Pilot(Employee):
                     ON fl.origin = f.origin AND fl.destination = f.destination
                 WHERE pof.id = %s
                   AND pof.flight_number <> %s
-                  AND f.flight_status IN ('Active','Delayed')
+                  AND f.flight_status IN ('Active','Full','Delayed')
                   AND (
                         %s < COALESCE(f.arrival_time, ADDTIME(f.departure_time, fl.length_minutes))
                     AND f.departure_time < %s
@@ -192,30 +195,29 @@ class Pilot(Employee):
 
             return cursor.fetchone() is not None
 
+    # -------------------------
+    # Assign / Remove (existing flight manage)
+    # -------------------------
+
     @staticmethod
     def assign_to_flight(pilot_id: int, flight_number: int) -> tuple[bool, str]:
         pilot_id = int(pilot_id)
         flight_number = int(flight_number)
 
-        # 0) limit
         required = Flight.get_required_crew_counts(flight_number)
         if Flight.count_assigned_pilots(flight_number) >= int(required["pilots"]):
             return False, "כבר שובצו מספיק טייסים לטיסה הזו"
 
-        # 1) cert
         if not Pilot._cert_ok_for_flight(pilot_id, flight_number):
             return False, "הטייס לא מוסמך למטוס גדול בטיסה הזו"
 
-        # 2) overlap
         if Pilot._has_overlap(pilot_id, flight_number):
             return False, "לא ניתן לשבץ: יש חפיפה עם טיסה אחרת של הטייס"
 
-        # 3) location
         if not Pilot._location_ok_for_flight(pilot_id, flight_number):
             return False, "לא ניתן לשבץ: הטייס לא נמצא במוצא הטיסה"
 
         with DB.get_cursor() as cursor:
-            # 4) already assigned
             cursor.execute("""
                 SELECT 1
                 FROM pilots_on_flights
@@ -225,7 +227,6 @@ class Pilot(Employee):
             if cursor.fetchone():
                 return False, "הטייס כבר משובץ לטיסה הזו"
 
-            # 5) insert
             cursor.execute("""
                 INSERT INTO pilots_on_flights (id, flight_number)
                 VALUES (%s, %s)
@@ -245,16 +246,141 @@ class Pilot(Employee):
                 return True, "הטייס הוסר מהטיסה"
             return False, "הטייס לא היה משובץ לטיסה הזו"
 
+    # ==========================================================
+    # ✅ For NEW flight creation (availability by time window)
+    # ==========================================================
+
+    @staticmethod
+    def list_available_for_new_flight(origin: str, dep_dt: datetime, arr_dt: datetime, aircraft_size: str):
+        """
+        מחזיר רשימת טייסים זמינים לטיסה חדשה לפי:
+        - הסמכה (אם Large)
+        - מיקום (יעד אחרון Completed לפני dep_dt, אחרת TLV) חייב להיות origin
+        - בלי חפיפה מול טיסות Active/Full/Delayed
+        """
+        origin = (origin or "").strip()
+        aircraft_size = (aircraft_size or "").strip().lower()
+
+        with DB.get_cursor() as cursor:
+            sql = """
+                SELECT p.*
+                FROM Pilot p
+                WHERE 1=1
+            """
+            if aircraft_size == "large":
+                sql += " AND p.big_aircraft_cert = 1"
+            sql += " ORDER BY p.id"
+
+            cursor.execute(sql)
+            pilots = cursor.fetchall() or []
+
+        available = []
+        for p in pilots:
+            pid = int(p["id"])
+
+            current_loc = Pilot.get_current_location_before(pid, dep_dt)
+            if current_loc != origin:
+                continue
+
+            with DB.get_cursor() as cursor:
+                cursor.execute("""
+                    SELECT 1
+                    FROM pilots_on_flights pof
+                    JOIN Flight f ON f.flight_number = pof.flight_number
+                    LEFT JOIN FlightLength fl ON fl.origin=f.origin AND fl.destination=f.destination
+                    WHERE pof.id=%s
+                      AND f.flight_status IN ('Active','Full','Delayed')
+                      AND (
+                          %s < COALESCE(f.arrival_time, ADDTIME(f.departure_time, fl.length_minutes))
+                          AND f.departure_time < %s
+                      )
+                    LIMIT 1
+                """, (pid, dep_dt, arr_dt))
+                if cursor.fetchone():
+                    continue
+
+            available.append(p)
+
+        return available
+
+
+# ==========================================================
+# FLIGHT ATTENDANT
+# ==========================================================
 
 class FlightAttendant(Employee):
-    def __init__(self, id, first_name_he, last_name_he, start_date,
-                 city, street, house_number, big_aircraft_cert=None):
+    def __init__(self, id, first_name_he, last_name_he, start_date, city, street, house_number, big_aircraft_cert=0):
         super().__init__(id, first_name_he, last_name_he, start_date, city, street, house_number)
-        self.big_aircraft_cert = big_aircraft_cert
+        self.big_aircraft_cert = int(big_aircraft_cert or 0)
 
-    # =========================
-    # ✅ LOCATION (DEFAULT TLV)
-    # =========================
+    @staticmethod
+    def get_assigned_for_flight(flight_number: int):
+        with DB.get_cursor() as cursor:
+            cursor.execute("""
+                SELECT fa.*
+                FROM FlightAttendant fa
+                JOIN flightattendants_on_flights fof ON fa.id = fof.id
+                WHERE fof.flight_number = %s
+                ORDER BY fa.id
+            """, (int(flight_number),))
+            rows = cursor.fetchall() or []
+
+        return [
+            FlightAttendant(
+                r["id"], r["first_name_he"], r["last_name_he"],
+                r.get("start_date"), r.get("city"), r.get("street"), r.get("house_number"),
+                r.get("big_aircraft_cert")
+            )
+            for r in rows
+        ]
+
+    @staticmethod
+    def list_all(flight_number: int | None = None):
+        """
+        אם flight_number לא נשלח -> כל הדיילים.
+        אם כן -> רק דיילים זמינים + מתאימים (הסמכה + בלי חפיפה + בלי שיבוץ כפול + מיקום).
+        """
+        with DB.get_cursor() as cursor:
+            cursor.execute("""
+                SELECT id, first_name_he, last_name_he, start_date, city, street, house_number, big_aircraft_cert
+                FROM FlightAttendant
+                ORDER BY id
+            """)
+            rows = cursor.fetchall() or []
+
+        attendants = [
+            FlightAttendant(
+                r["id"], r["first_name_he"], r["last_name_he"],
+                r.get("start_date"), r.get("city"), r.get("street"), r.get("house_number"),
+                r.get("big_aircraft_cert")
+            )
+            for r in rows
+        ]
+
+        if not flight_number:
+            return attendants
+
+        flight_number = int(flight_number)
+        assigned_ids = {a.id for a in FlightAttendant.get_assigned_for_flight(flight_number)}
+
+        filtered = []
+        for a in attendants:
+            if a.id in assigned_ids:
+                continue
+            if not FlightAttendant._cert_ok_for_flight(a.id, flight_number):
+                continue
+            if FlightAttendant._has_overlap(a.id, flight_number):
+                continue
+            if not FlightAttendant._location_ok_for_flight(a.id, flight_number):
+                continue
+            filtered.append(a)
+
+        return filtered
+
+    # -------------------------
+    # Location / Rules
+    # -------------------------
+
     @staticmethod
     def get_current_location_before(attendant_id: int, before_dt) -> str:
         with DB.get_cursor() as cursor:
@@ -290,69 +416,6 @@ class FlightAttendant(Employee):
         return current_location == flight["origin"]
 
     @staticmethod
-    def list_all(flight_number: int | None = None):
-        """
-        אם flight_number לא נשלח -> מחזיר את כל הדיילים.
-        אם כן נשלח -> מחזיר רק דיילים זמינים + מתאימים (הסמכה + בלי חפיפה + בלי שיבוץ כפול + מיקום).
-        """
-        with DB.get_cursor() as cursor:
-            cursor.execute("""
-                SELECT id, first_name_he, last_name_he, start_date,
-                       city, street, house_number, big_aircraft_cert
-                FROM FlightAttendant
-                ORDER BY id
-            """)
-            rows = cursor.fetchall() or []
-
-        attendants = [FlightAttendant(
-            r["id"], r["first_name_he"], r["last_name_he"],
-            r.get("start_date"), r.get("city"), r.get("street"), r.get("house_number"),
-            r.get("big_aircraft_cert")
-        ) for r in rows]
-
-        if not flight_number:
-            return attendants
-
-        flight_number = int(flight_number)
-        assigned_ids = {a.id for a in FlightAttendant.get_assigned_for_flight(flight_number)}
-
-        filtered = []
-        for a in attendants:
-            if a.id in assigned_ids:
-                continue
-            if not FlightAttendant._cert_ok_for_flight(a.id, flight_number):
-                continue
-            if FlightAttendant._has_overlap(a.id, flight_number):
-                continue
-            if not FlightAttendant._location_ok_for_flight(a.id, flight_number):
-                continue
-            filtered.append(a)
-
-        return filtered
-
-    @staticmethod
-    def get_assigned_for_flight(flight_number: int):
-        with DB.get_cursor() as cursor:
-            cursor.execute("""
-                SELECT fa.*
-                FROM FlightAttendant fa
-                JOIN flightattendants_on_flights fof
-                  ON fa.id = fof.id
-                WHERE fof.flight_number = %s
-                ORDER BY fa.id
-            """, (int(flight_number),))
-            rows = cursor.fetchall() or []
-
-        return [FlightAttendant(
-            r["id"], r["first_name_he"], r["last_name_he"],
-            r.get("start_date"), r.get("city"), r.get("street"), r.get("house_number"),
-            r.get("big_aircraft_cert")
-        ) for r in rows]
-
-    # =========
-    # ✅ RULES
-    # =========
-    @staticmethod
     def _cert_ok_for_flight(attendant_id: int, flight_number: int) -> bool:
         size = (Flight.get_aircraft_size_for_flight(flight_number) or "").strip().lower()
         if not size:
@@ -381,7 +444,7 @@ class FlightAttendant(Employee):
                     ON fl.origin = f.origin AND fl.destination = f.destination
                 WHERE fof.id = %s
                   AND fof.flight_number <> %s
-                  AND f.flight_status IN ('Active','Delayed')
+                  AND f.flight_status IN ('Active','Full','Delayed')
                   AND (
                         %s < COALESCE(f.arrival_time, ADDTIME(f.departure_time, fl.length_minutes))
                     AND f.departure_time < %s
@@ -391,30 +454,29 @@ class FlightAttendant(Employee):
 
             return cursor.fetchone() is not None
 
+    # -------------------------
+    # Assign / Remove
+    # -------------------------
+
     @staticmethod
     def assign_to_flight(attendant_id: int, flight_number: int) -> tuple[bool, str]:
         attendant_id = int(attendant_id)
         flight_number = int(flight_number)
 
-        # 0) limit
         required = Flight.get_required_crew_counts(flight_number)
         if Flight.count_assigned_attendants(flight_number) >= int(required["attendants"]):
             return False, "כבר שובצו מספיק דיילים לטיסה הזו"
 
-        # 1) cert
         if not FlightAttendant._cert_ok_for_flight(attendant_id, flight_number):
             return False, "הדייל/ת לא מוסמך/ת למטוס גדול בטיסה הזו"
 
-        # 2) overlap
         if FlightAttendant._has_overlap(attendant_id, flight_number):
             return False, "לא ניתן לשבץ: יש חפיפה עם טיסה אחרת של הדייל/ת"
 
-        # 3) location
         if not FlightAttendant._location_ok_for_flight(attendant_id, flight_number):
             return False, "לא ניתן לשבץ: הדייל/ת לא נמצא/ת במוצא הטיסה"
 
         with DB.get_cursor() as cursor:
-            # 4) already assigned
             cursor.execute("""
                 SELECT 1
                 FROM flightattendants_on_flights
@@ -424,7 +486,6 @@ class FlightAttendant(Employee):
             if cursor.fetchone():
                 return False, "הדייל/ת כבר משובץ/ת לטיסה הזו"
 
-            # 5) insert
             cursor.execute("""
                 INSERT INTO flightattendants_on_flights (id, flight_number)
                 VALUES (%s, %s)
@@ -443,3 +504,54 @@ class FlightAttendant(Employee):
             if cursor.rowcount > 0:
                 return True, "הדייל/ת הוסר/ה מהטיסה"
             return False, "הדייל/ת לא היה/תה משובץ/ת לטיסה הזו"
+
+    # ==========================================================
+    # ✅ For NEW flight creation (availability by time window)
+    # ==========================================================
+
+    @staticmethod
+    def list_available_for_new_flight(origin: str, dep_dt: datetime, arr_dt: datetime, aircraft_size: str):
+        origin = (origin or "").strip()
+        aircraft_size = (aircraft_size or "").strip().lower()
+
+        with DB.get_cursor() as cursor:
+            sql = """
+                SELECT fa.*
+                FROM FlightAttendant fa
+                WHERE 1=1
+            """
+            if aircraft_size == "large":
+                sql += " AND fa.big_aircraft_cert = 1"
+            sql += " ORDER BY fa.id"
+
+            cursor.execute(sql)
+            attendants = cursor.fetchall() or []
+
+        available = []
+        for a in attendants:
+            aid = int(a["id"])
+
+            current_loc = FlightAttendant.get_current_location_before(aid, dep_dt)
+            if current_loc != origin:
+                continue
+
+            with DB.get_cursor() as cursor:
+                cursor.execute("""
+                    SELECT 1
+                    FROM flightattendants_on_flights fof
+                    JOIN Flight f ON f.flight_number = fof.flight_number
+                    LEFT JOIN FlightLength fl ON fl.origin=f.origin AND fl.destination=f.destination
+                    WHERE fof.id=%s
+                      AND f.flight_status IN ('Active','Full','Delayed')
+                      AND (
+                          %s < COALESCE(f.arrival_time, ADDTIME(f.departure_time, fl.length_minutes))
+                          AND f.departure_time < %s
+                      )
+                    LIMIT 1
+                """, (aid, dep_dt, arr_dt))
+                if cursor.fetchone():
+                    continue
+
+            available.append(a)
+
+        return available
