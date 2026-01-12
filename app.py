@@ -260,23 +260,35 @@ def manager_dashboard():
     return render_template("manager_dashboard.html")
 
 
+# ================================
+# app.py  (רק ה-route מחדש)
+# ================================
+# ================================
+# app.py  (להחליף את ה-route הזה)
+# ================================
 @app.route("/manager_flights")
 def manager_flights():
     if session.get("role") != "manager":
         return redirect(url_for("manager_login"))
 
-    # סנכרון טיסות שנחתו -> Completed
     Flight.sync_completed_flights()
 
-    selected_status = request.args.get("status", "").strip()
+    selected_status = (request.args.get("status", "") or "").strip()
 
-    # ✅ בלי SQL ב-route
-    flights = Flight.list_for_manager(selected_status)
+    aircraft_id_raw = (request.args.get("aircraft_id", "") or "").strip()
+    aircraft_id = int(aircraft_id_raw) if aircraft_id_raw.isdigit() else None
+
+    flights = Flight.list_for_manager(selected_status, aircraft_id)
+
+    # ✅ לרשימת בחירה כמו הסטטוס
+    aircraft_ids = Flight.get_all_aircraft_ids()
 
     return render_template(
         "manager_flights.html",
         flights=flights,
-        selected_status=selected_status
+        selected_status=selected_status,
+        selected_aircraft_id=aircraft_id_raw,
+        aircraft_ids=aircraft_ids
     )
 
 # --- Checkout ---
@@ -427,6 +439,8 @@ def manager_flight_manage(flight_number):
     if not flight:
         return redirect(url_for("manager_flights"))
 
+    flight["aircraft_size"] = Flight.get_aircraft_size_for_flight(flight_number)
+
     # טיסה שהושלמה – למסך צפייה בלבד
     if (flight.get("flight_status") or "").strip() == "Completed":
         return redirect(url_for("manager_flight_view", flight_number=flight_number))
@@ -439,19 +453,23 @@ def manager_flight_manage(flight_number):
 
         if action == "assign_pilot":
             pid = int(request.form.get("pilot_id"))
-            Pilot.assign_to_flight(pid, flight_number)
+            ok, msg = Pilot.assign_to_flight(pid, flight_number)
+            session["flash_msg"] = msg
 
         elif action == "remove_pilot":
             pid = int(request.form.get("pilot_id"))
-            Pilot.remove_from_flight(pid, flight_number)
+            ok, msg = Pilot.remove_from_flight(pid, flight_number)
+            session["flash_msg"] = msg
 
         elif action == "assign_attendant":
             aid = int(request.form.get("attendant_id"))
-            FlightAttendant.assign_to_flight(aid, flight_number)
+            ok, msg = FlightAttendant.assign_to_flight(aid, flight_number)
+            session["flash_msg"] = msg
 
         elif action == "remove_attendant":
             aid = int(request.form.get("attendant_id"))
-            FlightAttendant.remove_from_flight(aid, flight_number)
+            ok, msg = FlightAttendant.remove_from_flight(aid, flight_number)
+            session["flash_msg"] = msg
 
         return redirect(url_for("manager_flight_manage", flight_number=flight_number))
 
@@ -459,11 +477,14 @@ def manager_flight_manage(flight_number):
     # GET – טעינת נתונים למסך
     # --------
 
+    # הודעת פעולה אחרונה (אם קיימת)
+    flash_msg = session.pop("flash_msg", None)
+
     # משובצים בפועל
     assigned_pilots = Pilot.get_assigned_for_flight(flight_number)
     assigned_attendants = FlightAttendant.get_assigned_for_flight(flight_number)
 
-    # ✅ זמינים בלבד (שינוי מרכזי)
+    # ✅ זמינים בלבד (כולל הסמכה + בלי חפיפה + ✅ מיקום דיפולטי TLV אם אין היסטוריה)
     all_pilots = Pilot.list_all(flight_number)
     all_attendants = FlightAttendant.list_all(flight_number)
 
@@ -482,14 +503,15 @@ def manager_flight_manage(flight_number):
 
     return render_template(
         "manager_flight_manage.html",
-        flight=flight,                      # פרטי טיסה
+        flight=flight,
         assigned_pilots=assigned_pilots,
         assigned_attendants=assigned_attendants,
-        all_pilots=all_pilots,              # זמינים בלבד
-        all_attendants=all_attendants,      # זמינים בלבד
-        required=required,                  # נדרש
-        assigned_counts=assigned_counts,    # שובצו
-        missing_counts=missing_counts       # חסר שיבוץ
+        all_pilots=all_pilots,
+        all_attendants=all_attendants,
+        required=required,
+        assigned_counts=assigned_counts,
+        missing_counts=missing_counts,
+        flash_msg=flash_msg
     )
 
 if __name__ == '__main__':
