@@ -437,16 +437,14 @@ def manager_flight_view(flight_number):
     if session.get("role") != "manager":
         return redirect(url_for("manager_login"))
 
+    # אפשר להשאיר, לא חובה. זה רק מסנכרן סטטוסים שנחתו
     Flight.sync_completed_flights()
 
-    # ✅ בלי SQL ב-route
     flight = Flight.get_by_number(flight_number)
     if not flight:
         return redirect(url_for("manager_flights"))
 
-    if (flight.get("flight_status") or "").strip() != "Completed":
-        return redirect(url_for("manager_flights"))
-
+    # ✅ אין שום הגבלה לפי סטטוס — פורטל טיסה לכל טיסה
     aircraft = Flight.get_aircraft_by_id(flight["aircraft_id"])
     attendants = FlightAttendant.get_assigned_for_flight(flight_number)
     pilots = Pilot.get_assigned_for_flight(flight_number)

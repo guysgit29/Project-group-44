@@ -11,7 +11,7 @@
   /* Top bar */
   .topbar{
     display:flex;
-    justify-content: space-between; /* ב-RTL זה שם את הכפתור בשמאל */
+    justify-content: space-between;
     align-items:center;
     gap: 12px;
     margin-bottom: 16px;
@@ -41,7 +41,7 @@
     white-space: nowrap;
   }
   .btn-add:hover{
-    background:#1d4ed8; /* Royal Blue */
+    background:#1d4ed8;
     transform: translateY(-1px);
     box-shadow: 0 10px 22px rgba(11, 61, 145, 0.25);
   }
@@ -116,7 +116,7 @@
     display:inline-block;
     white-space: nowrap;
   }
-  .btn:hover{ background:#1d4ed8; border-color:#1d4ed8; } /* hover royal */
+  .btn:hover{ background:#1d4ed8; border-color:#1d4ed8; }
   .btn.secondary{
     background:#f3f4f6;
     color:#111827;
@@ -126,6 +126,21 @@
     background:#e5e7eb;
     border-color:#d1d5db;
   }
+
+  /* Mini button for flight portal */
+  .btn-mini{
+    display:inline-block;
+    padding:6px 10px;
+    border:1px solid #cfd6df;
+    border-radius:10px;
+    font-weight:900;
+    font-size:0.85rem;
+    text-decoration:none;
+    background:#fff;
+    color:#111827;
+    white-space: nowrap;
+  }
+  .btn-mini:hover{ background:#f3f6fa; }
 
   /* Aircraft cards */
   .aircraft-card{
@@ -150,7 +165,6 @@
   }
   .aircraft-header:hover{ background:#eaf0ff; }
 
-  /* Header text (no bubbles) */
   .aircraft-title{
     font-weight: 900;
     color:#111827;
@@ -227,9 +241,7 @@
   }
 
   @media (max-width: 980px){
-    .filters-grid{
-      grid-template-columns: 1fr;
-    }
+    .filters-grid{ grid-template-columns: 1fr; }
     .topbar{
       flex-direction: column;
       align-items: stretch;
@@ -238,9 +250,7 @@
       justify-content:center;
       width: 100%;
     }
-    .info-grid{
-      grid-template-columns: 1fr;
-    }
+    .info-grid{ grid-template-columns: 1fr; }
   }
 </style>
 
@@ -285,7 +295,7 @@
         <select name="size">
           <option value="">הכל</option>
           <option value="Small" {% if filters.size=='Small' %}selected{% endif %}>Small</option>
-          <option value="Big"   {% if filters.size=='Big' %}selected{% endif %}>Big</option>
+          <option value="Large" {% if filters.size=='Large' %}selected{% endif %}>Large</option>
         </select>
       </div>
 
@@ -306,7 +316,6 @@
     <div class="aircraft-card">
       <input type="checkbox" id="air{{ a.aircraft_id }}" class="toggle">
 
-      <!-- Clean header: no pills/bubbles -->
       <label class="aircraft-header" for="air{{ a.aircraft_id }}">
         <div class="aircraft-title">
           {{ a.aircraft_id }} - {{ a.aircraft_size }} {{ a.manufacturer }}
@@ -316,7 +325,6 @@
 
       <div class="aircraft-body">
 
-        <!-- Purchase date moved INSIDE details -->
         <div class="info-box">
           <div class="info-title">פרטי מטוס</div>
           <div class="info-grid">
@@ -365,23 +373,31 @@
               <th>יעד</th>
               <th>המראה</th>
               <th>סטטוס</th>
+              <th></th>
             </tr>
           </thead>
           <tbody>
             {% set fls = flights_map.get(a.aircraft_id, []) %}
             {% if fls and fls|length > 0 %}
               {% for f in fls %}
-                <tr>
-                  <td>{{ f.flight_number }}</td>
-                  <td>{{ f.origin }}</td>
-                  <td>{{ f.destination }}</td>
-                  <td>{{ f.departure_time }}</td>
-                  <td>{{ f.flight_status }}</td>
-                </tr>
-              {% endfor %}
+              <tr>
+                <td>{{ f.flight_number }}</td>
+                <td>{{ f.origin }}</td>
+                <td>{{ f.destination }}</td>
+                <td>{{ f.departure_time }}</td>
+                <td>{{ f.flight_status }}</td>
+                <td style="text-align:left;">
+                  <a href="{{ url_for('manager_flight_view', flight_number=f.flight_number) }}"
+                     class="btn secondary"
+                     style="padding:6px 10px; font-size:0.85rem;">
+                     פורטל טיסה
+                  </a>
+                </td>
+              </tr>
+            {% endfor %}
             {% else %}
               <tr>
-                <td colspan="5" class="muted">אין היסטוריית טיסות למטוס זה.</td>
+                <td colspan="6" class="muted">אין היסטוריית טיסות למטוס זה.</td>
               </tr>
             {% endif %}
           </tbody>
