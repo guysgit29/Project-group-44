@@ -14,7 +14,7 @@
 
     <div style="max-width: 800px; margin: 0 auto; padding: 20px;">
         <h1 style="text-align: center;">פרטי הזמנה: {{ order.booking_id }}</h1>
-        <h3>שלום, {{ order.first_name }}</h3>
+        <h3>שלום {{ order.full_name }},</h3>
         <div class="info-section">
             <h2>✈️ פרטי הטיסה:</h2>
             <p><strong>מספר טיסה:</strong> {{ order.flight_number }}</p>

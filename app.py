@@ -86,6 +86,34 @@ def manage_booking(booking_id):
     if not order_data:
         return redirect(url_for('home_page'))
 
+    # --- Build full name from email (Registered or Guest) ---
+    email = (order_data.get("registered_email") or order_data.get("guest_email") or "").strip().lower()
+    full_name = ""
+
+    if email:
+        with DB.get_cursor() as cursor:
+            cursor.execute("""
+                SELECT first_name_en, last_name_en
+                FROM RegisteredUser
+                WHERE email = %s
+            """, (email,))
+            row = cursor.fetchone()
+
+            if not row:
+                cursor.execute("""
+                    SELECT first_name_en, last_name_en
+                    FROM GuestUser
+                    WHERE email = %s
+                """, (email,))
+                row = cursor.fetchone()
+
+        if row:
+            first = (row.get("first_name_en") or "").strip()
+            last = (row.get("last_name_en") or "").strip()
+            full_name = f"{first} {last}".strip()
+
+    order_data["full_name"] = full_name if full_name else email
+
     can_cancel, show_block_message, cancel_block_reason = Booking.calc_cancel_flags(order_data)
 
     return render_template(
@@ -426,6 +454,43 @@ def order_confirmation(booking_id):
 
     if not order_data:
         return redirect(url_for("home_page"))
+
+    # --- Build full name from RegisteredUser / GuestUser by email ---
+    email = (order_data.get("registered_email") or order_data.get("guest_email") or "").strip().lower()
+    full_name = ""
+
+    if email:
+        with DB.get_cursor() as cursor:
+            # try RegisteredUser first
+            cursor.execute(
+                """
+                SELECT first_name_en, last_name_en
+                FROM RegisteredUser
+                WHERE email = %s
+                """,
+                (email,)
+            )
+            row = cursor.fetchone()
+
+            # if not found -> try GuestUser
+            if not row:
+                cursor.execute(
+                    """
+                    SELECT first_name_en, last_name_en
+                    FROM GuestUser
+                    WHERE email = %s
+                    """,
+                    (email,)
+                )
+                row = cursor.fetchone()
+
+        if row:
+            first = (row.get("first_name_en") or "").strip()
+            last = (row.get("last_name_en") or "").strip()
+            full_name = f"{first} {last}".strip()
+
+    # add field to order_data (dict) so template can use order.full_name
+    order_data["full_name"] = full_name if full_name else email  # fallback: show email if name missing
 
     return render_template("order_confirmation.html", order=order_data, seats=seats)
 

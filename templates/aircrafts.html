@@ -127,20 +127,32 @@
     border-color:#d1d5db;
   }
 
-  /* Mini button for flight portal */
-  .btn-mini{
-    display:inline-block;
-    padding:6px 10px;
-    border:1px solid #cfd6df;
-    border-radius:10px;
-    font-weight:900;
-    font-size:0.85rem;
+  /* ✅ Flight portal button (same color as add aircraft) */
+  .flight-portal-btn{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    padding: 6px 10px;
+    border-radius: 10px;
     text-decoration:none;
-    background:#fff;
-    color:#111827;
+    font-weight: 900;
+    font-size: 0.85rem;
+    border: 1px solid #0b3d91;
+    background: #0b3d91;
+    color: #fff;
+    box-shadow: 0 6px 16px rgba(11, 61, 145, 0.18);
+    transition: background-color .15s ease, transform .15s ease, box-shadow .15s ease;
     white-space: nowrap;
   }
-  .btn-mini:hover{ background:#f3f6fa; }
+  .flight-portal-btn:hover{
+    background:#1d4ed8;
+    transform: translateY(-1px);
+    box-shadow: 0 10px 22px rgba(11, 61, 145, 0.25);
+  }
+  .flight-portal-btn:active{
+    transform: translateY(0px);
+    box-shadow: 0 6px 16px rgba(11, 61, 145, 0.18);
+  }
 
   /* Aircraft cards */
   .aircraft-card{
@@ -380,21 +392,20 @@
             {% set fls = flights_map.get(a.aircraft_id, []) %}
             {% if fls and fls|length > 0 %}
               {% for f in fls %}
-              <tr>
-                <td>{{ f.flight_number }}</td>
-                <td>{{ f.origin }}</td>
-                <td>{{ f.destination }}</td>
-                <td>{{ f.departure_time }}</td>
-                <td>{{ f.flight_status }}</td>
-                <td style="text-align:left;">
-                  <a href="{{ url_for('manager_flight_view', flight_number=f.flight_number) }}"
-                     class="btn secondary"
-                     style="padding:6px 10px; font-size:0.85rem;">
-                     פורטל טיסה
-                  </a>
-                </td>
-              </tr>
-            {% endfor %}
+                <tr>
+                  <td>{{ f.flight_number }}</td>
+                  <td>{{ f.origin }}</td>
+                  <td>{{ f.destination }}</td>
+                  <td>{{ f.departure_time }}</td>
+                  <td>{{ f.flight_status }}</td>
+                  <td style="text-align:left;">
+                    <a href="{{ url_for('manager_flight_view', flight_number=f.flight_number) }}"
+                       class="flight-portal-btn">
+                       פורטל טיסה
+                    </a>
+                  </td>
+                </tr>
+              {% endfor %}
             {% else %}
               <tr>
                 <td colspan="6" class="muted">אין היסטוריית טיסות למטוס זה.</td>

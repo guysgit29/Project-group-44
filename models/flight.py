@@ -47,7 +47,7 @@ class Flight:
             FROM Flight
             WHERE origin = %s
               AND destination = %s
-              AND flight_status = 'Active'
+              AND flight_status IN ('Active', 'Full')
             ORDER BY departure_time ASC
         """
         with DB.get_cursor() as cursor:

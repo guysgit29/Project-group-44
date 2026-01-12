@@ -3,144 +3,164 @@
 {% block title %}תוצאות חיפוש - FLYTAU{% endblock %}
 
 {% block content %}
-    <style>
-        /* עיצוב ייעודי לדף התוצאות כדי לוודא שהטבלה נראית טוב */
-        .results-container {
-            max-width: 1000px;
-            margin: 40px auto;
-            background: white;
-            padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-        }
+<style>
+    /* עיצוב ייעודי לדף התוצאות כדי לוודא שהטבלה נראית טוב */
+    .results-container {
+        max-width: 1000px;
+        margin: 40px auto;
+        background: white;
+        padding: 30px;
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        direction: rtl;
+        text-align: right;
+    }
 
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 25px;
-            background-color: white;
-        }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 25px;
+        background-color: white;
+    }
 
-        th {
-            background-color: #007BFF;
-            color: white;
-            padding: 15px;
-            text-align: right;
-        }
+    th {
+        background-color: #007BFF;
+        color: white;
+        padding: 15px;
+        text-align: right;
+    }
 
-        td {
-            border-bottom: 1px solid #eee;
-            padding: 15px;
-            text-align: right;
-            vertical-align: middle;
-        }
+    td {
+        border-bottom: 1px solid #eee;
+        padding: 15px;
+        text-align: right;
+        vertical-align: middle;
+    }
 
-        tr:hover { background-color: #f8f9fa; }
+    tr:hover { background-color: #f8f9fa; }
 
-        .btn-select {
-            background-color: #28a745;
-            color: white;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: bold;
-            transition: background 0.3s;
-        }
-        .btn-select:hover { background-color: #218838; }
+    .btn-select {
+        background-color: #28a745;
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: bold;
+        transition: background 0.3s;
+    }
+    .btn-select:hover { background-color: #218838; }
 
-        .btn-disabled{
-            background-color: #bdbdbd;
-            color: #444;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 6px;
-            cursor: not-allowed;
-            font-weight: bold;
-            opacity: 0.85;
-        }
+    /* כפתור לא לחיץ לטיסה מלאה */
+    .btn-disabled{
+        background-color: #e5e7eb;
+        color: #6b7280;
+        padding: 10px 20px;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        cursor: not-allowed;
+        font-weight: bold;
+        opacity: 1;
+    }
 
-        .status-pill{
-            display: inline-block;
-            padding: 6px 12px;
-            border-radius: 999px;
-            font-weight: 800;
-            font-size: 13px;
-            line-height: 1;
-            white-space: nowrap;
-        }
-        .status-active{
-            background: #e6f4ea;
-            color: #1f8f3a;
-            border: 1px solid #bfe6c8;
-        }
-        .status-full{
-            background: #fdecea;
-            color: #b00020;
-            border: 1px solid #f6c7c3;
-        }
+    .status-pill{
+        display: inline-block;
+        padding: 6px 12px;
+        border-radius: 999px;
+        font-weight: 800;
+        font-size: 13px;
+        line-height: 1;
+        white-space: nowrap;
+    }
+    .status-active{
+        background: #e6f4ea;
+        color: #1f8f3a;
+        border: 1px solid #bfe6c8;
+    }
+    /* סטטוס מלא - אפור */
+    .status-full{
+        background: #f3f4f6;
+        color: #6b7280;
+        border: 1px solid #d1d5db;
+    }
 
-        .no-flights { text-align: center; padding: 50px; color: #666; }
-    </style>
+    .no-flights { text-align: center; padding: 50px; color: #666; }
+</style>
 
-    <div class="results-container">
-        <h1 style="text-align: center; color: #333;">טיסות מ-{{ origin }} ל-{{ dest }}</h1>
+<div class="results-container">
+    <h1 style="text-align: center; color: #333;">טיסות מ-{{ origin }} ל-{{ dest }}</h1>
 
-        {% if flights %}
-            <table>
-                <thead>
+    {# 1) מסננים טיסות שבוטלו (Canceled/Cancelled) כך שלא יוצגו בכלל #}
+    {% set visible_flights = [] %}
+    {% if flights %}
+        {% for flight in flights %}
+            {% set s = (flight.flight_status or '')|trim %}
+            {% set s_low = s|lower %}
+            {% if s_low not in ['canceled', 'cancelled'] %}
+                {% set _ = visible_flights.append(flight) %}
+            {% endif %}
+        {% endfor %}
+    {% endif %}
+
+    {# 2) אם אחרי הסינון אין טיסות -> תציג "לא נמצאו טיסות" #}
+    {% if visible_flights and visible_flights|length > 0 %}
+        <table>
+            <thead>
+                <tr>
+                    <th>מספר טיסה</th>
+                    <th>מקור</th>
+                    <th>יעד</th>
+                    <th>זמן המראה</th>
+                    <th>זמן נחיתה</th>
+                    <th>סטטוס</th>
+                    <th>פעולה</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for flight in visible_flights %}
+                    {% set fstatus = (flight.flight_status or '')|trim %}
+                    {% set fstatus_low = fstatus|lower %}
                     <tr>
-                        <th>מספר טיסה</th>
-                        <th>מקור</th>
-                        <th>יעד</th>
-                        <th>זמן המראה</th>
-                        <th>זמן נחיתה</th>
-                        <th>סטטוס</th>
-                        <th>פעולה</th>
+                        <td><strong>{{ flight.flight_number }}</strong></td>
+                        <td>{{ flight.origin }}</td>
+                        <td>{{ flight.destination }}</td>
+                        <td style="direction: ltr;">{{ flight.departure_time }}</td>
+                        <td style="direction: ltr;">{{ flight.arrival_time }}</td>
+
+                        <td>
+                            {# Full => סטטוס מלא (אפור) #}
+                            {% if fstatus_low == 'full' %}
+                                <span class="status-pill status-full">מלאה</span>
+                            {% else %}
+                                <span class="status-pill status-active">פעילה</span>
+                            {% endif %}
+                        </td>
+
+                        <td>
+                            {# Full => כפתור אפור לא לחיץ "טיסה מלאה" #}
+                            {% if fstatus_low == 'full' %}
+                                <button type="button" class="btn-disabled" disabled>טיסה מלאה</button>
+                            {% else %}
+                                <form action="{{ url_for('seat_selection', flight_id=flight.flight_number) }}" method="GET" style="margin:0;">
+                                    <input type="hidden" name="origin" value="{{ flight.origin }}">
+                                    <input type="hidden" name="destination" value="{{ flight.destination }}">
+                                    <button type="submit" class="btn-select">בחר טיסה</button>
+                                </form>
+                            {% endif %}
+                        </td>
                     </tr>
-                </thead>
-                <tbody>
-                    {% for flight in flights %}
-                        {% set fstatus = (flight.flight_status or '') %}
-                        <tr>
-                            <td><strong>{{ flight.flight_number }}</strong></td>
-                            <td>{{ flight.origin }}</td>
-                            <td>{{ flight.destination }}</td>
-                            <td style="direction: ltr;">{{ flight.departure_time }}</td>
-                            <td style="direction: ltr;">{{ flight.arrival_time }}</td>
-
-                            <td>
-                                {% if fstatus == 'Full' %}
-                                    <span class="status-pill status-full">מלאה</span>
-                                {% else %}
-                                    <span class="status-pill status-active">פעילה</span>
-                                {% endif %}
-                            </td>
-
-                            <td>
-                                {% if fstatus == 'Full' %}
-                                    <button type="button" class="btn-disabled" disabled>טיסה מלאה</button>
-                                {% else %}
-                                    <form action="{{ url_for('seat_selection', flight_id=flight.flight_number) }}" method="GET" style="margin:0;">
-                                      <input type="hidden" name="origin" value="{{ flight.origin }}">
-                                      <input type="hidden" name="destination" value="{{ flight.destination }}">
-                                      <button type="submit" class="btn-select">בחר טיסה</button>
-                                    </form>
-                                {% endif %}
-                            </td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        {% else %}
-            <div class="no-flights">
-                <h3>לא נמצאו טיסות בקו זה.</h3>
-                <p>נסה לחפש תאריכים או יעדים אחרים.</p>
-            </div>
-        {% endif %}
-
-        <div style="text-align: center; margin-top: 30px;">
-            <a href="/" style="color: #007BFF; text-decoration: none; font-weight: bold;">← חזרה לחיפוש חדש</a>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <div class="no-flights">
+            <h3>לא נמצאו טיסות בקו זה.</h3>
+            <p>נסה לחפש תאריכים או יעדים אחרים.</p>
         </div>
+    {% endif %}
+
+    <div style="text-align: center; margin-top: 30px;">
+        <a href="/" style="color: #007BFF; text-decoration: none; font-weight: bold;">← חזרה לחיפוש חדש</a>
     </div>
+</div>
 {% endblock %}
