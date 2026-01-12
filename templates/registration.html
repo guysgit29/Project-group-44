@@ -17,7 +17,6 @@
     <form action="{{ url_for('registration', next=request.args.get('next')) }}" method="POST"
           style="display: flex; flex-direction: column; gap: 10px;">
 
-        {# מאפשר חזרה אוטומטית ל־checkout / continue_booking אחרי הרשמה #}
         {% if request.args.get('next') %}
             <input type="hidden" name="next" value="{{ request.args.get('next') }}">
         {% endif %}
@@ -31,8 +30,16 @@
 
         <label>תאריך לידה:</label>
         <input type="date" name="birth_date" required>
+
         <input type="text" name="passport_number" placeholder="מספר דרכון" required>
-        <input type="tel" name="phone_number" placeholder="טלפון (לדוגמה 05X-XXXXXXX)" required>
+
+        <input
+            type="tel"
+            name="phone_number"
+            placeholder="טלפון (לדוגמה 05X-XXXXXXX)"
+            required
+            style="direction: rtl; text-align: right;"
+        >
 
         <button type="submit" style="background: #003366; color: white; padding: 10px;">הרשמה</button>
 
