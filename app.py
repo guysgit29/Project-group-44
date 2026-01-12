@@ -770,194 +770,341 @@ def add_aircraft_confirm():
     session.pop("pending_new_aircraft", None)
     flash("מטוס נוסף בהצלחה", "success")
     return redirect(url_for("aircrafts"))
+
+from datetime import datetime
+import re
+
+def _require_manager():
+    return session.get("role") == "manager"
+
+def _draft_get():
+    return session.get("new_flight_draft") or {}
+
+def _draft_set(d: dict):
+    session["new_flight_draft"] = d
+    session.modified = True
+
+def _draft_clear():
+    session.pop("new_flight_draft", None)
+    session.modified = True
+
+def _parse_date_time(date_str: str, time_str: str) -> datetime | None:
+    # date: YYYY-MM-DD  time: HH:MM
+    try:
+        return datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %H:%M")
+    except Exception:
+        return None
+
+def _normalize_airport(s: str) -> str:
+    return (s or "").strip().upper()
+
+def _validate_time_hhmmss(t: str) -> bool:
+    # HH:MM:SS
+    return bool(re.fullmatch(r"\d{2}:\d{2}:\d{2}", (t or "").strip()))
+
 @app.route("/manager_flight_create", methods=["GET", "POST"])
 def manager_flight_create():
-    if session.get("role") != "manager":
+    if not _require_manager():
         return redirect(url_for("manager_login"))
-
-    aircrafts = Flight.get_all_aircrafts()
-    routes = Flight.get_all_routes()
 
     error = None
-    preview = None
-    available_pilots = []
-    available_attendants = []
 
-    # נקלוט שדות (גם ב-GET וגם ב-POST)
-    flight_number = (request.values.get("flight_number") or "").strip()
-    aircraft_id = (request.values.get("aircraft_id") or "").strip()
-    origin = (request.values.get("origin") or "").strip()
-    destination = (request.values.get("destination") or "").strip()
-    departure_str = (request.values.get("departure_time") or "").strip()
+    origins = Flight.get_route_origins_distinct()
+    destinations = Flight.get_route_destinations_distinct()
 
-    # מצב "טעינת צוות" (GET/POST עם action=preview)
-    action = (request.values.get("action") or "").strip()
+    if request.method == "POST":
+        origin = _normalize_airport(request.form.get("origin"))
+        destination = _normalize_airport(request.form.get("destination"))
+        flight_date = (request.form.get("flight_date") or "").strip()
+        flight_time = (request.form.get("flight_time") or "").strip()
 
-    # אם יש לנו 4 שדות בסיסיים -> נחשב arrival ונביא צוות זמין
-    if aircraft_id and origin and destination and departure_str:
-        try:
-            dep_dt = datetime.strptime(departure_str, "%Y-%m-%dT%H:%M")
-            length = Flight.get_route_length(origin, destination)
-            if not length:
+        dep_dt = _parse_date_time(flight_date, flight_time)
+        if not origin or not destination or not dep_dt:
+            error = "חובה לבחור מקור, יעד, תאריך ושעה"
+        else:
+            info = Flight.get_route_info(origin, destination)
+            if not info:
                 error = "הנתיב לא קיים ב-FlightLength. קודם הוסף קו טיסה."
             else:
-                # compute arrival עם SQL כדי לא להסתבך עם TIME בפייתון
-                with DB.get_cursor() as cursor:
-                    cursor.execute("""
-                        SELECT ADDTIME(%s, length_minutes) AS arrival_dt,
-                               TIME_TO_SEC(length_minutes) AS sec
-                        FROM FlightLength
-                        WHERE origin=%s AND destination=%s
-                    """, (dep_dt, origin, destination))
-                    row = cursor.fetchone() or {}
+                duration_sec = int(info["duration_sec"] or 0)
+                require_large = duration_sec > 6 * 3600
 
-                arr_dt = row.get("arrival_dt")
-                duration_sec = int(row.get("sec") or 0)
+                arr_dt = Flight.compute_arrival(dep_dt, origin, destination)
 
-                size = Flight.get_aircraft_size(int(aircraft_id))
-                if duration_sec > 6 * 3600 and size != "large":
-                    error = "טיסה מעל 6 שעות חייבת להיות עם מטוס Large"
+                _draft_set({
+                    "origin": origin,
+                    "destination": destination,
+                    "departure_dt": dep_dt.strftime("%Y-%m-%d %H:%M:%S"),
+                    "arrival_dt_preview": str(arr_dt) if arr_dt else None,
+                    "duration_sec": duration_sec,
+                    "require_large": require_large,
+                    "aircraft_id": None,
+                    "pilot_ids": [],
+                    "attendant_ids": [],
+                })
+                return redirect(url_for("manager_assign_aircraft"))
 
-                if not error:
-                    preview = {
-                        "dep": dep_dt,
-                        "arr": arr_dt,
-                        "aircraft_size": size
-                    }
-                    available_pilots = Pilot.list_available_for_new_flight(origin, dep_dt, arr_dt, size)
-                    available_attendants = FlightAttendant.list_available_for_new_flight(origin, dep_dt, arr_dt, size)
-        except ValueError:
-            error = "פורמט תאריך/שעה לא תקין"
-
-    # יצירת טיסה בפועל
-    if request.method == "POST" and action == "create":
-        if not (flight_number and aircraft_id and origin and destination and departure_str):
-            error = "חובה למלא מספר טיסה, מטוס, מקור, יעד ותאריך/שעה"
-        else:
-            try:
-                dep_dt = datetime.strptime(departure_str, "%Y-%m-%dT%H:%M")
-            except ValueError:
-                dep_dt = None
-                error = "פורמט תאריך/שעה לא תקין"
-
-        if not error:
-            ok, msg = Flight.create_flight(
-                flight_number=int(flight_number),
-                aircraft_id=int(aircraft_id),
-                origin=origin,
-                destination=destination,
-                departure_time=dep_dt,
-                flight_status="Active"
-            )
-            if not ok:
-                error = msg
-            else:
-                # צוות נבחר (אופציונלי)
-                chosen_pilots = request.form.getlist("pilot_ids")
-                chosen_attendants = request.form.getlist("attendant_ids")
-
-                # נשבץ רק מה שנבחר (אם לא בחרת כלום – בסדר)
-                with DB.get_cursor() as cursor:
-                    for pid in chosen_pilots:
-                        cursor.execute("""
-                            INSERT IGNORE INTO pilots_on_flights (id, flight_number)
-                            VALUES (%s,%s)
-                        """, (int(pid), int(flight_number)))
-
-                    for aid in chosen_attendants:
-                        cursor.execute("""
-                            INSERT IGNORE INTO flightattendants_on_flights (id, flight_number)
-                            VALUES (%s,%s)
-                        """, (int(aid), int(flight_number)))
-
-                return redirect(url_for("manager_flight_manage", flight_number=int(flight_number)))
-
+    # GET or error
+    draft = _draft_get()
     return render_template(
-        "manager_flight_create.html",
-        aircrafts=aircrafts,
-        routes=routes,
+        "manager_flight_create_step1.html",
         error=error,
-        preview=preview,
-        available_pilots=available_pilots,
-        available_attendants=available_attendants,
-        # כדי לשמור ערכים בטופס אחרי רענון:
-        flight_number=flight_number,
-        aircraft_id=aircraft_id,
-        origin=origin,
-        destination=destination,
-        departure_time=departure_str
+        origins=origins,
+        destinations=destinations,
+        prefill={
+            "origin": draft.get("origin", ""),
+            "destination": draft.get("destination", ""),
+        }
     )
-@app.route("/add_flight_length", methods=["GET"])
-def add_flight_length():
-    if session.get("role") != "manager":
+
+@app.route("/manager_assign_aircraft", methods=["GET", "POST"])
+def manager_assign_aircraft():
+    if not _require_manager():
         return redirect(url_for("manager_login"))
 
-    # כרגע רק מסך ריק/שלד
-    return render_template("add_flight_length.html")
+    draft = _draft_get()
+    if not draft.get("origin") or not draft.get("destination") or not draft.get("departure_dt"):
+        return redirect(url_for("manager_flight_create"))
+
+    origin = draft["origin"]
+    dep_dt = datetime.strptime(draft["departure_dt"], "%Y-%m-%d %H:%M:%S")
+    require_large = bool(draft.get("require_large"))
+
+    aircrafts = Flight.list_available_aircrafts_for_route(origin, dep_dt, require_large)
+
+    error = None
+    if request.method == "POST":
+        aircraft_id = (request.form.get("aircraft_id") or "").strip()
+        if not aircraft_id:
+            error = "חובה לבחור מטוס"
+        else:
+            draft["aircraft_id"] = int(aircraft_id)
+            _draft_set(draft)
+            return redirect(url_for("manager_assign_crew"))
+
+    return render_template(
+        "manager_flight_assign_aircraft.html",
+        error=error,
+        draft=draft,
+        aircrafts=aircrafts,
+        require_large=require_large
+    )
+
+@app.route("/manager_assign_crew", methods=["GET", "POST"])
+def manager_assign_crew():
+    if not _require_manager():
+        return redirect(url_for("manager_login"))
+
+    draft = _draft_get()
+    if not draft.get("aircraft_id"):
+        return redirect(url_for("manager_assign_aircraft"))
+
+    origin = draft["origin"]
+    dep_dt = datetime.strptime(draft["departure_dt"], "%Y-%m-%d %H:%M:%S")
+    require_large = bool(draft.get("require_large"))
+
+    # כמה צריך?
+    # משתמשים בלוגיקה שלך: small/large לפי aircraft_size בפועל
+    aircraft_size = Flight.get_aircraft_size(int(draft["aircraft_id"]))  # שלך כבר קיים
+    need = Flight.get_required_crew_counts_for_size(aircraft_size) if hasattr(Flight, "get_required_crew_counts_for_size") else None
+    if not need:
+        # fallback על הפונקציה שכבר יש לך (אבל היא לפי flight_number; פה אין)
+        need = {"pilots": 3, "attendants": 6} if aircraft_size == "large" else {"pilots": 2, "attendants": 3}
+
+    pilots = Flight.list_available_pilots_for_new_flight(origin, dep_dt, require_large=(aircraft_size == "large"))
+    attendants = Flight.list_available_attendants_for_new_flight(origin, dep_dt, require_large=(aircraft_size == "large"))
+
+    error = None
+    if request.method == "POST":
+        pilot_ids = request.form.getlist("pilot_ids")
+        attendant_ids = request.form.getlist("attendant_ids")
+
+        # enforce exact counts
+        if len(pilot_ids) != int(need["pilots"]):
+            error = f"חובה לבחור בדיוק {need['pilots']} טייסים"
+        elif len(attendant_ids) != int(need["attendants"]):
+            error = f"חובה לבחור בדיוק {need['attendants']} דיילים"
+        else:
+            draft["pilot_ids"] = [int(x) for x in pilot_ids]
+            draft["attendant_ids"] = [int(x) for x in attendant_ids]
+            _draft_set(draft)
+            return redirect(url_for("manager_flight_confirm"))
+
+    return render_template(
+        "manager_flight_assign_crew.html",
+        error=error,
+        draft=draft,
+        pilots=pilots,
+        attendants=attendants,
+        need=need,
+        aircraft_size=aircraft_size
+    )
+
+@app.route("/manager_flight_confirm", methods=["GET", "POST"])
+def manager_flight_confirm():
+    if not _require_manager():
+        return redirect(url_for("manager_login"))
+
+    draft = _draft_get()
+    required_keys = ["origin", "destination", "departure_dt", "aircraft_id", "pilot_ids", "attendant_ids"]
+    if any(k not in draft or draft.get(k) in (None, "", []) for k in ["origin", "destination", "departure_dt", "aircraft_id"]):
+        return redirect(url_for("manager_flight_create"))
+
+    # load preview data
+    origin = draft["origin"]
+    destination = draft["destination"]
+    dep_dt = datetime.strptime(draft["departure_dt"], "%Y-%m-%d %H:%M:%S")
+    arr_preview = draft.get("arrival_dt_preview")
+    aircraft_id = int(draft["aircraft_id"])
+    pilot_ids = draft.get("pilot_ids") or []
+    attendant_ids = draft.get("attendant_ids") or []
+
+    aircraft = Flight.get_aircraft_by_id(aircraft_id)
+    aircraft_size = (aircraft.get("aircraft_size") or "").strip().lower() if aircraft else ""
+
+    # validate route exists again
+    info = Flight.get_route_info(origin, destination)
+    if not info:
+        return redirect(url_for("manage_flight_routes"))
+
+    # final create
+    error = None
+    if request.method == "POST":
+        flight_number = Flight.generate_next_flight_number()
+
+        # HARD RULE: >6h requires large
+        duration_sec = int(info["duration_sec"] or 0)
+        if duration_sec > 6 * 3600 and aircraft_size != "large":
+            error = "לא ניתן לאשר: טיסה מעל 6 שעות חייבת מטוס Large"
+        else:
+            # insert into Flight (trigger calculates arrival_time)
+            with DB.get_cursor() as cursor:
+                cursor.execute("""
+                    INSERT INTO Flight (flight_number, aircraft_id, origin, destination, departure_time, flight_status)
+                    VALUES (%s,%s,%s,%s,%s,%s)
+                """, (int(flight_number), int(aircraft_id), origin, destination, dep_dt, "Active"))
+
+                for pid in pilot_ids:
+                    cursor.execute("""
+                        INSERT INTO Pilots_on_Flights (id, flight_number)
+                        VALUES (%s,%s)
+                    """, (int(pid), int(flight_number)))
+
+                for aid in attendant_ids:
+                    cursor.execute("""
+                        INSERT INTO FlightAttendants_on_Flights (id, flight_number)
+                        VALUES (%s,%s)
+                    """, (int(aid), int(flight_number)))
+
+            _draft_clear()
+            return redirect(url_for("manager_flight_manage", flight_number=int(flight_number)))
+
+    return render_template(
+        "manager_flight_confirm.html",
+        error=error,
+        draft=draft,
+        flight_number_preview="(ייווצר אוטומטית באישור)",
+        origin=origin,
+        destination=destination,
+        departure_dt=dep_dt,
+        arrival_preview=arr_preview,
+        aircraft=aircraft,
+        pilot_ids=pilot_ids,
+        attendant_ids=attendant_ids,
+    )
+
+@app.route("/manage_flight_routes", methods=["GET", "POST"])
+def manage_flight_routes():
+    # ---- filters (GET) ----
+    filter_origin = (request.args.get("filter_origin") or "").strip()
+    filter_destination = (request.args.get("filter_destination") or "").strip()
+
+    error = None
+    success = None
+    add_prefill = {"origin": "", "destination": "", "length_minutes": ""}
+
+    if request.method == "POST":
+        origin = (request.form.get("origin") or "").strip()
+        destination = (request.form.get("destination") or "").strip()
+        length_minutes = (request.form.get("length_minutes") or "").strip()
+
+        add_prefill = {"origin": origin, "destination": destination, "length_minutes": length_minutes}
+
+        if not origin or not destination or not length_minutes:
+            error = "נא למלא מקור, יעד ואורך טיסה"
+        elif not _is_time_ok(length_minutes):
+            error = "לא ניתן להוסיף: אורך טיסה חייב להיות בפורמט HH:MM או HH:MM:SS"
+        else:
+            # נורמליזציה: אם HH:MM -> נוסיף :00
+            if re.match(r"^\d{1,2}:\d{2}$", length_minutes):
+                length_minutes = length_minutes + ":00"
+
+            try:
+                with DB.get_cursor() as cursor:
+                    cursor.execute(
+                        """
+                        INSERT INTO FlightLength (origin, destination, length_minutes)
+                        VALUES (%s, %s, %s)
+                        """,
+                        (origin, destination, length_minutes),
+                    )
+                success = "קו טיסה נוסף בהצלחה"
+                add_prefill = {"origin": "", "destination": "", "length_minutes": ""}
+            except Exception as e:
+                # כפילות PK (origin,destination) או בעיית DB אחרת
+                error = "לא ניתן להוסיף: הקו כבר קיים או שיש שגיאה בנתונים"
+
+    # ---- dropdown data ----
+    with DB.get_cursor() as cursor:
+        cursor.execute("SELECT DISTINCT origin FROM FlightLength ORDER BY origin")
+        origins_rows = cursor.fetchall() or []
+        origins = [r["origin"] for r in origins_rows]
+
+        if filter_origin:
+            cursor.execute(
+                "SELECT DISTINCT destination FROM FlightLength WHERE origin=%s ORDER BY destination",
+                (filter_origin,),
+            )
+        else:
+            cursor.execute("SELECT DISTINCT destination FROM FlightLength ORDER BY destination")
+        dest_rows = cursor.fetchall() or []
+        destinations = [r["destination"] for r in dest_rows]
+
+        # ---- routes list ----
+        q = "SELECT origin, destination, length_minutes FROM FlightLength"
+        where = []
+        params = []
+
+        if filter_origin:
+            where.append("origin=%s")
+            params.append(filter_origin)
+        if filter_destination:
+            where.append("destination=%s")
+            params.append(filter_destination)
+
+        if where:
+            q += " WHERE " + " AND ".join(where)
+        q += " ORDER BY origin, destination"
+
+        cursor.execute(q, tuple(params))
+        routes = cursor.fetchall() or []
+
+    return render_template(
+        "manage_flight_routes.html",
+        routes=routes,
+        origins=origins,
+        destinations=destinations,
+        filter_origin=filter_origin,
+        filter_destination=filter_destination,
+        add_prefill=add_prefill,
+        error=error,
+        success=success,
+    )
+
+
 if __name__ == '__main__':
     app.run(debug=True)
 
-    from flask import request, render_template, redirect, url_for, session
-    from models.flight import Flight
 
 
-    @app.route("/manage_flight_routes", methods=["GET", "POST"])
-    def manage_flight_routes():
-        # מומלץ: הרשאת מנהל
-        if session.get("role") != "manager":
-            return redirect(url_for("home_page"))
 
-        # פילטרים (GET)
-        filter_origin = (request.args.get("filter_origin") or "").strip()
-        filter_destination = (request.args.get("filter_destination") or "").strip()
-
-        # POST = הוספת קו חדש
-        if request.method == "POST":
-            origin = request.form.get("origin") or ""
-            destination = request.form.get("destination") or ""
-            length_minutes = request.form.get("length_minutes") or ""
-
-            ok, err = Flight.create_route(origin, destination, length_minutes)
-
-            if ok:
-                # PRG
-                return redirect(url_for(
-                    "manage_flight_routes",
-                    filter_origin=filter_origin,
-                    filter_destination=filter_destination,
-                    success="1"
-                ))
-
-            # במקרה שגיאה נציג את הדף עם הודעה ו-prefill
-            origins = Flight.get_all_route_origins()
-            destinations = Flight.get_destinations_for_origin(filter_origin) if filter_origin else []
-            routes = Flight.search_routes(filter_origin, filter_destination)
-
-            return render_template(
-                "manage_flight_routes.html",
-                routes=routes,
-                origins=origins,
-                destinations=destinations,
-                filter_origin=filter_origin,
-                filter_destination=filter_destination,
-                add_prefill={"origin": origin, "destination": destination, "length_minutes": length_minutes},
-                error=err,
-                success=None,
-            )
-
-        # GET = הצגה
-        origins = Flight.get_all_route_origins()
-        destinations = Flight.get_destinations_for_origin(filter_origin) if filter_origin else []
-        routes = Flight.search_routes(filter_origin, filter_destination)
-
-        return render_template(
-            "manage_flight_routes.html",
-            routes=routes,
-            origins=origins,
-            destinations=destinations,
-            filter_origin=filter_origin,
-            filter_destination=filter_destination,
-            add_prefill={"origin": "", "destination": "", "length_minutes": ""},
-            error=None,
-            success=("קו טיסה נוסף בהצלחה" if request.args.get("success") else None),
-        )

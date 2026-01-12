@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div style="max-width:1100px; margin:50px auto; direction:rtl; text-align:right;">
+
+  <h2>👥 שיבוץ צוות — שלב 3/4</h2>
+
+  <div style="margin-bottom:15px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+    <a href="{{ url_for('manager_assign_aircraft') }}" style="text-decoration:none; color:#003366; font-weight:bold;">← חזרה לשלב 2</a>
+    <span style="color:#666;">|</span>
+    <a href="{{ url_for('manager_dashboard') }}" style="text-decoration:none; color:#003366; font-weight:bold;">חזרה לדשבורד</a>
+  </div>
+
+  {% if error %}
+    <div style="background:#ffe6e6; border:1px solid #ffb3b3; padding:10px; border-radius:8px; margin-bottom:15px;">
+      {{ error }}
+    </div>
+  {% endif %}
+
+  {% if flash_msg %}
+    <div style="background:#f1f5f9; border:1px solid #e2e8f0; padding:10px; border-radius:8px; margin-bottom:15px;">
+      {{ flash_msg }}
+    </div>
+  {% endif %}
+
+  <!-- כרטיס פרטי טיסה/דראפט -->
+  <div style="margin-top:16px; padding:14px; border:1px solid #e5e7eb; border-radius:12px; background:#fff;">
+    <div style="display:flex; gap:18px; flex-wrap:wrap; align-items:center;">
+      <div><b>נתיב:</b> {{ draft.origin }} → {{ draft.destination }}</div>
+      <div><b>המראה:</b> {{ draft.departure_dt }}</div>
+      <div><b>נחיתה:</b> {{ draft.arrival_dt }}</div>
+      <div>
+        <b>סוג מטוס:</b>
+        {% set s = (draft.aircraft_size or "")|lower %}
+        {% if s == "large" %} גדול {% elif s == "small" %} קטן {% else %} {{ draft.aircraft_size or "לא ידוע" }} {% endif %}
+      </div>
+      <div><b>מטוס:</b> {{ draft.aircraft_id }}</div>
+    </div>
+    <div style="margin-top:8px; color:#666; font-size:13px;">
+      הרשימות מסוננות לפי: הסמכה (Large), מיקום (כולל ברירת מחדל TLV אם אין היסטוריה), וחפיפות זמנים.
+    </div>
+  </div>
+
+  <hr style="margin:20px 0;">
+
+  <!-- ===================== -->
+  <!-- טייסים -->
+  <!-- ===================== -->
+  <h3>שיבוץ טייסים</h3>
+
+  <div style="margin-bottom:10px; padding:10px; border:1px solid #f1f5f9; border-radius:10px; background:#fafafa;">
+    <span><b>נדרש:</b> {{ required.pilots }}</span>
+    <span style="margin-right:14px;"><b>שובצו:</b> {{ assigned_counts.pilots }}</span>
+
+    {% if missing_counts.pilots > 0 %}
+      <span style="margin-right:14px; color:#b91c1c; font-weight:800;">חסר שיבוץ: {{ missing_counts.pilots }}</span>
+    {% else %}
+      <span style="margin-right:14px; color:#166534; font-weight:800;">שיבוץ מלא ✅</span>
+    {% endif %}
+  </div>
+
+  <form method="POST" style="margin-bottom:12px;">
+    <input type="hidden" name="action" value="assign_pilot">
+
+    {% if missing_counts.pilots == 0 %}
+      <select name="pilot_id" style="padding:8px; min-width:320px;" disabled>
+        <option>כבר שובצו מספיק טייסים</option>
+      </select>
+      <button type="submit" style="padding:8px 12px;" disabled>שבץ טייס</button>
+
+    {% elif available_pilots and available_pilots|length > 0 %}
+      <select name="pilot_id" style="padding:8px; min-width:320px;">
+        {% for p in available_pilots %}
+          <option value="{{ p.id }}">{{ p.id }} — {{ p.first_name_he }} {{ p.last_name_he }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit" style="padding:8px 12px;">שבץ טייס</button>
+
+    {% else %}
+      <select name="pilot_id" style="padding:8px; min-width:320px;" disabled>
+        <option>אין טייסים זמינים לשיבוץ</option>
+      </select>
+      <button type="submit" style="padding:8px 12px;" disabled>שבץ טייס</button>
+    {% endif %}
+  </form>
+
+  {% if assigned_pilots and assigned_pilots|length > 0 %}
+    <ul style="padding-right:18px;">
+      {% for p in assigned_pilots %}
+        <li style="margin-bottom:6px;">
+          {{ p.id }} — {{ p.first_name_he }} {{ p.last_name_he }}
+          <form method="POST" style="display:inline;">
+            <input type="hidden" name="action" value="remove_pilot">
+            <input type="hidden" name="pilot_id" value="{{ p.id }}">
+            <button type="submit">הסר</button>
+          </form>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p>אין טייסים משובצים</p>
+  {% endif %}
+
+  <hr style="margin:20px 0;">
+
+  <!-- ===================== -->
+  <!-- דיילים -->
+  <!-- ===================== -->
+  <h3>שיבוץ דיילים</h3>
+
+  <div style="margin-bottom:10px; padding:10px; border:1px solid #f1f5f9; border-radius:10px; background:#fafafa;">
+    <span><b>נדרש:</b> {{ required.attendants }}</span>
+    <span style="margin-right:14px;"><b>שובצו:</b> {{ assigned_counts.attendants }}</span>
+
+    {% if missing_counts.attendants > 0 %}
+      <span style="margin-right:14px; color:#b91c1c; font-weight:800;">חסר שיבוץ: {{ missing_counts.attendants }}</span>
+    {% else %}
+      <span style="margin-right:14px; color:#166534; font-weight:800;">שיבוץ מלא ✅</span>
+    {% endif %}
+  </div>
+
+  <form method="POST" style="margin-bottom:12px;">
+    <input type="hidden" name="action" value="assign_attendant">
+
+    {% if missing_counts.attendants == 0 %}
+      <select name="attendant_id" style="padding:8px; min-width:320px;" disabled>
+        <option>כבר שובצו מספיק דיילים</option>
+      </select>
+      <button type="submit" style="padding:8px 12px;" disabled>שבץ דייל/ת</button>
+
+    {% elif available_attendants and available_attendants|length > 0 %}
+      <select name="attendant_id" style="padding:8px; min-width:320px;">
+        {% for a in available_attendants %}
+          <option value="{{ a.id }}">{{ a.id }} — {{ a.first_name_he }} {{ a.last_name_he }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit" style="padding:8px 12px;">שבץ דייל/ת</button>
+
+    {% else %}
+      <select name="attendant_id" style="padding:8px; min-width:320px;" disabled>
+        <option>אין דיילים זמינים לשיבוץ</option>
+      </select>
+      <button type="submit" style="padding:8px 12px;" disabled>שבץ דייל/ת</button>
+    {% endif %}
+  </form>
+
+  {% if assigned_attendants and assigned_attendants|length > 0 %}
+    <ul style="padding-right:18px;">
+      {% for a in assigned_attendants %}
+        <li style="margin-bottom:6px;">
+          {{ a.id }} — {{ a.first_name_he }} {{ a.last_name_he }}
+          <form method="POST" style="display:inline;">
+            <input type="hidden" name="action" value="remove_attendant">
+            <input type="hidden" name="attendant_id" value="{{ a.id }}">
+            <button type="submit">הסר</button>
+          </form>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p>אין דיילים משובצים</p>
+  {% endif %}
+
+  <hr style="margin:20px 0;">
+
+  <!-- ===================== -->
+  <!-- המשך -->
+  <!-- ===================== -->
+  <form method="POST">
+    <input type="hidden" name="action" value="continue">
+    {% if missing_counts.pilots == 0 and missing_counts.attendants == 0 %}
+      <button type="submit" style="padding:10px 14px; background:#003366; border:none; color:#fff; border-radius:10px; cursor:pointer; font-weight:800;">
+        המשך לסיכום →
+      </button>
+    {% else %}
+      <button type="submit" disabled style="padding:10px 14px; background:#9aa4b2; border:none; color:#fff; border-radius:10px; cursor:not-allowed; font-weight:800;">
+        השלם שיבוץ כדי להמשיך
+      </button>
+    {% endif %}
+  </form>
+
+</div>
+
+{% endblock %}
