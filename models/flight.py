@@ -115,7 +115,7 @@ class Flight:
             current_status = (f.get("flight_status") or "").strip()
 
             # ✅ לא משנים סטטוסים סופיים
-            if current_status in ("Completed", "Canceled by Manager"):
+            if current_status in ("Completed", "Canceled"):
                 return current_status
 
             aircraft_id = int(f["aircraft_id"])
@@ -439,7 +439,7 @@ class Flight:
             return False
 
         status = (f["flight_status"] or "").strip()
-        if status in ("Completed", "Canceled by Manager"):
+        if status in ("Completed", "Canceled"):
             return False
 
         dep = f.get("departure_time")
@@ -450,19 +450,12 @@ class Flight:
 
     @staticmethod
     def cancel_flight(flight_number: int) -> tuple[bool, str]:
-        """
-        מבטל טיסה:
-        - Flight.flight_status => 'Canceled by Manager'
-        - Booking.price => 0
-        - Booking.booking_status => 'Canceled by Manager'
-        - Tickets לא נמחקים
-        """
         if not flight_number:
             return False, "מספר טיסה חסר"
 
         flight_number = int(flight_number)
 
-        # ✅ אכיפה בצד שרת של חוק 72 שעות
+        # חוק 72 שעות
         if not Flight.can_manager_cancel(flight_number):
             return False, "לא ניתן לבטל טיסה פחות מ-72 שעות לפני ההמראה"
 
@@ -478,24 +471,25 @@ class Flight:
             current_status = (f.get("flight_status") or "").strip()
 
             if current_status == "Completed":
-                return False, "לא ניתן לבטל טיסה שהושלמה (Completed)"
+                return False, "לא ניתן לבטל טיסה שהושלמה"
 
-            if current_status == "Canceled by Manager":
-                return True, "הטיסה כבר במצב Canceled by Manager"
+            if current_status == "Canceled":
+                return True, "הטיסה כבר בוטלה"
 
+            # 🔥 כאן השינוי האמיתי
             cursor.execute(
-                "UPDATE Flight SET flight_status = 'Canceled by Manager' WHERE flight_number = %s",
+                "UPDATE Flight SET flight_status = 'Canceled' WHERE flight_number = %s",
                 (flight_number,)
             )
 
             cursor.execute("""
                 UPDATE Booking
                 SET price = 0,
-                    booking_status = 'Canceled by Manager'
+                    booking_status = 'Canceled'
                 WHERE flight_number = %s
             """, (flight_number,))
 
-        return True, "הטיסה בוטלה וההזמנות עודכנו בהצלחה"
+        return True, "הטיסה בוטלה וההזמנות עודכנו"
 
 
     # ==========================================================

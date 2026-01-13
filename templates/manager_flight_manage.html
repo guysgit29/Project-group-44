@@ -78,7 +78,7 @@
 
       {# לא מציגים ביטול בכלל לטיסה שבוטלה/הושלמה #}
       {% set st = (flight.flight_status or '')|trim %}
-      {% if st not in ['Completed', 'Canceled by Manager'] %}
+      {% if st not in ['Completed', 'Canceled'] %}
 
         {# ✅ אפשר לבטל #}
         {% if can_cancel %}
@@ -126,7 +126,7 @@
       <div><b>המראה:</b> {{ flight.departure_time }}</div>
       <div><b>נחיתה:</b> {{ flight.arrival_time or "לא ידוע" }}</div>
       <div><b>סטטוס:</b>
-        {% if st == 'Canceled by Manager' %} בוטל ע״י מנהל
+        {% if st == 'Canceled' %} בוטל ע״י מנהל
         {% else %} {{ st }}
         {% endif %}
       </div>

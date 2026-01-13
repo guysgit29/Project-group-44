@@ -343,7 +343,7 @@ def manager_flights():
 
     for f in flights:
         # ✅ ביטול לא רלוונטי לטיסה שבוטלה/הושלמה
-        if (f.get("flight_status") or "").strip() in ("Completed", "Canceled by Manager"):
+        if (f.get("flight_status") or "").strip() in ("Completed", "Canceled"):
             f["can_cancel"] = False
         else:
             f["can_cancel"] = Flight.can_manager_cancel(f["flight_number"])
@@ -623,10 +623,6 @@ def manager_flight_view(flight_number):
         attendants=attendants,
         pilots=pilots
     )
-    # ✅ לא מאפשרים צפייה בטיסה שבוטלה ע"י מנהל
-    if (flight.get("flight_status") or "").strip() == "Canceled by Manager":
-        session["flash_msg"] = "אין צפייה בפרטים לטיסה שבוטלה ע״י מנהל"
-        return redirect(url_for("manager_flights"))
 
 
 @app.route("/manager_flight_manage/<int:flight_number>", methods=["GET", "POST"])
@@ -634,19 +630,24 @@ def manager_flight_manage(flight_number):
     if session.get("role") != "manager":
         return redirect(url_for("manager_login"))
 
-    # סנכרון טיסות שנחתו
     Flight.sync_completed_flights()
 
-    # פרטי טיסה
     flight = Flight.get_by_number(flight_number)
     if not flight:
         return redirect(url_for("manager_flights"))
 
     flight["aircraft_size"] = Flight.get_aircraft_size_for_flight(flight_number)
 
-    # טיסה שהושלמה – למסך צפייה בלבד
-    if (flight.get("flight_status") or "").strip() == "Completed":
+    st = (flight.get("flight_status") or "").strip()
+
+    # ✅ טיסה שהושלמה – למסך צפייה בלבד
+    if st == "Completed":
         return redirect(url_for("manager_flight_view", flight_number=flight_number))
+
+    # ✅ טיסה שבוטלה – אין כניסה לניהול (חזרה לרשימה)
+    if st == "Canceled":
+        session["flash_msg"] = "טיסה בוטלה"
+        return redirect(url_for("manager_flights"))
 
     # --------
     # POST – שיבוץ / הסרה / ביטול טיסה
@@ -654,7 +655,6 @@ def manager_flight_manage(flight_number):
     if request.method == "POST":
         action = (request.form.get("action") or "").strip()
 
-        # ✅ ביטול טיסה מתוך דף הניהול
         if action == "cancel_flight":
             ok, msg = Flight.cancel_flight(flight_number)
             session["flash_msg"] = msg
@@ -685,19 +685,14 @@ def manager_flight_manage(flight_number):
     # --------
     # GET – טעינת נתונים למסך
     # --------
-
-    # הודעת פעולה אחרונה (אם קיימת)
     flash_msg = session.pop("flash_msg", None)
 
-    # משובצים בפועל
     assigned_pilots = Pilot.get_assigned_for_flight(flight_number)
     assigned_attendants = FlightAttendant.get_assigned_for_flight(flight_number)
 
-    # ✅ זמינים בלבד (כולל הסמכה + בלי חפיפה + ✅ מיקום דיפולטי TLV אם אין היסטוריה)
     all_pilots = Pilot.list_all(flight_number)
     all_attendants = FlightAttendant.list_all(flight_number)
 
-    # חישובי נדרש / שובצו / חסר
     required = Flight.get_required_crew_counts(flight_number)
 
     assigned_counts = {
@@ -710,15 +705,9 @@ def manager_flight_manage(flight_number):
         "attendants": max(0, required["attendants"] - assigned_counts["attendants"])
     }
 
-    # ✅ כדי שה־template לא יצטרך Flight
+    # ✅ חישוב נכון של כפתורי ביטול:
     can_cancel = Flight.can_manager_cancel(flight_number)
-    # ✅ טיסה שבוטלה ע"י מנהל — לא נכנסים לניהול
-    if (flight.get("flight_status") or "").strip() == "Canceled by Manager":
-        session["flash_msg"] = "לא ניתן לנהל טיסה שבוטלה ע״י מנהל"
-        return redirect(url_for("manager_flights"))
-    can_cancel = Flight.can_manager_cancel(flight_number)  # מה שכבר יש לך
-    is_departing_soon = (not can_cancel) and (
-                (flight.get("flight_status") or "").strip() not in ["Completed", "Canceled by Manager"])
+    is_departing_soon = (not can_cancel)  # פה st כבר לא Canceled/Completed כי חזרנו קודם
 
     return render_template(
         "manager_flight_manage.html",
@@ -734,7 +723,6 @@ def manager_flight_manage(flight_number):
         can_cancel=can_cancel,
         is_departing_soon=is_departing_soon
     )
-
 
 @app.route("/aircrafts")
 def aircrafts():
