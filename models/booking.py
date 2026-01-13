@@ -252,11 +252,13 @@ class Booking:
             selected_seats: list[str],
             payment_method: str,
             logged_in_registered: bool,
+            phone_number: str = "",
+            passport_number: str = "",  # לא נשמר, רק אם תרצה ולידציה/לוגיקה בעתיד
     ):
         Booking._dbg(
             "create_booking_with_tickets("
             f"flight={flight_number}, email={email}, logged_in_registered={logged_in_registered}, "
-            f"payment={payment_method}, seats={selected_seats})"
+            f"payment={payment_method}, seats={selected_seats}, phone={phone_number})"
         )
 
         details, total = Booking.get_pricing_for_selected_seats(int(flight_number), selected_seats)
@@ -268,6 +270,9 @@ class Booking:
         if not email:
             Booking._dbg("create_booking: email empty -> None")
             return None
+
+        phone_number = (phone_number or "").strip()
+        passport_number = (passport_number or "").strip()
 
         with DB.get_cursor() as cursor:
             aircraft_id = details[0]["aircraft_id"]
@@ -283,6 +288,14 @@ class Booking:
                         (email, first_name, last_name),
                     )
                     Booking._dbg("create_booking: GuestUser inserted")
+
+                # NEW: Save guest phone in separate table (passport NOT saved)
+                if phone_number:
+                    cursor.execute(
+                        "INSERT IGNORE INTO GuestPhone (email, phone_number) VALUES (%s, %s)",
+                        (email, phone_number),
+                    )
+                    Booking._dbg("create_booking: GuestPhone inserted/ignored")
 
             # 1) Validate Seat existence
             Booking._dbg("create_booking: step1 validate seats exist in Seat...")
@@ -343,8 +356,7 @@ class Booking:
                 VALUES
                   (%s, %s, %s, %s, %s, %s, %s)
                 """,
-                (booking_id, registered_email, guest_email, int(flight_number), float(total), date.today(),
-                 "Active"),
+                (booking_id, registered_email, guest_email, int(flight_number), float(total), date.today(), "Active"),
             )
 
             # 4) Insert Tickets
@@ -434,15 +446,15 @@ class Booking:
         flight_cancelable_status = flight_status in ("Active", "Full")
         flight_not_completed = flight_status != "Completed"
 
-        more_than_72h = False
+        more_than_36h = False
         if departure_time:
-            more_than_72h = (departure_time - now) > timedelta(hours=72)
+            more_than_36h = (departure_time - now) > timedelta(hours=36)
 
-        can_cancel = booking_active and flight_cancelable_status and more_than_72h
+        can_cancel = booking_active and flight_cancelable_status and more_than_36h
         show_block_message = booking_active and flight_not_completed and (not can_cancel)
 
         block_message = (
-            "הזמנה זו לא ניתנת לביטול מאחר ונותרו פחות מ-72 שעות להמראה"
+            "הזמנה זו לא ניתנת לביטול מאחר ונותרו פחות מ-36 שעות להמראה"
             if show_block_message else None
         )
 

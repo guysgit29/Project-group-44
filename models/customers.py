@@ -61,29 +61,40 @@ class RegisteredUser:
 
     @staticmethod
     def register(data):
-        """פונקציה שמרכזת את כל לוגיקת ההרשמה"""
         email = data.get('email', '').strip().lower()
         password = data.get('password')
         confirm_password = data.get('confirm_password')
+        phone_number = data.get('phone_number', '').strip()
 
-        # 1. בדיקת התאמת סיסמאות
         if password != confirm_password:
             return None, "הסיסמאות שהוזנו אינן תואמות, אנא נסה שוב"
 
-        # 2. בדיקה אם המשתמש כבר קיים
         with DB.get_cursor() as cursor:
             cursor.execute("SELECT 1 FROM RegisteredUser WHERE email = %s", (email,))
             if cursor.fetchone():
                 return None, "האימייל שהוזן משוייך לחשבון קיים, אנא התחבר או צור חשבון עם מייל שונה"
 
-        # 3. יצירת האובייקט ושמירה ל-DB
         try:
             new_user = RegisteredUser(
-                email, data.get('first_name'), data.get('last_name'),
-                password, data.get('birth_date'), data.get('passport_number')
+                email,
+                data.get('first_name'),
+                data.get('last_name'),
+                password,
+                data.get('birth_date'),
+                data.get('passport_number')
             )
             new_user.save()
+
+            # שמירת טלפון לטבלה נפרדת
+            if phone_number:
+                with DB.get_cursor() as cursor:
+                    cursor.execute(
+                        "INSERT INTO RegisteredPhone (email, phone_number) VALUES (%s, %s)",
+                        (email, phone_number)
+                    )
+
             return new_user, None
+
         except Exception as e:
             return None, f"Database error: {str(e)}"
 

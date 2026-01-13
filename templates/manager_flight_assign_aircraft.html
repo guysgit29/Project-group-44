@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block content %}
+
+{# ---- Safety defaults ---- #}
+{% set draft = draft|default({}) %}
+{% set require_large = require_large|default(False) %}
+{% set aircrafts = aircrafts|default([]) %}
+
+<main class="container" style="max-width:1100px; margin:50px auto; text-align:right; direction:rtl;">
+
+  <h2> שיבוץ מטוס — שלב 2/5</h2>
+
+  <div style="margin-bottom:15px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+    <a href="{{ url_for('manager_flight_create') }}"
+       style="text-decoration:none; color:#003366; font-weight:bold;">
+      ← חזרה לשלב 1
+    </a>
+    <span style="color:#666;">|</span>
+    <a href="{{ url_for('manager_dashboard') }}"
+       style="text-decoration:none; color:#003366; font-weight:bold;">
+      חזרה לדשבורד
+    </a>
+  </div>
+
+  {% if error %}
+    <div style="background:#ffe6e6; border:1px solid #ffb3b3; padding:10px; border-radius:8px; margin-bottom:15px;">
+      {{ error }}
+    </div>
+  {% endif %}
+
+  {# Support dict OR object: use .get when possible #}
+  {% set origin = draft.get('origin') if draft is mapping else draft.origin %}
+  {% set destination = draft.get('destination') if draft is mapping else draft.destination %}
+  {% set departure_dt = draft.get('departure_dt') if draft is mapping else draft.departure_dt %}
+  {% set arrival_preview = draft.get('arrival_dt_preview') if draft is mapping else draft.arrival_dt_preview %}
+  {% set selected_aircraft_id = draft.get('aircraft_id') if draft is mapping else draft.aircraft_id %}
+
+  <div style="background:#fff; padding:14px 18px; border-radius:14px; box-shadow:0 10px 30px rgba(0,0,0,0.08); margin-bottom:16px;">
+    <div><b>נתיב:</b> {{ origin }} → {{ destination }}</div>
+
+    <div>
+      <b>המראה:</b>
+      <span style="direction:ltr; unicode-bidi:bidi-override;">
+        {{ departure_dt }}
+      </span>
+    </div>
+
+    {% if arrival_preview %}
+      <div>
+        <b>נחיתה (מחושבת):</b>
+        <span style="direction:ltr; unicode-bidi:bidi-override;">
+          {{ arrival_preview }}
+        </span>
+      </div>
+    {% endif %}
+
+    {% if require_large %}
+      <div style="margin-top:8px; color:#8a0000; font-weight:800;">
+        טיסה מעל 6 שעות — ניתן לבחור רק מטוס Large
+      </div>
+    {% endif %}
+
+    <div style="margin-top:8px; color:#666; font-size:13px;">
+      כלל מיקום: אם אין למטוס טיסות קודמות בכלל — מניחים שהוא ב-TLV.
+    </div>
+  </div>
+
+  <form method="POST" action="{{ url_for('manager_assign_aircraft') }}"
+        style="background:#fff; padding:18px; border-radius:14px; box-shadow:0 10px 30px rgba(0,0,0,0.08);">
+
+    <label style="font-weight:800;">בחר מטוס זמין</label>
+
+    <select name="aircraft_id" required
+            style="width:100%; padding:10px; border:1px solid #ddd; border-radius:10px; margin-top:8px; text-align:right;">
+      <option value="">בחר מטוס</option>
+
+      {% for a in aircrafts %}
+        {# a may be dict from cursor.fetchall() #}
+        {% set a_id = a.get('aircraft_id') if a is mapping else a.aircraft_id %}
+        {% set a_size = a.get('aircraft_size') if a is mapping else a.aircraft_size %}
+        {% set a_manu = a.get('manufacturer') if a is mapping else a.manufacturer %}
+        {% set last_dest = a.get('last_destination') if a is mapping else a.last_destination %}
+        {% set last_end = a.get('last_end_time') if a is mapping else a.last_end_time %}
+
+        <option value="{{ a_id }}"
+          {% if selected_aircraft_id and selected_aircraft_id|int == a_id %}selected{% endif %}>
+          {{ a_id }} ({{ a_size }}) - {{ a_manu }}
+          {% if last_dest %}
+            | יעד אחרון: {{ last_dest }} | סיום:
+            <span style="direction:ltr; unicode-bidi:bidi-override;">{{ last_end }}</span>
+          {% else %}
+            | ללא היסטוריה (נחשב TLV)
+          {% endif %}
+        </option>
+      {% endfor %}
+    </select>
+
+    {% if aircrafts|length == 0 %}
+      <div style="margin-top:12px; color:#8a0000; font-weight:800;">
+        לא נמצאו מטוסים זמינים לפי הכללים (מיקום/זמנים/גודל).
+      </div>
+    {% endif %}
+
+    <div style="margin-top:16px; display:flex; gap:10px; justify-content:flex-start; flex-wrap:wrap;">
+      <button type="submit"
+              style="padding:10px 14px; background:#003366; border:none; color:#fff; border-radius:10px; cursor:pointer; font-weight:800;">
+        המשך לשיבוץ צוות →
+      </button>
+    </div>
+
+  </form>
+
+</main>
+
+{% endblock %}

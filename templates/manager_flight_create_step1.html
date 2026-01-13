@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block content %}
+
+<main class="container" style="max-width:1100px; margin:50px auto; text-align:right; direction:rtl;">
+
+  <h2> הוספת טיסה חדשה — שלב 1/5</h2>
+
+  <div style="margin-bottom:15px;">
+    <a href="{{ url_for('manager_dashboard') }}"
+       style="text-decoration:none; color:#003366; font-weight:bold;">
+      ← חזרה לדשבורד מנהל
+    </a>
+  </div>
+
+  {% if error %}
+    <div style="background:#ffe6e6; border:1px solid #ffb3b3; padding:10px; border-radius:8px; margin-bottom:15px;">
+      {{ error }}
+    </div>
+  {% endif %}
+
+  <form method="POST" action="{{ url_for('manager_flight_create') }}"
+        style="background:#fff; padding:18px; border-radius:14px; box-shadow:0 10px 30px rgba(0,0,0,0.08);">
+
+    <div style="display:grid; grid-template-columns: repeat(2, 1fr); gap:14px;">
+
+      <div>
+        <label style="font-weight:800;">שדה מקור</label>
+        <select name="origin" required
+                style="width:100%; padding:10px; border:1px solid #ddd; border-radius:10px; text-align:right;">
+          <option value="">בחר מקור</option>
+          {% for o in origins %}
+            <option value="{{ o }}" {% if prefill.origin == o %}selected{% endif %}>{{ o }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div>
+        <label style="font-weight:800;">שדה יעד</label>
+        <select name="destination" required
+                style="width:100%; padding:10px; border:1px solid #ddd; border-radius:10px; text-align:right;">
+          <option value="">בחר יעד</option>
+          {% for d in destinations %}
+            <option value="{{ d }}" {% if prefill.destination == d %}selected{% endif %}>{{ d }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+         <div>
+          <label style="font-weight:800;">תאריך טיסה</label>
+          <input type="date"
+                 name="flight_date"
+                 required
+                 min="{{ today_date }}"
+                 style="width:100%; padding:10px; border:1px solid #ddd; border-radius:10px;">
+        </div>
+
+      <div>
+        <label style="font-weight:800;">שעת המראה</label>
+        <input type="time" name="flight_time" required
+               style="width:100%; padding:10px; border:1px solid #ddd; border-radius:10px; direction:ltr; text-align:left;">
+      </div>
+
+    </div>
+
+    <div style="margin-top:16px; display:flex; gap:10px; justify-content:flex-start; flex-wrap:wrap;">
+      <button type="submit"
+              style="padding:10px 14px; background:#003366; border:none; color:#fff; border-radius:10px; cursor:pointer; font-weight:800;">
+        המשך לשיבוץ מטוס →
+      </button>
+    </div>
+
+    <div style="margin-top:10px; color:#666; font-size:13px;">
+    </div>
+
+  </form>
+
+</main>
+
+{% endblock %}
