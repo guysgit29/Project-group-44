@@ -6,7 +6,7 @@ from models.customers import RegisteredUser
 from models.booking import Booking
 from models.employees import Manager,Pilot,FlightAttendant
 from models.flight import Flight
-##
+###
 app = Flask(__name__)
 
 # --- Flask Configuration ---
@@ -845,6 +845,30 @@ def manager_flight_cancel(flight_number):
     ok, msg = Flight.cancel_flight(flight_number)
     session["flash_msg"] = msg
     return redirect(url_for("manager_flights"))
+# app.py
+
+# app.py
+from flask import render_template, redirect, url_for, session
+from models.reports import ManagerReports
+
+@app.route("/manager_reports", methods=["GET"])
+def manager_reports():
+    if session.get("role") != "manager":
+        return redirect(url_for("manager_login"))
+
+    r1 = ManagerReports.report_1_avg_occupancy_past_flights()
+    r2 = ManagerReports.report_2_revenue_by_aircraft_and_class()
+    r3 = ManagerReports.report_3_crew_hours_short_long()
+    r4 = ManagerReports.report_4_monthly_cancellation_rate()
+
+    return render_template(
+        "manager_reports.html",
+        report1_avg=r1,
+        report2_rows=r2,
+        report3_rows=r3,
+        report4_rows=r4
+    )
+
 
 if __name__ == '__main__':
     app.run(debug=True)
