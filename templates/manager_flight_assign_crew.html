@@ -3,10 +3,10 @@
 
 <div style="max-width:1100px; margin:50px auto; direction:rtl; text-align:right;">
 
-  <h2>👥 שיבוץ צוות — שלב 3/4</h2>
+  <h2> שיבוץ צוות — שלב 4/5</h2>
 
   <div style="margin-bottom:15px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-    <a href="{{ url_for('manager_assign_aircraft') }}" style="text-decoration:none; color:#003366; font-weight:bold;">← חזרה לשלב 2</a>
+    <a href="{{ url_for('manager_assign_aircraft') }}" style="text-decoration:none; color:#003366; font-weight:bold;">← חזרה לשלב 3</a>
     <span style="color:#666;">|</span>
     <a href="{{ url_for('manager_dashboard') }}" style="text-decoration:none; color:#003366; font-weight:bold;">חזרה לדשבורד</a>
   </div>
@@ -84,14 +84,17 @@
     {% endif %}
   </form>
 
-  {% if assigned_pilots and assigned_pilots|length > 0 %}
+    {% if assigned_pilots and assigned_pilots|length > 0 %}
     <ul style="padding-right:18px;">
       {% for p in assigned_pilots %}
+        {% set pid = p.get('id') if p is mapping else p.id %}
+        {% set fn = p.get('first_name_he') if p is mapping else p.first_name_he %}
+        {% set ln = p.get('last_name_he') if p is mapping else p.last_name_he %}
         <li style="margin-bottom:6px;">
-          {{ p.id }} — {{ p.first_name_he }} {{ p.last_name_he }}
+          {{ pid }} — {{ fn }} {{ ln }}
           <form method="POST" style="display:inline;">
             <input type="hidden" name="action" value="remove_pilot">
-            <input type="hidden" name="pilot_id" value="{{ p.id }}">
+            <input type="hidden" name="pilot_id" value="{{ pid }}">
             <button type="submit">הסר</button>
           </form>
         </li>
@@ -147,11 +150,14 @@
   {% if assigned_attendants and assigned_attendants|length > 0 %}
     <ul style="padding-right:18px;">
       {% for a in assigned_attendants %}
+        {% set aid = a.get('id') if a is mapping else a.id %}
+        {% set fn = a.get('first_name_he') if a is mapping else a.first_name_he %}
+        {% set ln = a.get('last_name_he') if a is mapping else a.last_name_he %}
         <li style="margin-bottom:6px;">
-          {{ a.id }} — {{ a.first_name_he }} {{ a.last_name_he }}
+          {{ aid }} — {{ fn }} {{ ln }}
           <form method="POST" style="display:inline;">
             <input type="hidden" name="action" value="remove_attendant">
-            <input type="hidden" name="attendant_id" value="{{ a.id }}">
+            <input type="hidden" name="attendant_id" value="{{ aid }}">
             <button type="submit">הסר</button>
           </form>
         </li>

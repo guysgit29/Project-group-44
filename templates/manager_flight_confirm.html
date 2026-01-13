@@ -3,12 +3,12 @@
 
 <main class="container" style="max-width:1100px; margin:50px auto; text-align:right; direction:rtl;">
 
-  <h2>✅ סיכום ואישור — שלב 4/4</h2>
+  <h2> סיכום ואישור — שלב 5/5</h2>
 
   <div style="margin-bottom:15px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
     <a href="{{ url_for('manager_assign_crew') }}"
        style="text-decoration:none; color:#003366; font-weight:bold;">
-      ← חזרה לשלב 3
+      ← חזרה לשלב 4
     </a>
     <span style="color:#666;">|</span>
     <a href="{{ url_for('manager_dashboard') }}"
@@ -46,12 +46,32 @@
 
     <hr style="margin:18px 0;">
 
+    <h3 style="margin:0 0 12px;">תמחור</h3>
+    <div style="background:#f9fbff; border:1px solid #e5e7eb; padding:12px; border-radius:12px;">
+      {% set p = pricing|default({}) %}
+      <div><b>Economy:</b> {{ p.economy_price if p.economy_price is defined else p.get('economy_price') }}</div>
+
+      {% set b = (p.business_price if p.business_price is defined else p.get('business_price')) %}
+      {% if b %}
+        <div style="margin-top:6px;"><b>Business:</b> {{ b }}</div>
+      {% else %}
+        <div style="margin-top:6px; color:#666;">Business: אין</div>
+      {% endif %}
+    </div>
+
+    <hr style="margin:18px 0;">
+
     <h3 style="margin:0 0 12px;">מטוס משובץ</h3>
     <div style="background:#f9fbff; border:1px solid #e5e7eb; padding:12px; border-radius:12px;">
       {% if aircraft %}
-        <div><b>ID מטוס:</b> {{ aircraft.aircraft_id }}</div>
-        <div><b>גודל:</b> {{ aircraft.aircraft_size }}</div>
-        <div><b>יצרן:</b> {{ aircraft.manufacturer }}</div>
+        {# תומך dict או object #}
+        {% set a_id = aircraft.aircraft_id if aircraft.aircraft_id is defined else aircraft.get('aircraft_id') %}
+        {% set a_size = aircraft.aircraft_size if aircraft.aircraft_size is defined else aircraft.get('aircraft_size') %}
+        {% set a_man = aircraft.manufacturer if aircraft.manufacturer is defined else aircraft.get('manufacturer') %}
+
+        <div><b>ID מטוס:</b> {{ a_id }}</div>
+        <div><b>גודל:</b> {{ a_size }}</div>
+        <div><b>יצרן:</b> {{ a_man }}</div>
       {% else %}
         <div style="color:#8a0000; font-weight:800;">שגיאה: לא נמצא מטוס</div>
       {% endif %}
@@ -63,28 +83,36 @@
     <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">
       <div style="background:#f9fbff; border:1px solid #e5e7eb; padding:12px; border-radius:12px;">
         <div style="font-weight:800; margin-bottom:8px;">טייסים</div>
-        {% if pilot_ids and pilot_ids|length > 0 %}
-          <ul style="margin:0; padding-right:18px;">
-            {% for pid in pilot_ids %}
-              <li>{{ pid }}</li>
-            {% endfor %}
-          </ul>
-        {% else %}
-          <div style="color:#666;">לא נבחרו טייסים</div>
-        {% endif %}
+
+            {% if assigned_pilots and assigned_pilots|length > 0 %}
+              <ul style="margin:0; padding-right:18px;">
+                {% for p in assigned_pilots %}
+                  {% set pid = p.get('id') if p is mapping else p.id %}
+                  {% set fn = p.get('first_name_he') if p is mapping else p.first_name_he %}
+                  {% set ln = p.get('last_name_he') if p is mapping else p.last_name_he %}
+                  <li>{{ pid }} — {{ fn }} {{ ln }}</li>
+                {% endfor %}
+              </ul>
+            {% else %}
+              <div style="color:#666;">לא נבחרו טייסים</div>
+            {% endif %}
       </div>
 
       <div style="background:#f9fbff; border:1px solid #e5e7eb; padding:12px; border-radius:12px;">
         <div style="font-weight:800; margin-bottom:8px;">דיילים</div>
-        {% if attendant_ids and attendant_ids|length > 0 %}
-          <ul style="margin:0; padding-right:18px;">
-            {% for aid in attendant_ids %}
-              <li>{{ aid }}</li>
-            {% endfor %}
-          </ul>
-        {% else %}
-          <div style="color:#666;">לא נבחרו דיילים</div>
-        {% endif %}
+
+          {% if assigned_attendants and assigned_attendants|length > 0 %}
+            <ul style="margin:0; padding-right:18px;">
+              {% for a in assigned_attendants %}
+                {% set aid = a.get('id') if a is mapping else a.id %}
+                {% set fn = a.get('first_name_he') if a is mapping else a.first_name_he %}
+                {% set ln = a.get('last_name_he') if a is mapping else a.last_name_he %}
+                <li>{{ aid }} — {{ fn }} {{ ln }}</li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <div style="color:#666;">לא נבחרו דיילים</div>
+          {% endif %}
       </div>
     </div>
 
@@ -96,7 +124,6 @@
         </button>
       </div>
       <div style="margin-top:10px; color:#666; font-size:13px;">
-        בלחיצה על אישור יתבצע INSERT ל-Flight + Pilots_on_Flights + FlightAttendants_on_Flights, ומספר טיסה יווצר אוטומטית.
       </div>
     </form>
 

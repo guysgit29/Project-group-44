@@ -3,7 +3,7 @@
 
 <main class="container" style="max-width:1100px; margin:50px auto; text-align:right; direction:rtl;">
 
-  <h2>✈ הוספת טיסה חדשה — שלב 1/4</h2>
+  <h2> הוספת טיסה חדשה — שלב 1/5</h2>
 
   <div style="margin-bottom:15px;">
     <a href="{{ url_for('manager_dashboard') }}"
@@ -32,7 +32,6 @@
             <option value="{{ o }}" {% if prefill.origin == o %}selected{% endif %}>{{ o }}</option>
           {% endfor %}
         </select>
-        <small style="color:#777;">נשלף מ-FlightLength (DISTINCT)</small>
       </div>
 
       <div>
@@ -44,14 +43,16 @@
             <option value="{{ d }}" {% if prefill.destination == d %}selected{% endif %}>{{ d }}</option>
           {% endfor %}
         </select>
-        <small style="color:#777;">נשלף מ-FlightLength (DISTINCT)</small>
       </div>
 
-      <div>
-        <label style="font-weight:800;">תאריך טיסה</label>
-        <input type="date" name="flight_date" required
-               style="width:100%; padding:10px; border:1px solid #ddd; border-radius:10px;">
-      </div>
+         <div>
+          <label style="font-weight:800;">תאריך טיסה</label>
+          <input type="date"
+                 name="flight_date"
+                 required
+                 min="{{ today_date }}"
+                 style="width:100%; padding:10px; border:1px solid #ddd; border-radius:10px;">
+        </div>
 
       <div>
         <label style="font-weight:800;">שעת המראה</label>
@@ -69,7 +70,6 @@
     </div>
 
     <div style="margin-top:10px; color:#666; font-size:13px;">
-      הערה: אורך הטיסה וזמן הנחיתה יחושבו אוטומטית לפי FlightLength (וגם ה-Trigger ישלים arrival_time בהכנסה ל-Flight).
     </div>
 
   </form>

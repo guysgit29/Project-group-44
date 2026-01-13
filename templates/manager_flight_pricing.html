@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div style="max-width:1100px; margin:50px auto; direction:rtl; text-align:right;">
+
+  <h2>💰 תמחור טיסה — שלב 3/5</h2>
+
+  <div style="margin-bottom:15px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+    <a href="{{ url_for('manager_assign_aircraft') }}" style="text-decoration:none; color:#003366; font-weight:bold;">← חזרה לשלב 2</a>
+    <span style="color:#666;">|</span>
+    <a href="{{ url_for('manager_dashboard') }}" style="text-decoration:none; color:#003366; font-weight:bold;">חזרה לדשבורד</a>
+  </div>
+
+  {% if error %}
+    <div style="background:#ffe6e6; border:1px solid #ffb3b3; padding:10px; border-radius:8px; margin-bottom:15px;">
+      {{ error }}
+    </div>
+  {% endif %}
+
+  <div style="margin-top:16px; padding:14px; border:1px solid #e5e7eb; border-radius:12px; background:#fff;">
+    <div style="display:flex; gap:18px; flex-wrap:wrap; align-items:center;">
+      <div><b>נתיב:</b> {{ draft.origin }} → {{ draft.destination }}</div>
+      <div><b>המראה:</b> {{ draft.departure_dt }}</div>
+      <div><b>סוג מטוס:</b> {{ draft.aircraft_size }}</div>
+      <div><b>מטוס:</b> {{ draft.aircraft_id }}</div>
+    </div>
+  </div>
+
+  <form method="POST" action="{{ url_for('manager_set_pricing') }}"
+        style="margin-top:18px; background:#fff; padding:18px; border-radius:14px; border:1px solid #e5e7eb;">
+
+    <div style="display:flex; gap:14px; flex-wrap:wrap; align-items:flex-end;">
+
+      <div style="min-width:260px;">
+        <label style="font-weight:800;">מחיר Economy</label>
+        <input name="economy_price" type="number" step="0.01" min="0" required
+               value="{{ economy_price }}"
+               style="width:100%; padding:10px; border:1px solid #ddd; border-radius:10px; text-align:right;">
+      </div>
+
+      {% if has_business %}
+      <div style="min-width:260px;">
+        <label style="font-weight:800;">מחיר Business</label>
+        <input name="business_price" type="number" step="0.01" min="0" required
+               value="{{ business_price }}"
+               style="width:100%; padding:10px; border:1px solid #ddd; border-radius:10px; text-align:right;">
+      </div>
+      {% endif %}
+
+    </div>
+
+    <div style="margin-top:16px; display:flex; gap:10px; flex-wrap:wrap;">
+      <button type="submit"
+              style="padding:10px 14px; background:#003366; border:none; color:#fff; border-radius:10px; cursor:pointer; font-weight:800;">
+        שמור והמשך לשיבוץ צוות →
+      </button>
+    </div>
+
+  </form>
+
+</div>
+
+{% endblock %}
