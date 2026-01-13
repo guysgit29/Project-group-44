@@ -1,5 +1,5 @@
 from __future__ import annotations
-from datetime import datetime
+from datetime import datetime, timedelta
 from database import DB
 
 
@@ -30,13 +30,17 @@ class Flight:
 
     @staticmethod
     def sync_completed_flights() -> int:
+        """
+        מעדכן ל-Completed רק טיסות שהיו פעילות/מלאה/Delayed ועבר זמן הנחיתה.
+        לא נוגע בטיסות שבוטלו ע"י מנהל.
+        """
         with DB.get_cursor() as cursor:
             cursor.execute("""
                 UPDATE Flight
                 SET flight_status = 'Completed'
                 WHERE arrival_time IS NOT NULL
                   AND arrival_time < NOW()
-                  AND flight_status <> 'Completed'
+                  AND flight_status IN ('Active','Full','Delayed')
             """)
             return cursor.rowcount
 
@@ -113,8 +117,10 @@ class Flight:
                 return None
 
             current_status = (f.get("flight_status") or "").strip()
-            if current_status == "Completed":
-                return "Completed"
+
+            # ✅ לא משנים סטטוסים סופיים
+            if current_status in ("Completed", "Canceled by Manager"):
+                return current_status
 
             aircraft_id = int(f["aircraft_id"])
 
@@ -415,3 +421,82 @@ class Flight:
             """, (int(flight_number), int(aircraft_id), origin, destination, departure_time, flight_status))
 
         return True, "טיסה נוצרה בהצלחה"
+
+    # ==========================================================
+    # ✅ NEW: Cancel rules for manager (72 hours)
+    # ==========================================================
+
+    @staticmethod
+    def can_manager_cancel(flight_number: int) -> bool:
+        """
+        ניתן לבטל טיסה רק אם ההמראה בעוד 72 שעות או יותר
+        """
+        with DB.get_cursor() as cursor:
+            cursor.execute("""
+                SELECT departure_time, flight_status
+                FROM Flight
+                WHERE flight_number = %s
+            """, (int(flight_number),))
+            f = cursor.fetchone()
+
+        if not f:
+            return False
+
+        status = (f["flight_status"] or "").strip()
+        if status in ("Completed", "Canceled by Manager"):
+            return False
+
+        dep = f.get("departure_time")
+        if not dep:
+            return False
+
+        return dep - datetime.now() >= timedelta(hours=72)
+
+    @staticmethod
+    def cancel_flight(flight_number: int) -> tuple[bool, str]:
+        """
+        מבטל טיסה:
+        - Flight.flight_status => 'Canceled by Manager'
+        - Booking.price => 0
+        - Booking.booking_status => 'Canceled by Manager'
+        - Tickets לא נמחקים
+        """
+        if not flight_number:
+            return False, "מספר טיסה חסר"
+
+        flight_number = int(flight_number)
+
+        # ✅ אכיפה בצד שרת של חוק 72 שעות
+        if not Flight.can_manager_cancel(flight_number):
+            return False, "לא ניתן לבטל טיסה פחות מ-72 שעות לפני ההמראה"
+
+        with DB.get_cursor() as cursor:
+            cursor.execute(
+                "SELECT flight_status FROM Flight WHERE flight_number = %s",
+                (flight_number,)
+            )
+            f = cursor.fetchone()
+            if not f:
+                return False, "הטיסה לא קיימת"
+
+            current_status = (f.get("flight_status") or "").strip()
+
+            if current_status == "Completed":
+                return False, "לא ניתן לבטל טיסה שהושלמה (Completed)"
+
+            if current_status == "Canceled by Manager":
+                return True, "הטיסה כבר במצב Canceled by Manager"
+
+            cursor.execute(
+                "UPDATE Flight SET flight_status = 'Canceled by Manager' WHERE flight_number = %s",
+                (flight_number,)
+            )
+
+            cursor.execute("""
+                UPDATE Booking
+                SET price = 0,
+                    booking_status = 'Canceled by Manager'
+                WHERE flight_number = %s
+            """, (flight_number,))
+
+        return True, "הטיסה בוטלה וההזמנות עודכנו בהצלחה"
