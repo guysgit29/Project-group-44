@@ -6,7 +6,7 @@ from models.customers import RegisteredUser
 from models.booking import Booking
 from models.employees import Manager,Pilot,FlightAttendant
 from models.flight import Flight
-from datetime import date
+from datetime import date, datetime, timedelta
 
 app = Flask(__name__)
 
