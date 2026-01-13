@@ -485,7 +485,7 @@ class Flight:
             cursor.execute("""
                 UPDATE Booking
                 SET price = 0,
-                    booking_status = 'Canceled'
+                    booking_status = 'Canceled by Manager'
                 WHERE flight_number = %s
             """, (flight_number,))
 
