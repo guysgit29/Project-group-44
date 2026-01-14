@@ -624,6 +624,9 @@ def manager_flight_view(flight_number):
         pilots=pilots
     )
 
+from datetime import datetime, timedelta
+
+from datetime import datetime, timedelta
 
 @app.route("/manager_flight_manage/<int:flight_number>", methods=["GET", "POST"])
 def manager_flight_manage(flight_number):
@@ -645,7 +648,8 @@ def manager_flight_manage(flight_number):
         return redirect(url_for("manager_flight_view", flight_number=flight_number))
 
     # ✅ טיסה שבוטלה – אין כניסה לניהול (חזרה לרשימה)
-    if st == "Canceled":
+    # אם אצלך ב-DB זה "Canceled by Manager" ולא "Canceled" – תוסיף גם את זה כאן
+    if st in ("Canceled", "Canceled by Manager"):
         session["flash_msg"] = "טיסה בוטלה"
         return redirect(url_for("manager_flights"))
 
@@ -697,17 +701,37 @@ def manager_flight_manage(flight_number):
 
     assigned_counts = {
         "pilots": len(assigned_pilots),
-        "attendants": len(assigned_attendants)
+        "attendants": len(assigned_attendants),
     }
 
     missing_counts = {
         "pilots": max(0, required["pilots"] - assigned_counts["pilots"]),
-        "attendants": max(0, required["attendants"] - assigned_counts["attendants"])
+        "attendants": max(0, required["attendants"] - assigned_counts["attendants"]),
     }
 
-    # ✅ חישוב נכון של כפתורי ביטול:
-    can_cancel = Flight.can_manager_cancel(flight_number)
-    is_departing_soon = (not can_cancel)  # פה st כבר לא Canceled/Completed כי חזרנו קודם
+    # ✅ חישוב "יוצאת בקרוב" + can_cancel רק ל-Active/Full
+    now = datetime.now()
+    dep = flight.get("departure_time")
+
+    # אם dep מגיע כמחרוזת, ננסה להמיר
+    if isinstance(dep, str):
+        # תתאים לפורמט שיוצא אצלך בפועל. לרוב MySQL connector מחזיר datetime, אבל לפעמים זה str.
+        try:
+            dep = datetime.strptime(dep, "%Y-%m-%d %H:%M:%S")
+        except ValueError:
+            dep = None
+
+    is_active_like = st in ("Active", "Full")
+
+    is_departing_soon = False
+    can_cancel = False
+
+    if is_active_like and isinstance(dep, datetime):
+        time_left = dep - now
+        # יוצאת בקרוב: בתוך 72 שעות, ועדיין לא יצאה
+        is_departing_soon = timedelta(seconds=0) < time_left <= timedelta(hours=72)
+        # אפשר לבטל: יותר מ-72 שעות
+        can_cancel = time_left > timedelta(hours=72)
 
     return render_template(
         "manager_flight_manage.html",
@@ -721,7 +745,7 @@ def manager_flight_manage(flight_number):
         missing_counts=missing_counts,
         flash_msg=flash_msg,
         can_cancel=can_cancel,
-        is_departing_soon=is_departing_soon
+        is_departing_soon=is_departing_soon,
     )
 
 @app.route("/aircrafts")
