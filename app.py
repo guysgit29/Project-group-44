@@ -362,161 +362,185 @@ def manager_flights():
     )
 
 # --- Checkout ---
+from datetime import datetime
+from flask import request, redirect, url_for, render_template, session
+from database import DB
+from models.booking import Booking
+from models.customers import RegisteredUser
+
 
 @app.route("/checkout", methods=["GET", "POST"])
 def checkout():
-    # GET: ?flight_number=1360&selected_seats=...
-    # POST: מגיע מהטופס עם hidden inputs
-    flight_number = (
-        request.form.get("flight_number")
-        if request.method == "POST"
-        else request.args.get("flight_number")
-    )
+    # ----------------------------
+    # Helpers
+    # ----------------------------
+    def _get_flight_and_seats():
+        fn = (request.form.get("flight_number") if request.method == "POST" else request.args.get("flight_number"))
+        seats = (request.form.getlist("selected_seats") if request.method == "POST" else request.args.getlist("selected_seats"))
+        if not fn or not seats:
+            return None, None
+        try:
+            return int(fn), seats
+        except ValueError:
+            return None, None
 
-    selected_seats = (
-        request.form.getlist("selected_seats")
-        if request.method == "POST"
-        else request.args.getlist("selected_seats")
-    )
+    def _split_phones(raw: str) -> list[str]:
+        raw = (raw or "").strip()
+        if not raw:
+            return []
+        raw = raw.replace(",", "\n")
+        out, seen = [], set()
+        for p in (x.strip() for x in raw.splitlines()):
+            if p and p not in seen:
+                seen.add(p)
+                out.append(p)
+        return out
 
-    if not flight_number or not selected_seats:
+    def _render(error=None, prefill_override=None):
+        pf = dict(prefill)
+        if prefill_override:
+            pf.update(prefill_override)
+        return render_template(
+            "checkout.html",
+            flight_number=flight_id,
+            selected_seats=selected_seats,
+            details=details,
+            total=total,
+            prefill=pf,
+            error=error,
+        )
+
+    # ----------------------------
+    # Read inputs
+    # ----------------------------
+    flight_id, selected_seats = _get_flight_and_seats()
+    if not flight_id or not selected_seats:
         return redirect(url_for("home_page"))
 
-    flight_id = int(flight_number)
     details, total = Booking.get_pricing_for_selected_seats(flight_id, selected_seats)
 
-    # -------------------------------------------------
-    # Prefill + lock when logged in
-    # -------------------------------------------------
+    logged_in_registered = bool(session.get("role") == "customer" and session.get("user_id"))
+    user_email = (session.get("user_id") or "").strip().lower()
+
     prefill = {
         "first_name": "",
         "last_name": "",
         "email": "",
         "passport_number": "",
-        "phone_number": "",
+        "phone_numbers": "",
         "lock_fields": False,
     }
 
-    logged_in_registered = (session.get("role") == "customer" and session.get("user_id"))
-
+    # ----------------------------
+    # Prefill for logged-in user (all phones)
+    # ----------------------------
     if logged_in_registered:
         with DB.get_cursor() as cursor:
             cursor.execute(
                 """
-                SELECT
-                    RU.email,
-                    RU.first_name_en,
-                    RU.last_name_en,
-                    RU.passport_number,
-                    (
-                        SELECT RP.phone_number
-                        FROM RegisteredPhone RP
-                        WHERE RP.email = RU.email
-                        ORDER BY RP.phone_number
-                        LIMIT 1
-                    ) AS phone_number
-                FROM RegisteredUser RU
-                WHERE RU.email = %s
+                SELECT email, first_name_en, last_name_en, passport_number
+                FROM RegisteredUser
+                WHERE LOWER(email) = %s
                 LIMIT 1
                 """,
-                (session["user_id"],),
+                (user_email,),
             )
-            row = cursor.fetchone()
+            ru = cursor.fetchone()
 
-        if row:
-            prefill["first_name"] = row.get("first_name_en", "") or ""
-            prefill["last_name"] = row.get("last_name_en", "") or ""
-            prefill["email"] = row.get("email", "") or session["user_id"]
-            prefill["passport_number"] = row.get("passport_number", "") or ""
-            prefill["phone_number"] = row.get("phone_number", "") or ""
-            prefill["lock_fields"] = True
+            cursor.execute(
+                """
+                SELECT phone_number
+                FROM RegisteredPhone
+                WHERE LOWER(email) = %s
+                ORDER BY phone_number
+                """,
+                (user_email,),
+            )
+            phones_rows = cursor.fetchall() or []
 
-    # -------------------------------------------------
+        if ru:
+            phones = [r.get("phone_number") for r in phones_rows if r.get("phone_number")]
+            prefill.update(
+                {
+                    "first_name": ru.get("first_name_en") or "",
+                    "last_name": ru.get("last_name_en") or "",
+                    "email": (ru.get("email") or user_email).lower(),
+                    "passport_number": ru.get("passport_number") or "",
+                    "phone_numbers": "\n".join(phones),
+                    "lock_fields": True,
+                }
+            )
+
+    # ----------------------------
     # GET
-    # -------------------------------------------------
+    # ----------------------------
     if request.method == "GET":
-        return render_template(
-            "checkout.html",
-            flight_number=flight_id,
-            selected_seats=selected_seats,
-            details=details,
-            total=total,
-            prefill=prefill,
-            error=None,
-        )
+        return _render()
 
-    # -------------------------------------------------
-    # POST
-    # -------------------------------------------------
-    lock = prefill["lock_fields"]
+    # ----------------------------
+    # POST (read values)
+    # ----------------------------
+    lock = bool(prefill["lock_fields"])
 
-    # אם נעול (מחובר) — לא סומכים על מה שהגיע מהטופס
-    first_name = prefill["first_name"] if lock else (request.form.get("first_name") or "").strip()
-    last_name  = prefill["last_name"]  if lock else (request.form.get("last_name") or "").strip()
-    email      = prefill["email"]      if lock else (request.form.get("email") or "").strip().lower()
+    def _val(name: str) -> str:
+        return ((prefill.get(name) if lock else (request.form.get(name) or "")) or "").strip()
 
-    # שדות חדשים
-    passport_number = prefill["passport_number"] if lock else (request.form.get("passport_number") or "").strip()
-    phone_number    = prefill["phone_number"]    if lock else (request.form.get("phone_number") or "").strip()
+    first_name = _val("first_name")
+    last_name = _val("last_name")
+    email = _val("email").lower()
+    passport_number = _val("passport_number")
 
-    payment_method = request.form.get("payment_method") or "card"
+    phone_numbers_raw = prefill.get("phone_numbers", "") if lock else (request.form.get("phone_numbers") or "")
+    phones = _split_phones(phone_numbers_raw)
 
-    # ולידציה בסיסית
+    payment_method = (request.form.get("payment_method") or "card").strip()
+
+    # ----------------------------
+    # Validation
+    # ----------------------------
     if not first_name or not last_name or not email:
-        return render_template(
-            "checkout.html",
-            flight_number=flight_id,
-            selected_seats=selected_seats,
-            details=details,
-            total=total,
-            prefill={
+        return _render(
+            error="אנא מלא את כל השדות הנדרשים.",
+            prefill_override={
                 "first_name": first_name,
                 "last_name": last_name,
                 "email": email,
                 "passport_number": passport_number,
-                "phone_number": phone_number,
+                "phone_numbers": phone_numbers_raw,
                 "lock_fields": lock,
             },
-            error="אנא מלא את כל השדות הנדרשים.",
         )
 
-    if not phone_number:
-        return render_template(
-            "checkout.html",
-            flight_number=flight_id,
-            selected_seats=selected_seats,
-            details=details,
-            total=total,
-            prefill={
+    if not phones:
+        return _render(
+            error="אנא הזן לפחות מספר טלפון אחד.",
+            prefill_override={
                 "first_name": first_name,
                 "last_name": last_name,
                 "email": email,
                 "passport_number": passport_number,
-                "phone_number": phone_number,
+                "phone_numbers": phone_numbers_raw,
                 "lock_fields": lock,
             },
-            error="אנא הזן מספר טלפון.",
         )
 
     # Guest מנסה להזמין עם מייל רשום
     if (not logged_in_registered) and RegisteredUser.email_exists(email):
-        return render_template(
-            "checkout.html",
-            flight_number=flight_id,
-            selected_seats=selected_seats,
-            details=details,
-            total=total,
-            prefill={
+        return _render(
+            error="עליך להתחבר לחשבונך כדי לבצע הזמנה עם כתובת מייל זו",
+            prefill_override={
                 "first_name": first_name,
                 "last_name": last_name,
                 "email": email,
                 "passport_number": passport_number,
-                "phone_number": phone_number,
+                "phone_numbers": phone_numbers_raw,
                 "lock_fields": False,
             },
-            error="עליך להתחבר לחשבונך כדי לבצע הזמנה עם כתובת מייל זו",
         )
 
+    # ----------------------------
+    # Create booking (PASS TEXT, not list)
+    # ----------------------------
     created_id = Booking.create_booking_with_tickets(
         flight_number=flight_id,
         first_name=first_name,
@@ -524,27 +548,22 @@ def checkout():
         email=email,
         selected_seats=selected_seats,
         payment_method=payment_method,
-        logged_in_registered=bool(logged_in_registered),
-        phone_number=phone_number,          # חדש
-        passport_number=passport_number,    # חדש (לא נשמר; רק אם תרצה לוגיקה)
+        logged_in_registered=logged_in_registered,
+        phone_numbers_text=phone_numbers_raw,   # ✅ זה התיקון הקריטי
+        passport_number=passport_number,
     )
 
     if not created_id:
-        return render_template(
-            "checkout.html",
-            flight_number=flight_id,
-            selected_seats=selected_seats,
-            details=details,
-            total=total,
-            prefill={
+        return _render(
+            error="לא ניתן להשלים הזמנה. ייתכן שמושב נתפס או שיש חוסר התאמה בנתוני מושבים לטיסה.",
+            prefill_override={
                 "first_name": first_name,
                 "last_name": last_name,
                 "email": email,
                 "passport_number": passport_number,
-                "phone_number": phone_number,
+                "phone_numbers": phone_numbers_raw,
                 "lock_fields": lock,
             },
-            error="לא ניתן להשלים הזמנה. ייתכן שמושב נתפס או שיש חוסר התאמה בנתוני מושבים לטיסה.",
         )
 
     return redirect(url_for("order_confirmation", booking_id=created_id))
@@ -1449,6 +1468,80 @@ def manager_reports():
         report4_rows=r4
     )
 
+def _require_logged_in_user():
+    return session.get("role") == "registered" and session.get("user_email")
+
+from models.customers import RegisteredUser
+
+@app.route("/profile", methods=["GET", "POST"])
+def profile():
+    # רק ללקוחות מחוברים
+    if session.get("role") != "customer" or not session.get("user_id"):
+        return redirect(url_for("login_page"))
+
+    email = (session.get("user_id") or "").strip().lower()
+
+    user, phones = RegisteredUser.get_profile_with_phones(email)
+    if not user:
+        session.clear()
+        return redirect(url_for("login_page"))
+
+    def _prefill(u, phs, override=None):
+        pf = {
+            "email": u.email,
+            "first_name": u.first_name,
+            "last_name": u.last_name,
+            "birth_date": (u.birth_date.strftime("%Y-%m-%d") if u.birth_date else ""),
+            "passport_number": u.passport or "",
+            "phone_numbers": "\n".join(phs),
+        }
+        if override:
+            pf.update(override)
+        return pf
+
+    if request.method == "GET":
+        return render_template("profile.html", prefill=_prefill(user, phones), error=None, success=None)
+
+    # POST
+    first_name = (request.form.get("first_name") or "").strip()
+    last_name = (request.form.get("last_name") or "").strip()
+    birth_date = (request.form.get("birth_date") or "").strip() or None
+    passport_number = (request.form.get("passport_number") or "").strip()
+
+    phone_numbers_raw = request.form.get("phone_numbers") or ""
+
+    # אם אתה רוצה לחייב לפחות טלפון אחד בפרופיל:
+    if not RegisteredUser.parse_phones(phone_numbers_raw):
+        return render_template(
+            "profile.html",
+            prefill=_prefill(user, phones, override={
+                "first_name": first_name,
+                "last_name": last_name,
+                "birth_date": birth_date or "",
+                "passport_number": passport_number,
+                "phone_numbers": phone_numbers_raw,
+            }),
+            error="אנא הזן לפחות מספר טלפון אחד",
+            success=None,
+        )
+
+    ok, err = RegisteredUser.update_profile_and_phones(
+        email=email,
+        first_name_en=first_name,
+        last_name_en=last_name,
+        birth_date=birth_date,
+        passport_number=passport_number,
+        phones_text=phone_numbers_raw,
+        password=None,  # לא משנים סיסמה כאן
+    )
+
+    user2, phones2 = RegisteredUser.get_profile_with_phones(email)
+    return render_template(
+        "profile.html",
+        prefill=_prefill(user2, phones2),
+        error=err if not ok else None,
+        success=None if not ok else "הפרטים עודכנו בהצלחה",
+    )
 
 if __name__ == '__main__':
     app.run(debug=True)
