@@ -1,7 +1,5 @@
 {% extends "base.html" %}
 {% block content %}
-
-{# ---- Safety defaults ---- #}
 {% set draft = draft|default({}) %}
 {% set require_large = require_large|default(False) %}
 {% set aircrafts = aircrafts|default([]) %}

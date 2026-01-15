@@ -19,27 +19,10 @@
       white-space:nowrap;
     }
 
-    .btn-manage{
-      background:#003366;
-      color:white;
-    }
-
-    .btn-view{
-      background:#ffffff;
-      color:#003366;
-      border:1px solid #003366;
-    }
-
-    .btn-cancel{
-      background:#b91c1c;
-      color:white;
-    }
-
-    .btn-disabled{
-      background:#e5e7eb;
-      color:#6b7280;
-      cursor:not-allowed;
-    }
+    .btn-manage{ background:#003366; color:white; }
+    .btn-view{ background:#ffffff; color:#003366; border:1px solid #003366; }
+    .btn-cancel{ background:#b91c1c; color:white; }
+    .btn-disabled{ background:#e5e7eb; color:#6b7280; cursor:not-allowed; }
 
     .actions-wrap{
       display:flex;
@@ -48,20 +31,9 @@
       flex-wrap:wrap;
     }
 
-    table{
-      width:100%;
-      border-collapse:collapse;
-    }
-
-    th, td{
-      border:1px solid #ddd;
-      padding:8px;
-      vertical-align:middle;
-    }
-
-    thead tr{
-      background:#f4f4f4;
-    }
+    table{ width:100%; border-collapse:collapse; }
+    th, td{ border:1px solid #ddd; padding:8px; vertical-align:middle; }
+    thead tr{ background:#f4f4f4; }
   </style>
 
   <h2>ניהול טיסות – מנהל</h2>
@@ -73,7 +45,6 @@
     </a>
   </div>
 
-  {# הודעה שמגיעה מהשרת #}
   {% if flash_msg %}
     <div style="
       margin-bottom:14px;
@@ -95,7 +66,7 @@
       <option value="" {% if not selected_status %}selected{% endif %}>כל הטיסות</option>
       <option value="Active" {% if selected_status == 'Active' %}selected{% endif %}>Active</option>
       <option value="Full" {% if selected_status == 'Full' %}selected{% endif %}>Full</option>
-      <option value="Canceled by Manager" {% if selected_status == 'Canceled by Manager' %}selected{% endif %}>Canceled by Manager</option>
+      <option value="Canceled" {% if selected_status == 'Canceled' %}selected{% endif %}>Canceled</option>
       <option value="Completed" {% if selected_status == 'Completed' %}selected{% endif %}>Completed</option>
     </select>
 
@@ -149,50 +120,44 @@
 
             <!-- סטטוס -->
             <td>
-              {% if st == 'Canceled by Manager' %}
-                בוטל ע״י מנהל
+              {% if st == 'Canceled' %}
+                Canceled
               {% else %}
                 {{ st }}
               {% endif %}
             </td>
 
-            <!-- פעולות -->
-            <td>
-              <div class="actions-wrap">
+           <!-- פעולות -->
+<td>
+  <div class="actions-wrap">
 
-                {# 1) טיסה שבוטלה: אין כפתורים בכלל #}
-                {% if st == 'Canceled by Manager' %}
-                  <span class="btn btn-disabled" style="min-width:200px;">אין פעולות לטיסה שבוטלה</span>
+    {% if st in ['Canceled', 'Canceled by Manager'] %}
+      <span class="btn btn-disabled" style="min-width:200px;">
+        אין פעולות לטיסה שבוטלה
+      </span>
 
-                {# 2) Completed: רק צפייה #}
-                {% elif st == 'Completed' %}
-                  <a class="btn btn-view" href="{{ url_for('manager_flight_view', flight_number=f.flight_number) }}">
-                    צפייה בפרטים
-                  </a>
+    {% elif st == 'Completed' %}
+      <a class="btn btn-view"
+         href="{{ url_for('manager_flight_view', flight_number=f.flight_number) }}">
+        צפייה בפרטים
+      </a>
 
-                {# 3) Active/Full/Delayed: ניהול + ביטול (פעיל או disabled) #}
-                {% else %}
-                  <a class="btn btn-manage" href="{{ url_for('manager_flight_manage', flight_number=f.flight_number) }}">
-                    ניהול טיסה
-                  </a>
+    {% elif st in ['Active','Full'] %}
+      <a class="btn btn-manage"
+         href="{{ url_for('manager_flight_manage', flight_number=f.flight_number) }}">
+        ניהול טיסה
+      </a>
 
-                  {% if f.can_cancel %}
-                    <form method="POST"
-                          action="{{ url_for('manager_flight_cancel', flight_number=f.flight_number) }}"
-                          onsubmit="return confirm('בטוח לבטל את הטיסה? כל ההזמנות יאופסו.');"
-                          style="margin:0;">
+      {% if f.is_departing_soon %}
+        <span class="btn btn-disabled">
+          טיסה יוצאת בקרוב
+        </span>
+      {% endif %}
 
-                    </form>
-                  {% else %}
-                    <button type="button" class="btn btn-disabled" disabled>
-                      טיסה יוצאת בקרוב
-                    </button>
-                  {% endif %}
+    {% endif %}
 
-                {% endif %}
-
-              </div>
-            </td>
+  </div>
+</td>
           </tr>
         {% endfor %}
       </tbody>

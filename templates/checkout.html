@@ -34,26 +34,43 @@
 
   .field{ display:grid; gap:6px; margin-bottom:12px; }
   .field label{ font-weight:700; }
-  .field input{
+  .field input,
+  .field textarea{
     padding: 12px 12px;
     border-radius: 10px;
     border: 1px solid #ddd;
     outline: none;
     direction: rtl;
     text-align: right;
+    font-family: inherit;
+    font-size: 14px;
   }
-  .field input[readonly]{
+  .field textarea{
+    min-height: 110px;
+    resize: vertical;
+  }
+
+  .field input[readonly],
+  .field textarea[readonly]{
     background:#f6f6f6;
     cursor:not-allowed;
   }
 
   /* Native validation styling */
-  .field input:invalid{
+  .field input:invalid,
+  .field textarea:invalid{
     border-color:#ffb3b3;
     box-shadow: 0 0 0 3px rgba(255, 179, 179, 0.25);
   }
-  .field input:focus:invalid{
+  .field input:focus:invalid,
+  .field textarea:focus:invalid{
     box-shadow: 0 0 0 3px rgba(255, 179, 179, 0.35);
+  }
+
+  .hint{
+    color:#6b7280;
+    font-size: 13px;
+    line-height: 1.35;
   }
 
   .error{
@@ -152,7 +169,6 @@
         <div class="error">{{ error }}</div>
       {% endif %}
 
-      {# IMPORTANT: remove novalidate so required/email validation works in browser #}
       <form action="{{ url_for('checkout') }}" method="POST">
         <input type="hidden" name="flight_number" value="{{ flight_number }}">
 
@@ -200,32 +216,38 @@
         </div>
 
         <div class="field">
-  <label for="passport_number">מספר דרכון</label>
-  <input
-    id="passport_number"
-    type="text"
-    name="passport_number"
-    value="{{ prefill.get('passport_number','') }}"
-    required
-    minlength="4"
-    {% if lock_fields %}readonly aria-readonly="true"{% endif %}
-    style="direction:ltr; text-align:left;"
-  >
-</div>
+          <label for="passport_number">מספר דרכון</label>
+          <input
+            id="passport_number"
+            type="text"
+            name="passport_number"
+            value="{{ prefill.get('passport_number','') }}"
+            required
+            minlength="4"
+            {% if lock_fields %}readonly aria-readonly="true"{% endif %}
+            style="direction:ltr; text-align:left;"
+          >
+        </div>
 
-<div class="field">
-  <label for="phone_number">מספר טלפון</label>
-  <input
-    id="phone_number"
-    type="tel"
-    name="phone_number"
-    value="{{ prefill.get('phone_number','') }}"
-    required
-    minlength="7"
-    {% if lock_fields %}readonly aria-readonly="true"{% endif %}
-    style="direction:ltr; text-align:left;"
-  >
-</div>
+        {# ✅ Unlimited phone numbers #}
+        <div class="field">
+          <label for="phone_numbers">מספרי טלפון</label>
+
+          <textarea
+            id="phone_numbers"
+            name="phone_numbers"
+            required
+            minlength="7"
+            {% if lock_fields %}readonly aria-readonly="true"{% endif %}
+            style="direction:ltr; text-align:left;"
+            placeholder="לדוגמה:&#10;050-1234567&#10;052-9876543"
+          >{{ prefill.get('phone_numbers','') }}</textarea>
+
+          <div class="hint">
+            ניתן להזין כמה מספרים שרוצים: שורה לכל מספר, או להפריד בפסיקים.
+            לדוגמה: 0501234567, 0529876543
+          </div>
+        </div>
 
         <div class="pay-box">
           <div style="font-weight:800; text-align:center;">אמצעי תשלום</div>
@@ -292,6 +314,7 @@
               <div class="price">—</div>
             </div>
           {% endfor %}
+
         {% else %}
           <div class="seat-item">
             <div class="seat-meta">

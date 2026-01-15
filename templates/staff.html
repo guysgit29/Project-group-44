@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div style="max-width: 1100px; margin: 30px auto;">
+  <h2 style="margin-bottom: 10px;">ניהול אנשי צוות</h2>
+
+  {% if error %}
+    <div style="background:#ffe5e5; border:1px solid #ffb3b3; padding:10px; border-radius:8px; margin:10px 0;">
+      {{ error }}
+    </div>
+  {% endif %}
+  {% if success %}
+    <div style="background:#e7fff0; border:1px solid #b7f5cf; padding:10px; border-radius:8px; margin:10px 0;">
+      {{ success }}
+    </div>
+  {% endif %}
+
+  <!-- Add staff member -->
+  <div style="background:#fff; border:1px solid #eee; padding:16px; border-radius:12px; margin: 15px 0;">
+    <h3 style="margin-top:0;">הוספת איש צוות חדש</h3>
+
+    <form method="POST" action="{{ url_for('staff_page') }}" style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+      <div>
+        <label>סוג איש צוות</label>
+        <select name="staff_type" required style="width:100%; padding:10px; border-radius:10px; border:1px solid #ddd;">
+          <option value="pilot">טייס</option>
+          <option value="attendant">דייל/ת</option>
+        </select>
+      </div>
+
+      <div>
+        <label>תעודת עובד (ID)</label>
+        <input name="id" required placeholder="לדוגמה 401234567"
+               style="width:100%; padding:10px; border-radius:10px; border:1px solid #ddd;">
+      </div>
+
+      <div>
+        <label>שם פרטי (HE)</label>
+        <input name="first_name_he" required
+               style="width:100%; padding:10px; border-radius:10px; border:1px solid #ddd;">
+      </div>
+
+      <div>
+        <label>שם משפחה (HE)</label>
+        <input name="last_name_he" required
+               style="width:100%; padding:10px; border-radius:10px; border:1px solid #ddd;">
+      </div>
+
+      <div>
+        <label>תאריך תחילת עבודה</label>
+        <input type="date" name="start_date"
+               style="width:100%; padding:10px; border-radius:10px; border:1px solid #ddd;">
+      </div>
+
+      <div>
+        <label>הסמכה למטוס גדול</label>
+        <select name="big_aircraft_cert" style="width:100%; padding:10px; border-radius:10px; border:1px solid #ddd;">
+          <option value="0">לא</option>
+          <option value="1">כן</option>
+        </select>
+      </div>
+
+      <div>
+        <label>טלפון</label>
+        <input name="phone_num" placeholder="לדוגמה 05X-XXXXXXX"
+               style="width:100%; padding:10px; border-radius:10px; border:1px solid #ddd; direction:rtl; text-align:right;">
+      </div>
+
+      <div>
+        <label>עיר</label>
+        <input name="city" style="width:100%; padding:10px; border-radius:10px; border:1px solid #ddd;">
+      </div>
+
+      <div>
+        <label>רחוב</label>
+        <input name="street" style="width:100%; padding:10px; border-radius:10px; border:1px solid #ddd;">
+      </div>
+
+      <div>
+        <label>מספר בית</label>
+        <input name="house_number" required placeholder="לדוגמה 12"
+               style="width:100%; padding:10px; border-radius:10px; border:1px solid #ddd;">
+      </div>
+
+      <div style="display:flex; align-items:flex-end; gap:10px;">
+        <button type="submit" class="btn btn-primary" style="width:100%;">הוסף</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Pilots table -->
+  <div style="background:#fff; border:1px solid #eee; padding:16px; border-radius:12px; margin: 15px 0;">
+    <h3 style="margin-top:0;">טייסים</h3>
+    <div style="overflow:auto;">
+      <table style="width:100%; border-collapse: collapse;">
+        <thead>
+          <tr style="text-align:right; border-bottom:1px solid #eee;">
+            <th style="padding:8px;">ID</th>
+            <th style="padding:8px;">שם</th>
+            <th style="padding:8px;">טלפון</th>
+            <th style="padding:8px;">תאריך התחלה</th>
+            <th style="padding:8px;">עיר</th>
+            <th style="padding:8px;">רחוב</th>
+            <th style="padding:8px;">מס׳</th>
+            <th style="padding:8px;">הסמכה למטוס גדול</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in pilots %}
+          <tr style="border-bottom:1px solid #f2f2f2;">
+            <td style="padding:8px;">{{ p.id if p.id is not none else p['id'] }}</td>
+            <td style="padding:8px;">
+              {{ (p.first_name_he if p.first_name_he is not none else p['first_name_he']) }}
+              {{ (p.last_name_he if p.last_name_he is not none else p['last_name_he']) }}
+            </td>
+            <td style="padding:8px;">
+              {{ (p.phone_num if p.phone_num is not none else p['phone_num']) }}
+            </td>
+            <td style="padding:8px;">{{ p.start_date if p.start_date is not none else p['start_date'] }}</td>
+            <td style="padding:8px;">{{ p.city if p.city is not none else p['city'] }}</td>
+            <td style="padding:8px;">{{ p.street if p.street is not none else p['street'] }}</td>
+            <td style="padding:8px;">{{ p.house_number if p.house_number is not none else p['house_number'] }}</td>
+            <td style="padding:8px;">
+              {% set cert = (p.big_aircraft_cert if p.big_aircraft_cert is not none else p['big_aircraft_cert']) %}
+              {{ "כן" if cert|int == 1 else "לא" }}
+            </td>
+          </tr>
+          {% endfor %}
+          {% if not pilots %}
+            <tr><td colspan="8" style="padding:10px; color:#666;">אין טייסים</td></tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Attendants table -->
+  <div style="background:#fff; border:1px solid #eee; padding:16px; border-radius:12px;">
+    <h3 style="margin-top:0;">דיילים</h3>
+    <div style="overflow:auto;">
+      <table style="width:100%; border-collapse: collapse;">
+        <thead>
+          <tr style="text-align:right; border-bottom:1px solid #eee;">
+            <th style="padding:8px;">ID</th>
+            <th style="padding:8px;">שם</th>
+            <th style="padding:8px;">טלפון</th>
+            <th style="padding:8px;">תאריך התחלה</th>
+            <th style="padding:8px;">עיר</th>
+            <th style="padding:8px;">רחוב</th>
+            <th style="padding:8px;">מס׳</th>
+            <th style="padding:8px;">הסמכה למטוס גדול</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for a in attendants %}
+          <tr style="border-bottom:1px solid #f2f2f2;">
+            <td style="padding:8px;">{{ a.id if a.id is not none else a['id'] }}</td>
+            <td style="padding:8px;">
+              {{ (a.first_name_he if a.first_name_he is not none else a['first_name_he']) }}
+              {{ (a.last_name_he if a.last_name_he is not none else a['last_name_he']) }}
+            </td>
+            <td style="padding:8px;">
+              {{ (a.phone_num if a.phone_num is not none else a['phone_num']) }}
+            </td>
+            <td style="padding:8px;">{{ a.start_date if a.start_date is not none else a['start_date'] }}</td>
+            <td style="padding:8px;">{{ a.city if a.city is not none else a['city'] }}</td>
+            <td style="padding:8px;">{{ a.street if a.street is not none else a['street'] }}</td>
+            <td style="padding:8px;">{{ a.house_number if a.house_number is not none else a['house_number'] }}</td>
+            <td style="padding:8px;">
+              {% set cert = (a.big_aircraft_cert if a.big_aircraft_cert is not none else a['big_aircraft_cert']) %}
+              {{ "כן" if cert|int == 1 else "לא" }}
+            </td>
+          </tr>
+          {% endfor %}
+          {% if not attendants %}
+            <tr><td colspan="8" style="padding:10px; color:#666;">אין דיילים</td></tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+{% endblock %}

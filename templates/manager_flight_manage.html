@@ -70,6 +70,7 @@
       </a>
     </div>
 
+
     <!-- מרכז -->
     <h2 style="margin:0;">ניהול טיסה #{{ flight.flight_number }}</h2>
 
@@ -87,14 +88,14 @@
                 style="margin:0;">
             <input type="hidden" name="action" value="cancel_flight">
             <button type="submit" class="btn-cancel">
-              ❌ ביטול טיסה
+              ביטול טיסה
             </button>
           </form>
 
         {# ✅ טיסה יוצאת בקרוב (תוך 72 שעות) -> אותו כפתור אבל disabled ובטקסט אחר #}
         {% elif is_departing_soon %}
           <button type="button" class="btn-cancel disabled" aria-disabled="true" title="לא ניתן לבטל כי הטיסה יוצאת בקרוב">
-            טיסה יוצאת בקרוב
+            טיסה יוצאת עוד פחות מ-72 שעות, לא ניתנת לביטול
           </button>
 
         {% endif %}

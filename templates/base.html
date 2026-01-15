@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>{% block title %}FlyTau{% endblock %}</title>
 
-
   <!-- Single source of truth -->
   <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}?v=5">
 </head>
@@ -20,8 +19,14 @@
 
       <div class="flytau-menu">
         {% if session.get('role') == 'manager' %}
+
+          <!-- ✅ כל האופציות של מנהל כמו בדשבורד -->
           <a class="nav-link" href="{{ url_for('manager_dashboard') }}">לוח בקרה מנהל</a>
+          <a class="nav-link" href="{{ url_for('manager_flights') }}">כל הטיסות</a>
+          <a class="nav-link" href="{{ url_for('manager_flight_create') }}">הוספת טיסה חדשה</a>
+          <a class="nav-link" href="{{ url_for('manage_flight_routes') }}">ניהול קווי טיסה</a>
           <a class="nav-link" href="{{ url_for('aircrafts') }}">ניהול צי מטוסים</a>
+          <a class="nav-link" href="{{ url_for('staff_page') }}">ניהול אנשי צוות</a>
 
           <span class="nav-text">
             שלום, <b>{{ session.get('first_name','') }}</b> <b>{{ session.get('last_name','') }}</b>
@@ -34,6 +39,7 @@
           <a class="nav-link" href="{{ url_for('search_booking') }}">ניהול הזמנה</a>
 
           {% if session.get('user_id') %}
+            <a class="nav-link" href="{{ url_for('profile') }}">אזור אישי</a>
             <a class="nav-link" href="{{ url_for('my_flights') }}">הטיסות שלי</a>
             <a class="btn btn-danger" href="{{ url_for('logout') }}">התנתק</a>
           {% else %}
@@ -61,4 +67,3 @@
 
 </body>
 </html>
-\

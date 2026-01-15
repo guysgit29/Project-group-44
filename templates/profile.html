@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+{% block content %}
+
+{% set prefill = prefill|default({}) %}
+
+<style>
+  .page-wrap{
+    min-height: calc(100vh - 200px);
+    display:flex;
+    justify-content:center;
+    padding: 40px 20px;
+    direction: rtl;
+  }
+  .card{
+    width: 100%;
+    max-width: 900px;
+    background:#fff;
+    border-radius:14px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.10);
+    padding:22px;
+  }
+  h2{ margin:0 0 14px 0; text-align:center; }
+
+  .grid{
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+  .field{ display:grid; gap:6px; }
+  .field label{ font-weight:800; }
+  .field input, .field textarea{
+    padding: 12px;
+    border-radius: 10px;
+    border:1px solid #ddd;
+    outline:none;
+    font-family: inherit;
+    font-size: 14px;
+  }
+  .field textarea{
+    min-height: 140px;
+    resize: vertical;
+    direction:ltr;
+    text-align:left;
+  }
+  .full{ grid-column: 1 / -1; }
+
+  .muted{ color:#6b7280; font-size:13px; line-height:1.35; }
+
+  .error{
+    background:#ffecec;
+    border:1px solid #ffb3b3;
+    color:#8a0000;
+    padding:10px 12px;
+    border-radius:10px;
+    margin-bottom:12px;
+    text-align:center;
+    font-weight:800;
+  }
+  .success{
+    background:#ecfff1;
+    border:1px solid #9be3af;
+    color:#0b5c2a;
+    padding:10px 12px;
+    border-radius:10px;
+    margin-bottom:12px;
+    text-align:center;
+    font-weight:800;
+  }
+
+  .actions{
+    margin-top: 18px;
+    display:flex;
+    justify-content:center;
+    gap:12px;
+    flex-wrap:wrap;
+  }
+  .btn{
+    padding: 12px 20px;
+    border-radius: 10px;
+    border:1px solid #111;
+    background:#111;
+    color:#fff;
+    cursor:pointer;
+    font-weight:800;
+  }
+  .btn-secondary{
+    background:#f2f2f2;
+    color:#111;
+    border-color:#333;
+    text-decoration:none;
+    display:inline-flex;
+    align-items:center;
+  }
+
+  @media (max-width: 800px){
+    .grid{ grid-template-columns: 1fr; }
+  }
+</style>
+
+<div class="page-wrap">
+  <div class="card">
+    <h2>אזור אישי</h2>
+
+    {% if error %}
+      <div class="error">{{ error }}</div>
+    {% endif %}
+    {% if success %}
+      <div class="success">{{ success }}</div>
+    {% endif %}
+
+    <form method="POST" action="{{ url_for('profile') }}">
+      <div class="grid">
+
+        <div class="field">
+          <label>אימייל (לא ניתן לשינוי)</label>
+          <input type="email" value="{{ prefill.get('email','') }}" readonly style="direction:ltr; text-align:left;">
+        </div>
+
+        <div class="field">
+          <label for="passport_number">מספר דרכון</label>
+          <input id="passport_number" name="passport_number" type="text"
+                 value="{{ prefill.get('passport_number','') }}"
+                 style="direction:ltr; text-align:left;" minlength="4">
+        </div>
+
+        <div class="field">
+          <label for="first_name">שם פרטי</label>
+          <input id="first_name" name="first_name" type="text"
+                 value="{{ prefill.get('first_name','') }}" required minlength="2">
+        </div>
+
+        <div class="field">
+          <label for="last_name">שם משפחה</label>
+          <input id="last_name" name="last_name" type="text"
+                 value="{{ prefill.get('last_name','') }}" required minlength="2">
+        </div>
+
+        <div class="field full">
+          <label for="birth_date">תאריך לידה</label>
+          <input id="birth_date" name="birth_date" type="date"
+                 value="{{ prefill.get('birth_date','') }}">
+          <div class="muted">אפשר להשאיר ריק אם לא שומרים תאריך לידה.</div>
+        </div>
+
+        <div class="field full">
+          <label for="phone_numbers">מספרי טלפון</label>
+          <textarea id="phone_numbers" name="phone_numbers"
+                    placeholder="050-1234567&#10;052-9876543">{{ prefill.get('phone_numbers','') }}</textarea>
+          <div class="muted">
+            אפשר להוסיף ללא הגבלה: שורה לכל מספר או להפריד בפסיקים.
+          </div>
+        </div>
+
+      </div>
+
+      <div class="actions">
+        <button class="btn" type="submit">שמירת שינויים</button>
+        <a class="btn-secondary btn" href="{{ url_for('home_page') }}">חזרה לדף הבית</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endblock %}

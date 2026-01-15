@@ -2,6 +2,8 @@ from __future__ import annotations
 from datetime import datetime
 from database import DB
 from models.flight import Flight
+import re
+
 
 
 class Employee:
@@ -555,3 +557,111 @@ class FlightAttendant(Employee):
             available.append(a)
 
         return available
+
+from datetime import datetime
+from database import DB
+
+
+_PHONE_RE = re.compile(r"^[0-9+\- ]{6,20}$")  # גמיש: 05X-XXXXXXX / +972...
+
+class StaffService:
+    """
+    Service לצפייה והוספה של אנשי צוות.
+    """
+
+    @staticmethod
+    def get_staff_tables():
+        """
+        מחזיר שתי רשימות dicts:
+        pilots, attendants
+        """
+        with DB.get_cursor() as cursor:
+            cursor.execute("""
+                SELECT id, first_name_he, last_name_he, start_date, city, street, house_number,
+                       phone_num, big_aircraft_cert
+                FROM Pilot
+                ORDER BY id
+            """)
+            pilots = cursor.fetchall() or []
+
+            cursor.execute("""
+                SELECT id, first_name_he, last_name_he, start_date, city, street, house_number,
+                       phone_num, big_aircraft_cert
+                FROM FlightAttendant
+                ORDER BY id
+            """)
+            attendants = cursor.fetchall() or []
+
+        return pilots, attendants
+
+    @staticmethod
+    def add_staff_member(staff_type: str, form) -> tuple[bool, str | None]:
+        """
+        staff_type: 'pilot' / 'attendant'
+        form: request.form
+        מחזיר (ok, error_msg)
+        """
+        staff_type = (staff_type or "").strip().lower()
+        if staff_type not in ("pilot", "attendant"):
+            return False, "סוג איש צוות לא תקין"
+
+        table = "Pilot" if staff_type == "pilot" else "FlightAttendant"
+
+        # ---- Read ----
+        id_raw = (form.get("id") or "").strip()
+        first_name_he = (form.get("first_name_he") or "").strip()
+        last_name_he = (form.get("last_name_he") or "").strip()
+        start_date = (form.get("start_date") or "").strip()  # YYYY-MM-DD
+        city = (form.get("city") or "").strip()
+        street = (form.get("street") or "").strip()
+        house_number_raw = (form.get("house_number") or "").strip()
+        phone_num = (form.get("phone_num") or "").strip()
+        big_aircraft_cert_raw = (form.get("big_aircraft_cert") or "0").strip()
+
+        # ---- Validate ----
+        if not id_raw.isdigit():
+            return False, "תעודת עובד חייבת להיות מספר"
+        emp_id = int(id_raw)
+
+        if not first_name_he or not last_name_he:
+            return False, "שם פרטי ושם משפחה הם שדות חובה"
+
+        if not house_number_raw.isdigit():
+            return False, "מספר בית חייב להיות מספר"
+        house_number = int(house_number_raw)
+
+        # phone optional, אבל אם מילאו אז נאמת פורמט בסיסי
+        if phone_num:
+            if not _PHONE_RE.match(phone_num):
+                return False, "מספר טלפון לא תקין"
+
+        # start_date יכול להיות ריק => NULL
+        start_date_val = None
+        if start_date:
+            try:
+                datetime.strptime(start_date, "%Y-%m-%d")
+                start_date_val = start_date
+            except ValueError:
+                return False, "תאריך התחלה חייב להיות בפורמט YYYY-MM-DD"
+
+        big_aircraft_cert = 1 if str(big_aircraft_cert_raw) in ("1", "true", "True", "on") else 0
+
+        # ---- Insert ----
+        with DB.get_cursor() as cursor:
+            cursor.execute(f"SELECT 1 FROM {table} WHERE id=%s LIMIT 1", (emp_id,))
+            if cursor.fetchone():
+                return False, "כבר קיים איש צוות עם תעודת עובד זו"
+
+            cursor.execute(
+                f"""
+                INSERT INTO {table}
+                    (id, first_name_he, last_name_he, start_date, city, street, house_number,
+                     phone_num, big_aircraft_cert)
+                VALUES
+                    (%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                """,
+                (emp_id, first_name_he, last_name_he, start_date_val, city, street, house_number,
+                 phone_num, big_aircraft_cert),
+            )
+
+        return True, None

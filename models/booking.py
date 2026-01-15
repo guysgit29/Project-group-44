@@ -1,7 +1,8 @@
 from datetime import date
 from database import DB
 from datetime import datetime,timedelta
-
+import re
+from models.flight import Flight
 
 class Booking:
     def __init__(self, booking_id, flight_number, price, status='Active'):
@@ -252,103 +253,100 @@ class Booking:
             selected_seats: list[str],
             payment_method: str,
             logged_in_registered: bool,
-            phone_number: str = "",
-            passport_number: str = "",  # לא נשמר, רק אם תרצה ולידציה/לוגיקה בעתיד
+            phone_numbers_text: str = "",
+            passport_number: str = "",
     ):
+        email = (email or "").strip().lower()
+        phones = Booking._parse_phone_numbers(phone_numbers_text)
+        passport_number = (passport_number or "").strip()  # כרגע לא נשמר
+
         Booking._dbg(
             "create_booking_with_tickets("
             f"flight={flight_number}, email={email}, logged_in_registered={logged_in_registered}, "
-            f"payment={payment_method}, seats={selected_seats}, phone={phone_number})"
+            f"payment={payment_method}, seats={selected_seats}, phones={phones})"
         )
+
+        if not email or not selected_seats:
+            Booking._dbg("create_booking: missing email or seats -> None")
+            return None
+
+        # לא חובה, אבל מומלץ: enforce גם פה
+        if not phones and not logged_in_registered:
+            Booking._dbg("create_booking: guest must provide at least 1 phone -> None")
+            return None
 
         details, total = Booking.get_pricing_for_selected_seats(int(flight_number), selected_seats)
         if not details:
             Booking._dbg("create_booking: details empty -> None")
             return None
 
-        email = (email or "").strip().lower()
-        if not email:
-            Booking._dbg("create_booking: email empty -> None")
-            return None
+        aircraft_id = int(details[0]["aircraft_id"])
+        Booking._dbg(f"create_booking: aircraft_id={aircraft_id}, seats_count={len(details)}, total={total}")
 
-        phone_number = (phone_number or "").strip()
-        passport_number = (passport_number or "").strip()
+        def _seat_key(d):
+            return (d["class_type"], int(d["row_num"]), int(d["column_number"]))
+
+        seats = [_seat_key(d) for d in details]
 
         with DB.get_cursor() as cursor:
-            aircraft_id = details[0]["aircraft_id"]
-            Booking._dbg(f"create_booking: aircraft_id={aircraft_id}, seats_count={len(details)}, total={total}")
-
-            # 0) Guest must exist before Booking insert (FK)
+            # 0) Ensure Guest exists + save many phones (only for guests)
             if not logged_in_registered:
-                Booking._dbg("create_booking: step0 ensure GuestUser exists (FK requirement) ...")
-                cursor.execute("SELECT 1 FROM GuestUser WHERE email = %s LIMIT 1", (email,))
+                cursor.execute("SELECT 1 FROM GuestUser WHERE email=%s LIMIT 1", (email,))
                 if not cursor.fetchone():
                     cursor.execute(
-                        "INSERT INTO GuestUser (email, first_name_en, last_name_en) VALUES (%s, %s, %s)",
+                        "INSERT INTO GuestUser (email, first_name_en, last_name_en) VALUES (%s,%s,%s)",
                         (email, first_name, last_name),
                     )
-                    Booking._dbg("create_booking: GuestUser inserted")
 
-                # NEW: Save guest phone in separate table (passport NOT saved)
-                if phone_number:
+                for ph in phones:
                     cursor.execute(
-                        "INSERT IGNORE INTO GuestPhone (email, phone_number) VALUES (%s, %s)",
-                        (email, phone_number),
+                        "INSERT IGNORE INTO GuestPhone (email, phone_number) VALUES (%s,%s)",
+                        (email, ph),
                     )
-                    Booking._dbg("create_booking: GuestPhone inserted/ignored")
 
-            # 1) Validate Seat existence
-            Booking._dbg("create_booking: step1 validate seats exist in Seat...")
-            for d in details:
-                cursor.execute(
-                    """
-                    SELECT 1
-                    FROM Seat
-                    WHERE aircraft_id = %s
-                      AND class_type = %s
-                      AND row_num = %s
-                      AND column_number = %s
-                    LIMIT 1
-                    """,
-                    (aircraft_id, d["class_type"], d["row_num"], d["column_number"]),
-                )
-                if not cursor.fetchone():
-                    Booking._dbg(
-                        "SEAT NOT FOUND in Seat table "
-                        f"(aircraft_id={aircraft_id}, class={d['class_type']}, row={d['row_num']}, col={d['column_number']}) -> None"
-                    )
-                    return None
+            # 1) Validate Seat existence (set-based)
+            cursor.execute(
+                """
+                SELECT class_type, row_num, column_number
+                FROM Seat
+                WHERE aircraft_id = %s
+                """,
+                (aircraft_id,),
+            )
+            existing_seats = {
+                (r["class_type"], int(r["row_num"]), int(r["column_number"]))
+                for r in (cursor.fetchall() or [])
+            }
 
-            # 2) Check conflicts in Ticket
-            Booking._dbg("create_booking: step2 check conflicts in Ticket...")
-            for d in details:
-                cursor.execute(
-                    """
-                    SELECT booking_id
-                    FROM Ticket
-                    WHERE flight_number = %s
-                      AND class_type = %s
-                      AND row_num = %s
-                      AND column_number = %s
-                    LIMIT 1
-                    """,
-                    (int(flight_number), d["class_type"], d["row_num"], d["column_number"]),
-                )
-                hit = cursor.fetchone()
-                if hit:
-                    Booking._dbg(
-                        "CONFLICT: Ticket already exists for "
-                        f"{d['class_type']}-{d['row_num']}-{d['column_number']} "
-                        f"(existing_booking_id={hit.get('booking_id')}) -> None"
-                    )
-                    return None
+            missing = [s for s in seats if s not in existing_seats]
+            if missing:
+                Booking._dbg(f"SEAT NOT FOUND in Seat table: {missing} -> None")
+                return None
+
+            # 2) Ticket conflict check (set-based)
+            cursor.execute(
+                """
+                SELECT class_type, row_num, column_number
+                FROM Ticket
+                WHERE flight_number = %s
+                """,
+                (int(flight_number),),
+            )
+            taken = {
+                (r["class_type"], int(r["row_num"]), int(r["column_number"]))
+                for r in (cursor.fetchall() or [])
+            }
+
+            conflict = [s for s in seats if s in taken]
+            if conflict:
+                Booking._dbg(f"CONFLICT: seats already taken: {conflict} -> None")
+                return None
 
             # 3) Insert Booking
             booking_id = Booking.get_next_booking_id()
             registered_email = email if logged_in_registered else None
             guest_email = None if logged_in_registered else email
 
-            Booking._dbg(f"create_booking: step3 insert Booking booking_id={booking_id} ...")
             cursor.execute(
                 """
                 INSERT INTO Booking
@@ -356,13 +354,20 @@ class Booking:
                 VALUES
                   (%s, %s, %s, %s, %s, %s, %s)
                 """,
-                (booking_id, registered_email, guest_email, int(flight_number), float(total), date.today(), "Active"),
+                (
+                    booking_id,
+                    registered_email,
+                    guest_email,
+                    int(flight_number),
+                    float(total),
+                    date.today(),
+                    "Active",
+                ),
             )
 
             # 4) Insert Tickets
-            Booking._dbg("create_booking: step4 insert Ticket rows ...")
             try:
-                for d in details:
+                for class_type, row_num, col_num in seats:
                     cursor.execute(
                         """
                         INSERT INTO Ticket
@@ -373,29 +378,26 @@ class Booking:
                         (
                             booking_id,
                             int(flight_number),
-                            int(aircraft_id),
-                            d["class_type"],
-                            int(d["row_num"]),
-                            int(d["column_number"]),
+                            aircraft_id,
+                            class_type,
+                            row_num,
+                            col_num,
                         ),
                     )
             except Exception as e:
-                Booking._dbg(f"ERROR inserting Ticket: {repr(e)} -> cleanup Booking + Tickets best-effort")
+                Booking._dbg(f"ERROR inserting Ticket: {repr(e)} -> cleanup")
                 try:
-                    cursor.execute("DELETE FROM Ticket WHERE booking_id = %s", (booking_id,))
+                    cursor.execute("DELETE FROM Ticket WHERE booking_id=%s", (booking_id,))
                 except Exception as e2:
                     Booking._dbg(f"cleanup Ticket failed: {repr(e2)}")
                 try:
-                    cursor.execute("DELETE FROM Booking WHERE booking_id = %s", (booking_id,))
+                    cursor.execute("DELETE FROM Booking WHERE booking_id=%s", (booking_id,))
                 except Exception as e3:
                     Booking._dbg(f"cleanup Booking failed: {repr(e3)}")
                 return None
 
-            Booking._dbg(f"create_booking: SUCCESS booking_id={booking_id}")
-
-        from models.flight import Flight
         Flight.update_status_by_capacity(int(flight_number))
-
+        Booking._dbg(f"create_booking: SUCCESS booking_id={booking_id}")
         return booking_id
 
     @staticmethod
@@ -465,3 +467,59 @@ class Booking:
         b = Booking(booking_id, None, None)
         return b.get_details()
 
+    @staticmethod
+    def _parse_phones_multiline(raw: str) -> list[str]:
+        if not raw:
+            return []
+        # תומך בשורות / פסיקים
+        parts = []
+        for line in raw.replace(",", "\n").splitlines():
+            p = line.strip()
+            if p:
+                parts.append(p)
+        # unique, preserving order
+        seen = set()
+        out = []
+        for p in parts:
+            if p not in seen:
+                seen.add(p)
+                out.append(p)
+        return out
+
+    @staticmethod
+    def _normalize_phone(raw: str) -> str:
+        """
+        Normalize phone for storage:
+        - strip spaces
+        - keep digits and leading +
+        Example: '050-123 4567' -> '0501234567'
+        """
+        s = (raw or "").strip()
+        if not s:
+            return ""
+        s = s.replace(" ", "").replace("-", "")
+        # allow leading +
+        if s.startswith("+"):
+            return "+" + re.sub(r"\D", "", s[1:])
+        return re.sub(r"\D", "", s)
+
+    @staticmethod
+    def _parse_phone_numbers(phone_numbers_text: str) -> list[str]:
+        """
+        Accepts multiline or comma-separated input and returns a deduped list.
+        """
+        text = (phone_numbers_text or "").strip()
+        if not text:
+            return []
+
+        parts = re.split(r"[,\n\r\t]+", text)
+        out = []
+        seen = set()
+        for p in parts:
+            norm = Booking._normalize_phone(p)
+            if not norm:
+                continue
+            if norm not in seen:
+                seen.add(norm)
+                out.append(norm)
+        return out
