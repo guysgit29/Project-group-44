@@ -7,7 +7,8 @@ from models.booking import Booking
 from models.employees import Manager,Pilot,FlightAttendant
 from models.flight import Flight
 from datetime import date, datetime, timedelta
-#
+from models.employees import StaffService
+
 app = Flask(__name__)
 
 # --- Flask Configuration ---
@@ -1541,6 +1542,32 @@ def profile():
         prefill=_prefill(user2, phones2),
         error=err if not ok else None,
         success=None if not ok else "הפרטים עודכנו בהצלחה",
+    )
+
+@app.route("/staff", methods=["GET", "POST"])
+def staff_page():
+    # רק מנהל
+    if session.get("role") != "manager":
+        return redirect(url_for("manager_login"))
+
+    error = None
+    success = None
+
+    if request.method == "POST":
+        staff_type = request.form.get("staff_type")  # pilot/attendant
+        ok, err = StaffService.add_staff_member(staff_type, request.form)
+        if ok:
+            success = "איש צוות נוסף בהצלחה"
+        else:
+            error = err or "שגיאה בהוספה"
+
+    pilots, attendants = StaffService.get_staff_tables()
+    return render_template(
+        "staff.html",
+        pilots=pilots,
+        attendants=attendants,
+        error=error,
+        success=success,
     )
 
 if __name__ == '__main__':
