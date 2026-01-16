@@ -1315,13 +1315,6 @@ def manager_flight_confirm():
                             VALUES (%s,%s,%s,%s)
                         """, (int(aircraft_id), "Business", int(flight_number), bus_price))
 
-                # 4) Seats_on_Flights -> copy all seats of aircraft, available=1
-                cursor.execute("""
-                    INSERT INTO Seats_on_Flights (aircraft_id, class_type, row_num, column_number, flight_number, available)
-                    SELECT s.aircraft_id, s.class_type, s.row_num, s.column_number, %s, 1
-                    FROM Seat s
-                    WHERE s.aircraft_id = %s
-                """, (int(flight_number), int(aircraft_id)))
 
             _draft_clear()
             return redirect(url_for("manager_flight_manage", flight_number=int(flight_number)))
