@@ -6,7 +6,7 @@
     max-width: 1100px;
     margin: 60px auto;
     padding: 0 20px;
-    direction: rtl;          /* ✅ חשוב לעברית */
+    direction: rtl;
     text-align: right;
 }
 
@@ -115,7 +115,6 @@
         <a class="back-link" href="{{ url_for('manager_flights') }}">⬅ חזרה לכל הטיסות</a>
     </div>
 
-    <!-- פרטי טיסה -->
     <div class="card">
         <h3>פרטי טיסה</h3>
         <div class="grid">
@@ -146,7 +145,6 @@
         </div>
     </div>
 
-    <!-- פרטי מטוס -->
     <div class="card">
         <h3>פרטי מטוס</h3>
 
@@ -169,7 +167,6 @@
         {% endif %}
     </div>
 
-    <!-- טייסים -->
     <div class="card">
         <h3>טייסים בטיסה</h3>
         {% if pilots and pilots|length > 0 %}
@@ -198,7 +195,6 @@
         {% endif %}
     </div>
 
-    <!-- דיילים -->
     <div class="card">
         <h3>דיילים בטיסה</h3>
         {% if attendants and attendants|length > 0 %}

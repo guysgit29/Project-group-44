@@ -76,7 +76,6 @@
    Reset / Base
 ----------------------------- */
 *{ box-sizing: border-box; }
-
 html, body{ height: 100%; }
 
 html{
@@ -97,7 +96,7 @@ html{
 body{
   margin: 0;
   color: var(--text);
-  background: #f6f9ff;
+  background: var(--bg);
   font-family: inherit;
   font-weight: 400;
 }
@@ -166,7 +165,7 @@ select, input, button{ font-family: inherit; }
 
 .flytau-brand{
   font-size: 1.6rem;
-  font-weight: 800; /* was 900 */
+  font-weight: 800;
   letter-spacing: -0.5px;
   color: var(--primary) !important;
 }
@@ -184,7 +183,7 @@ select, input, button{ font-family: inherit; }
 }
 
 .nav-link{
-  font-weight: 600; /* was 800 */
+  font-weight: 600;
   color: var(--text) !important;
   padding: 8px 10px;
   border-radius: 10px;
@@ -198,7 +197,7 @@ select, input, button{ font-family: inherit; }
 
 .nav-text{
   color: var(--muted) !important;
-  font-weight: 600; /* was 800 */
+  font-weight: 600;
   padding: 8px 10px;
 }
 
@@ -267,7 +266,7 @@ a.btn,
   border: 1px solid transparent !important;
   border-radius: 12px !important;
   padding: 10px 16px !important;
-  font-weight: 600 !important;  /* was 900 */
+  font-weight: 600 !important;
   cursor: pointer !important;
   display: inline-flex !important;
   align-items: center !important;
@@ -312,23 +311,37 @@ a.btn.secondary:hover{
   border-color: #cfe0ff !important;
 }
 
+/* 🔴 Danger buttons: unified (red bg + white text) */
 .btn-danger,
-a.btn-danger{
-  background: #fee2e2 !important;
-  color: #991b1b !important;
-  border-color: #fecaca !important;
+a.btn-danger,
+.btn-remove,
+.remove-btn,
+.danger,
+button[name="action"][value^="remove"],
+button[name="action"][value*="remove"],
+input[type="submit"][name="action"][value^="remove"],
+input[type="submit"][name="action"][value*="remove"]{
+  background: #d32f2f !important;
+  color: #fff !important;
+  border: 1px solid #b71c1c !important;
 }
 .btn-danger:hover,
-a.btn-danger:hover{
-  background: #fecaca !important;
-  border-color: #fca5a5 !important;
+a.btn-danger:hover,
+.btn-remove:hover,
+.remove-btn:hover,
+.danger:hover,
+button[name="action"][value^="remove"]:hover,
+button[name="action"][value*="remove"]:hover,
+input[type="submit"][name="action"][value^="remove"]:hover,
+input[type="submit"][name="action"][value*="remove"]:hover{
+  filter: brightness(0.92);
 }
 
 /* -----------------------------
    Forms / Inputs
 ----------------------------- */
 label{
-  font-weight: 600 !important; /* was 900 */
+  font-weight: 600 !important;
   color: var(--text) !important;
 }
 
@@ -368,18 +381,79 @@ form{
   max-width: 900px;
   margin-left: auto;
   margin-right: auto;
+  background: transparent !important;
 }
 @media (max-width: 720px){
   form{ max-width: 100%; }
 }
 
 /* -----------------------------
+   Global form spacing: prevent select/button touching
+----------------------------- */
+.form-row,
+.form-row-inline,
+.form-actions,
+.actions-row,
+form .form-row,
+form .row{
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+/* vertical breathing room */
+select,
+input,
+button,
+.btn{
+  margin-top: 8px;
+}
+
+/* horizontal gap when button is right after select */
+select + button,
+select + .btn,
+select + input[type="submit"],
+.form-select + button,
+.form-select + .btn,
+.form-select + input[type="submit"]{
+  margin-top: 10px;
+  margin-inline-start: 14px; /* RTL/LTR friendly */
+}
+
+.form-row select,
+.form-row .form-select,
+.form-row-inline select,
+.form-row-inline .form-select{
+  min-width: 220px;
+}
+
+@media (max-width: 700px){
+  .form-row,
+  .form-row-inline,
+  .form-actions,
+  .actions-row,
+  form .form-row,
+  form .row{
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  select + button,
+  select + .btn,
+  select + input[type="submit"],
+  .form-select + button,
+  .form-select + .btn,
+  .form-select + input[type="submit"]{
+    margin-inline-start: 0;
+  }
+}
+
+/* -----------------------------
    Checkout Payment Options (RTL fix)
 ----------------------------- */
-.pay-options{
-  display: grid;
-  gap: 10px;
-}
+.pay-options{ display: grid; gap: 10px; }
 
 .pay-option{
   display: flex;
@@ -394,7 +468,7 @@ form{
 
 .pay-option span{
   flex: 1;
-  font-weight: 600; /* was 900 */
+  font-weight: 600;
   text-align: right;
 }
 
@@ -423,11 +497,11 @@ th, td{
   border-bottom: 1px solid var(--border) !important;
   text-align: right !important;
   color: var(--text) !important;
-  font-weight: 500; /* was 800 */
+  font-weight: 500;
 }
 th{
   background: #f1f6ff !important;
-  font-weight: 600 !important; /* was 900 */
+  font-weight: 600 !important;
 }
 tr:last-child td{ border-bottom: none !important; }
 
@@ -441,14 +515,14 @@ tr:last-child td{ border-bottom: none !important; }
 .hero h1{
   margin: 0 0 10px;
   font-size: clamp(1.8rem, 3.2vw, 2.6rem);
-  font-weight: 700; /* was 900 */
+  font-weight: 700;
   letter-spacing: -0.5px;
   color: var(--text);
 }
 .hero p{
   margin: 0;
   color: var(--muted);
-  font-weight: 500; /* was 800 */
+  font-weight: 500;
 }
 
 .home-search{
@@ -491,50 +565,80 @@ tr:last-child td{ border-bottom: none !important; }
   }
 }
 
-.home-search-wrap{
-  max-width: 900px;
-  margin: 0 auto;
-}
-.home-search-card{
-  background: #ffffff;
-  border-radius: 22px;
-  padding: 36px 42px;
-  box-shadow: 0 20px 60px rgba(15, 23, 42, 0.10);
-  border: 1px solid #e2e8f0;
-}
-.search-row{
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 18px;
-  margin-top: 24px;
-}
-.search-field{
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.search-field label{
-  font-weight: 600; /* was 800 */
-  color: #0f172a;
-}
-.search-field select{
-  height: 56px;
-  border-radius: 14px;
-  padding: 0 14px;
-  font-size: 16px;
-}
-.home-hero{
-  text-align: center;
-  padding: 60px 0 20px;
-}
-
+/* keep page wrappers transparent */
 .flytau-main,
 .container,
 section,
 .section,
-.home-search{
+.home-search,
+main{
   background: transparent !important;
 }
+
+/* White cards (single consolidated block) */
+.results-container,
+.section,
+.card,
+.flytau-card,
+.form-card,
+.panel,
+.search-box,
+.checkout-card,
+.booking-card,
+.manage-card,
+.home-search,
+.home-search-card,
+.manage-booking-page,
+.checkout-page{
+  background: #ffffff !important;
+  border-radius: 18px;
+  box-shadow: 0 16px 40px rgba(15,23,42,0.08);
+}
+
+/* Manage/checkout padding only where needed */
+.manage-booking-page,
+.checkout-page{
+  padding: 36px 40px;
+  max-width: 900px;
+  margin: 40px auto;
+}
+
+/* Cancel inner gray backgrounds */
+div[class*="bg-"],
+div[class*="background"],
+[class*="gray"],
+[class*="grey"]{
+  background: transparent !important;
+}
+
+/* Cancel confirm – make danger button same size & shape as secondary */
+.cancel-confirm .btn-danger,
+.cancel-confirm a.btn-danger,
+.cancel-confirm button.btn-danger{
+  padding: 10px 16px !important;
+  border-radius: 12px !important;
+  font-weight: 600 !important;
+  min-height: 44px;
+  min-width: 160px;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-shadow: var(--shadow-sm) !important;
+}
+
+.btn-mini{
+  display:inline-block;
+  padding:6px 10px;
+  border:1px solid #cfd6df;
+  border-radius:10px;
+  font-weight:600;
+  font-size:0.85rem;
+  text-decoration:none;
+  background:#fff;
+  color:#111827;
+  white-space: nowrap;
+}
+.btn-mini:hover{ background:#f3f6fa; }
 
 /* -----------------------------
    Seat Selection – CTA
@@ -553,14 +657,13 @@ section,
   border: 1px solid rgba(11, 61, 145, .25) !important;
   box-shadow: 0 18px 44px rgba(11, 61, 145, 0.30) !important;
   min-width: 320px;
-  font-weight: 700 !important; /* CTA can stay stronger */
+  font-weight: 700 !important;
 }
 .btn-continue:hover{
   transform: translateY(-2px) !important;
   box-shadow: 0 22px 54px rgba(11, 61, 145, 0.38) !important;
 }
 
-/* Seat selection helpers */
 .seat-page{
   max-width: 1100px;
   margin: 0 auto;
@@ -579,7 +682,7 @@ section,
   border-radius: 999px !important;
   border: 1px solid var(--border) !important;
   background: #fff !important;
-  font-weight: 600 !important; /* was 900 */
+  font-weight: 600 !important;
   box-shadow: var(--shadow-sm) !important;
 }
 .seat-class-tabs .active{
@@ -613,13 +716,13 @@ section,
 }
 
 .seat .seat-no{
-  font-weight: 700; /* was 900 */
+  font-weight: 700;
   font-size: 1.05rem;
   color: var(--text);
   margin-bottom: 4px;
 }
 .seat .seat-price{
-  font-weight: 600; /* was 900 */
+  font-weight: 600;
   color: var(--text);
   direction: ltr;
 }
@@ -710,87 +813,6 @@ section,
 }
 
 @media (max-width:900px){
-  .page-wrap{
-    padding:24px 14px;
-  }
-  .checkout{
-    max-width:100%;
-  }
-}
-
-.manage-booking-page,
-.checkout-page{
-  background: #ffffff;
-  border-radius: 22px;
-  padding: 36px 40px;
-  max-width: 900px;
-  margin: 40px auto;
-  box-shadow: 0 20px 50px rgba(15,23,42,.10);
-}
-
-/* Global background */
-body{ background: #f6f9ff; }
-
-.flytau-main,
-.container,
-main{ background: transparent !important; }
-
-/* White cards */
-.results-container,
-.section,
-.card,
-.flytau-card,
-.form-card,
-.panel,
-.search-box,
-.checkout-card,
-.booking-card,
-.manage-card,
-.home-search,
-.home-search-card{
-  background: #ffffff !important;
-  border-radius: 18px;
-  box-shadow: 0 16px 40px rgba(15,23,42,0.08);
-}
-
-/* Forms background */
-form{ background: transparent !important; }
-
-/* Cancel inner gray backgrounds */
-div[class*="bg-"],
-div[class*="background"],
-[class*="gray"],
-[class*="grey"]{
-  background: transparent !important;
-}
-
-/* Cancel confirm – make danger button same size & shape as secondary */
-.cancel-confirm .btn-danger,
-.cancel-confirm a.btn-danger,
-.cancel-confirm button.btn-danger{
-  padding: 10px 16px !important;
-  border-radius: 12px !important;
-  font-weight: 600 !important; /* was 900 */
-  min-height: 44px;
-  min-width: 160px;
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  box-shadow: var(--shadow-sm) !important;
-}
-
-.btn-mini{
-  display:inline-block;
-  padding:6px 10px;
-  border:1px solid #cfd6df;
-  border-radius:10px;
-  font-weight:600; /* was 900 */
-  font-size:0.85rem;
-  text-decoration:none;
-  background:#fff;
-  color:#111827;
-  white-space: nowrap;
-}
-.btn-mini:hover{
-  background:#f3f6fa;
+  .page-wrap{ padding:24px 14px; }
+  .checkout{ max-width:100%; }
 }

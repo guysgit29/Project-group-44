@@ -4,7 +4,7 @@ from database import DB
 
 
 class Flight:
-    def __init__(self, flight_number, aircraft_id, origin, destination, departure, arrival, status):
+    def __init__(self, flight_number, aircraft_id, origin, destination, departure, arrival, status):  # Represents one flight entity (core fields only)
         self.flight_number = flight_number
         self.aircraft_id = aircraft_id
         self.origin = origin
@@ -13,23 +13,17 @@ class Flight:
         self.arrival = arrival
         self.status = status
 
-    # -------------------------
-    # Customer helpers
-    # -------------------------
-
     @staticmethod
-    def get_all_origins_and_destinations():
+    def get_all_origins_and_destinations():  # Returns distinct origins and destinations for the public search dropdowns
         with DB.get_cursor() as cursor:
             cursor.execute("SELECT DISTINCT origin FROM Flight ORDER BY origin ASC")
             origins = cursor.fetchall()
-
             cursor.execute("SELECT DISTINCT destination FROM Flight ORDER BY destination ASC")
             destinations = cursor.fetchall()
-
             return origins, destinations
 
     @staticmethod
-    def sync_completed_flights() -> int:
+    def sync_completed_flights() -> int:  # Marks flights as Completed when arrival_time is in the past
         with DB.get_cursor() as cursor:
             cursor.execute("""
                 UPDATE Flight
@@ -41,9 +35,8 @@ class Flight:
             return cursor.rowcount
 
     @staticmethod
-    def search(origin, destination):
+    def search(origin, destination):  # Searches Active/Full flights for a given route (and syncs Completed first)
         Flight.sync_completed_flights()
-
         query = """
             SELECT *
             FROM Flight
@@ -54,21 +47,16 @@ class Flight:
         """
         with DB.get_cursor() as cursor:
             cursor.execute(query, (origin, destination))
-            return cursor.fetchall()
+            return cursor.fetchall() or []
 
     @staticmethod
-    def get_seat_map(flight_number: int):
+    def get_seat_map(flight_number: int):  # Returns seat grid with availability and per-class price for a flight
         with DB.get_cursor() as cursor:
-            cursor.execute(
-                "SELECT aircraft_id FROM Flight WHERE flight_number = %s",
-                (int(flight_number),)
-            )
+            cursor.execute("SELECT aircraft_id FROM Flight WHERE flight_number = %s", (int(flight_number),))
             f = cursor.fetchone()
             if not f:
                 return []
-
             aircraft_id = f["aircraft_id"]
-
             query = """
                 SELECT
                     s.row_num,
@@ -96,58 +84,39 @@ class Flight:
                     s.column_number
             """
             cursor.execute(query, (int(flight_number), int(flight_number), aircraft_id))
-            return cursor.fetchall()
+            return cursor.fetchall() or []
 
     @staticmethod
-    def update_status_by_capacity(flight_number: int) -> str | None:
+    def update_status_by_capacity(flight_number: int) -> str | None:  # Recomputes flight_status as Full/Active based on tickets count vs seats
         if not flight_number:
             return None
 
         with DB.get_cursor() as cursor:
-            cursor.execute(
-                "SELECT aircraft_id, flight_status FROM Flight WHERE flight_number = %s",
-                (int(flight_number),)
-            )
+            cursor.execute("SELECT aircraft_id, flight_status FROM Flight WHERE flight_number = %s", (int(flight_number),))
             f = cursor.fetchone()
             if not f or f.get("aircraft_id") is None:
                 return None
 
             current_status = (f.get("flight_status") or "").strip()
-
-            # ✅ לא משנים סטטוסים סופיים
             if current_status in ("Completed", "Canceled"):
                 return current_status
 
             aircraft_id = int(f["aircraft_id"])
 
-            cursor.execute(
-                "SELECT COUNT(*) AS total_seats FROM Seat WHERE aircraft_id = %s",
-                (aircraft_id,)
-            )
+            cursor.execute("SELECT COUNT(*) AS total_seats FROM Seat WHERE aircraft_id = %s", (aircraft_id,))
             total = int((cursor.fetchone() or {}).get("total_seats") or 0)
 
-            cursor.execute(
-                "SELECT COUNT(*) AS sold_seats FROM Ticket WHERE flight_number = %s",
-                (int(flight_number),)
-            )
+            cursor.execute("SELECT COUNT(*) AS sold_seats FROM Ticket WHERE flight_number = %s", (int(flight_number),))
             sold = int((cursor.fetchone() or {}).get("sold_seats") or 0)
 
             new_status = "Full" if total > 0 and sold >= total else "Active"
-
             if current_status != new_status:
-                cursor.execute(
-                    "UPDATE Flight SET flight_status = %s WHERE flight_number = %s",
-                    (new_status, int(flight_number))
-                )
+                cursor.execute("UPDATE Flight SET flight_status = %s WHERE flight_number = %s", (new_status, int(flight_number)))
 
             return new_status
 
-    # -------------------------
-    # Manager helpers
-    # -------------------------
-
     @staticmethod
-    def list_for_manager(selected_status: str = "", aircraft_id: int | None = None):
+    def list_for_manager(selected_status: str = "", aircraft_id: int | None = None):  # Lists flights for manager screen with optional filters
         query = """
             SELECT
                 flight_number,
@@ -159,7 +128,6 @@ class Flight:
                 flight_status
             FROM Flight
         """
-
         where = []
         params = []
 
@@ -179,10 +147,10 @@ class Flight:
 
         with DB.get_cursor() as cursor:
             cursor.execute(query, tuple(params))
-            return cursor.fetchall()
+            return cursor.fetchall() or []
 
     @staticmethod
-    def get_by_number(flight_number: int):
+    def get_by_number(flight_number: int):  # Fetches a single flight row by flight_number
         with DB.get_cursor() as cursor:
             cursor.execute("""
                 SELECT
@@ -199,14 +167,13 @@ class Flight:
             return cursor.fetchone()
 
     @staticmethod
-    def get_aircraft_by_id(aircraft_id: int):
+    def get_aircraft_by_id(aircraft_id: int):  # Fetches aircraft row by aircraft_id
         with DB.get_cursor() as cursor:
             cursor.execute("SELECT * FROM Aircraft WHERE aircraft_id = %s", (int(aircraft_id),))
             return cursor.fetchone()
 
     @staticmethod
-    def get_all_aircraft_ids():
-        """לדרופדאון סינון במסך manager_flights."""
+    def get_all_aircraft_ids():  # Returns aircraft_id list for manager flights filter dropdown
         with DB.get_cursor() as cursor:
             cursor.execute("""
                 SELECT DISTINCT aircraft_id
@@ -218,7 +185,7 @@ class Flight:
         return [r["aircraft_id"] for r in rows]
 
     @staticmethod
-    def get_aircraft_size_for_flight(flight_number: int) -> str | None:
+    def get_aircraft_size_for_flight(flight_number: int) -> str | None:  # Returns aircraft_size for a given flight_number
         with DB.get_cursor() as cursor:
             cursor.execute("""
                 SELECT a.aircraft_size
@@ -230,12 +197,7 @@ class Flight:
             return row.get("aircraft_size") if row else None
 
     @staticmethod
-    def get_flight_window(flight_number: int):
-        """
-        start = departure_time
-        end   = arrival_time אם יש, אחרת departure_time + FlightLength.length_minutes
-        (לבדיקת חפיפות לצוות)
-        """
+    def get_flight_window(flight_number: int):  # Returns (start,end) datetime window for overlap checks (arrival or computed duration)
         with DB.get_cursor() as cursor:
             cursor.execute("""
                 SELECT
@@ -253,45 +215,31 @@ class Flight:
 
         if not row:
             return None, None
-
         return row.get("start_time"), row.get("end_time")
 
-    # -------------------------
-    # Crew capacity rules (NO buffer)
-    # -------------------------
-
     @staticmethod
-    def get_required_crew_counts(flight_number: int) -> dict:
-        """
-        Large: 3 pilots, 6 attendants
-        Small: 2 pilots, 3 attendants
-        """
+    def get_required_crew_counts(flight_number: int) -> dict:  # Returns required pilots/attendants counts based on aircraft size (Large/Small)
         size = (Flight.get_aircraft_size_for_flight(flight_number) or "").strip().lower()
         if size == "large":
             return {"pilots": 3, "attendants": 6}
         return {"pilots": 2, "attendants": 3}
 
     @staticmethod
-    def count_assigned_pilots(flight_number: int) -> int:
+    def count_assigned_pilots(flight_number: int) -> int:  # Counts pilots assigned to a flight
         with DB.get_cursor() as cursor:
             cursor.execute("SELECT COUNT(*) AS c FROM pilots_on_flights WHERE flight_number=%s", (int(flight_number),))
             row = cursor.fetchone() or {}
         return int(row.get("c") or 0)
 
     @staticmethod
-    def count_assigned_attendants(flight_number: int) -> int:
+    def count_assigned_attendants(flight_number: int) -> int:  # Counts attendants assigned to a flight
         with DB.get_cursor() as cursor:
             cursor.execute("SELECT COUNT(*) AS c FROM flightattendants_on_flights WHERE flight_number=%s", (int(flight_number),))
             row = cursor.fetchone() or {}
         return int(row.get("c") or 0)
 
-    # ==========================================================
-    # ✅ Helpers for "Create New Flight" (manager_flight_create)
-    # ==========================================================
-
     @staticmethod
-    def get_all_aircrafts():
-        """למסך יצירת טיסה חדשה."""
+    def get_all_aircrafts():  # Returns all aircrafts for the manager “create flight” flow
         with DB.get_cursor() as cursor:
             cursor.execute("""
                 SELECT aircraft_id, aircraft_size, manufacturer
@@ -301,8 +249,7 @@ class Flight:
             return cursor.fetchall() or []
 
     @staticmethod
-    def get_all_routes():
-        """נתיבים קיימים מתוך FlightLength."""
+    def get_all_routes():  # Returns all FlightLength routes for manager route selection
         with DB.get_cursor() as cursor:
             cursor.execute("""
                 SELECT origin, destination, length_minutes
@@ -312,43 +259,29 @@ class Flight:
             return cursor.fetchall() or []
 
     @staticmethod
-    def get_all_route_origins():
+    def get_all_route_origins():  # Returns distinct route origins from FlightLength
         with DB.get_cursor() as cursor:
-            cursor.execute("""
-                SELECT DISTINCT origin
-                FROM FlightLength
-                ORDER BY origin
-            """)
+            cursor.execute("SELECT DISTINCT origin FROM FlightLength ORDER BY origin")
             rows = cursor.fetchall() or []
         return [r["origin"] for r in rows]
 
     @staticmethod
-    def get_destinations_for_origin(origin: str):
+    def get_destinations_for_origin(origin: str):  # Returns destinations for a given origin from FlightLength
         origin = (origin or "").strip()
         with DB.get_cursor() as cursor:
-            cursor.execute("""
-                SELECT destination
-                FROM FlightLength
-                WHERE origin=%s
-                ORDER BY destination
-            """, (origin,))
+            cursor.execute("SELECT destination FROM FlightLength WHERE origin=%s ORDER BY destination", (origin,))
             rows = cursor.fetchall() or []
         return [r["destination"] for r in rows]
 
     @staticmethod
-    def get_route_length(origin: str, destination: str):
-        """מחזיר TIME של MySQL או None."""
+    def get_route_length(origin: str, destination: str):  # Returns FlightLength.length_minutes TIME for a route (or None)
         with DB.get_cursor() as cursor:
-            cursor.execute("""
-                SELECT length_minutes
-                FROM FlightLength
-                WHERE origin=%s AND destination=%s
-            """, (origin, destination))
+            cursor.execute("SELECT length_minutes FROM FlightLength WHERE origin=%s AND destination=%s", (origin, destination))
             row = cursor.fetchone()
         return row["length_minutes"] if row else None
 
     @staticmethod
-    def get_route_duration_seconds(origin: str, destination: str) -> int:
+    def get_route_duration_seconds(origin: str, destination: str) -> int:  # Returns route duration in seconds from FlightLength
         with DB.get_cursor() as cursor:
             cursor.execute("""
                 SELECT TIME_TO_SEC(length_minutes) AS sec
@@ -359,54 +292,38 @@ class Flight:
         return int(row.get("sec") or 0)
 
     @staticmethod
-    def get_aircraft_size(aircraft_id: int) -> str:
+    def get_aircraft_size(aircraft_id: int) -> str:  # Returns aircraft_size (lowercase) for an aircraft_id
         with DB.get_cursor() as cursor:
             cursor.execute("SELECT aircraft_size FROM Aircraft WHERE aircraft_id=%s", (int(aircraft_id),))
             row = cursor.fetchone()
         return (row["aircraft_size"] or "").strip().lower() if row else ""
 
     @staticmethod
-    def flight_number_exists(flight_number: int) -> bool:
+    def flight_number_exists(flight_number: int) -> bool:  # Checks whether a flight_number already exists
         with DB.get_cursor() as cursor:
             cursor.execute("SELECT 1 FROM Flight WHERE flight_number=%s LIMIT 1", (int(flight_number),))
             return cursor.fetchone() is not None
 
     @staticmethod
-    def create_flight(
-        flight_number: int,
-        aircraft_id: int,
-        origin: str,
-        destination: str,
-        departure_time: datetime,
-        flight_status: str = "Active",
-    ) -> tuple[bool, str]:
-        """
-        יוצר טיסה רק אם הנתיב קיים ב-FlightLength.
-        arrival_time ייקבע ע"י ה-trigger שלך (before insert).
-        """
-
+    def create_flight(flight_number: int, aircraft_id: int, origin: str, destination: str, departure_time: datetime, flight_status: str = "Active") -> tuple[bool, str]:  # Creates a new flight with validations (route exists, Large for >6h, unique number)
         origin = (origin or "").strip()
         destination = (destination or "").strip()
         flight_status = (flight_status or "Active").strip() or "Active"
 
         if not origin or not destination:
             return False, "חובה לבחור שדה מקור ושדה יעד"
-
         if not isinstance(departure_time, datetime):
             return False, "תאריך/שעת המראה לא תקין"
 
-        # ✅ נתיב חייב להיות קיים
         length = Flight.get_route_length(origin, destination)
         if not length:
             return False, "לא ניתן להוסיף טיסה לנתיב שלא קיים. קודם הוסף קו טיסה (FlightLength)."
 
-        # ✅ מעל 6 שעות => חייב Large
         duration_sec = Flight.get_route_duration_seconds(origin, destination)
         size = Flight.get_aircraft_size(int(aircraft_id))
         if duration_sec > 6 * 3600 and size != "large":
             return False, "טיסה מעל 6 שעות חייבת להיות עם מטוס Large"
 
-        # ✅ מספר טיסה ייחודי
         if Flight.flight_number_exists(int(flight_number)):
             return False, "מספר טיסה כבר קיים במערכת"
 
@@ -418,21 +335,10 @@ class Flight:
 
         return True, "טיסה נוצרה בהצלחה"
 
-    # ==========================================================
-    # ✅ NEW: Cancel rules for manager (72 hours)
-    # ==========================================================
-
     @staticmethod
-    def can_manager_cancel(flight_number: int) -> bool:
-        """
-        ניתן לבטל טיסה רק אם ההמראה בעוד 72 שעות או יותר
-        """
+    def can_manager_cancel(flight_number: int) -> bool:  # Returns True if manager is allowed to cancel (>=72h before departure and not final status)
         with DB.get_cursor() as cursor:
-            cursor.execute("""
-                SELECT departure_time, flight_status
-                FROM Flight
-                WHERE flight_number = %s
-            """, (int(flight_number),))
+            cursor.execute("SELECT departure_time, flight_status FROM Flight WHERE flight_number = %s", (int(flight_number),))
             f = cursor.fetchone()
 
         if not f:
@@ -449,39 +355,28 @@ class Flight:
         return dep - datetime.now() >= timedelta(hours=72)
 
     @staticmethod
-    def cancel_flight(flight_number: int) -> tuple[bool, str]:
+    def cancel_flight(flight_number: int) -> tuple[bool, str]:  # Cancels a flight (>=72h) and updates all related bookings as canceled by airline
         if not flight_number:
             return False, "מספר טיסה חסר"
 
         flight_number = int(flight_number)
 
-        # חוק 72 שעות
         if not Flight.can_manager_cancel(flight_number):
             return False, "לא ניתן לבטל טיסה פחות מ-72 שעות לפני ההמראה"
 
         with DB.get_cursor() as cursor:
-            cursor.execute(
-                "SELECT flight_status FROM Flight WHERE flight_number = %s",
-                (flight_number,)
-            )
+            cursor.execute("SELECT flight_status FROM Flight WHERE flight_number = %s", (flight_number,))
             f = cursor.fetchone()
             if not f:
                 return False, "הטיסה לא קיימת"
 
             current_status = (f.get("flight_status") or "").strip()
-
             if current_status == "Completed":
                 return False, "לא ניתן לבטל טיסה שהושלמה"
-
             if current_status == "Canceled":
                 return True, "הטיסה כבר בוטלה"
 
-            # 🔥 כאן השינוי האמיתי
-            cursor.execute(
-                "UPDATE Flight SET flight_status = 'Canceled' WHERE flight_number = %s",
-                (flight_number,)
-            )
-
+            cursor.execute("UPDATE Flight SET flight_status = 'Canceled' WHERE flight_number = %s", (flight_number,))
             cursor.execute("""
                 UPDATE Booking
                 SET price = 0,
@@ -491,13 +386,8 @@ class Flight:
 
         return True, "הטיסה בוטלה וההזמנות עודכנו"
 
-
-    # ==========================================================
-    # ✅ Manage Flight Routes (FlightLength)
-    # ==========================================================
-
     @staticmethod
-    def search_routes(origin: str = "", destination: str = ""):
+    def search_routes(origin: str = "", destination: str = ""):  # Searches routes in FlightLength with optional origin/destination filters
         origin = (origin or "").strip()
         destination = (destination or "").strip()
 
@@ -525,31 +415,26 @@ class Flight:
             return cursor.fetchall() or []
 
     @staticmethod
-    def create_route(origin: str, destination: str, length_minutes: str) -> tuple[bool, str | None]:
+    def create_route(origin: str, destination: str, length_minutes: str) -> tuple[bool, str | None]:  # Creates a new route in FlightLength with basic validation
         origin = (origin or "").strip()
         destination = (destination or "").strip()
         length_minutes = (length_minutes or "").strip()
 
         if not origin or not destination or not length_minutes:
             return False, "יש למלא מקור, יעד ואורך טיסה"
-
         if origin == destination:
             return False, "מקור ויעד לא יכולים להיות זהים"
 
-        # אופציונלי: בדיקת פורמט בסיסית ל-TIME (מאפשר HH:MM או HH:MM:SS)
         parts = length_minutes.split(":")
         if len(parts) not in (2, 3):
             return False, "פורמט אורך טיסה לא תקין. השתמש HH:MM או HH:MM:SS"
 
         try:
             with DB.get_cursor() as cursor:
-                cursor.execute(
-                    """
+                cursor.execute("""
                     INSERT INTO FlightLength (origin, destination, length_minutes)
                     VALUES (%s, %s, %s)
-                    """,
-                    (origin, destination, length_minutes),
-                )
+                """, (origin, destination, length_minutes))
             return True, None
         except Exception as e:
             msg = str(e)
@@ -557,177 +442,58 @@ class Flight:
                 return False, "קו כזה כבר קיים (אותו מקור ואותו יעד)"
             return False, f"שגיאת DB: {msg}"
 
-        # --- Step 1 dropdowns (FlightLength) ---
-
     @staticmethod
-    def get_route_origins_distinct():
+    def get_route_origins_distinct():  # Returns distinct origins from FlightLength (legacy dropdown helper)
         with DB.get_cursor() as cursor:
             cursor.execute("SELECT DISTINCT origin FROM FlightLength ORDER BY origin")
             rows = cursor.fetchall() or []
         return [r["origin"] for r in rows]
 
     @staticmethod
-    def get_route_destinations_distinct():
+    def get_route_destinations_distinct():  # Returns distinct destinations from FlightLength (legacy dropdown helper)
         with DB.get_cursor() as cursor:
             cursor.execute("SELECT DISTINCT destination FROM FlightLength ORDER BY destination")
             rows = cursor.fetchall() or []
         return [r["destination"] for r in rows]
 
     @staticmethod
-    def get_route_info(origin: str, destination: str):
-        """
-        returns dict: { length_time, duration_sec }
-        """
+    def get_route_info(origin: str, destination: str):  # Returns route length_time and duration_sec for validations/preview
         origin = (origin or "").strip()
         destination = (destination or "").strip()
         with DB.get_cursor() as cursor:
             cursor.execute("""
-                   SELECT
-                       length_minutes AS length_time,
-                       TIME_TO_SEC(length_minutes) AS duration_sec
-                   FROM FlightLength
-                   WHERE origin=%s AND destination=%s
-               """, (origin, destination))
+                SELECT
+                    length_minutes AS length_time,
+                    TIME_TO_SEC(length_minutes) AS duration_sec
+                FROM FlightLength
+                WHERE origin=%s AND destination=%s
+            """, (origin, destination))
             row = cursor.fetchone()
         if not row:
             return None
-        return {
-            "length_time": row.get("length_time"),
-            "duration_sec": int(row.get("duration_sec") or 0)
-        }
+        return {"length_time": row.get("length_time"), "duration_sec": int(row.get("duration_sec") or 0)}
 
     @staticmethod
-    def compute_arrival(dep_dt: datetime, origin: str, destination: str):
-        """
-        מחשב arrival (לתצוגה בלבד). בפועל ה-TRIGGER ישלים את arrival_time ב-INSERT.
-        """
+    def compute_arrival(dep_dt: datetime, origin: str, destination: str):  # Computes arrival datetime for preview using FlightLength
         with DB.get_cursor() as cursor:
             cursor.execute("""
-                   SELECT ADDTIME(%s, length_minutes) AS arrival_dt
-                   FROM FlightLength
-                   WHERE origin=%s AND destination=%s
-               """, (dep_dt, origin, destination))
+                SELECT ADDTIME(%s, length_minutes) AS arrival_dt
+                FROM FlightLength
+                WHERE origin=%s AND destination=%s
+            """, (dep_dt, origin, destination))
             row = cursor.fetchone() or {}
         return row.get("arrival_dt")
 
     @staticmethod
-    def list_available_pilots_for_new_flight(origin: str, dep_dt: datetime, require_large: bool):
-        origin = (origin or "").strip()
-        cert_clause = "AND p.big_aircraft_cert = 1" if require_large else ""
-
-        query = f"""
-           SELECT
-               p.id,
-               p.first_name_he,
-               p.last_name_he,
-               p.big_aircraft_cert,
-               lastf.last_destination,
-               lastf.last_end_time
-           FROM Pilot p
-           LEFT JOIN (
-               SELECT
-                   x.id,
-                   SUBSTRING_INDEX(
-                       GROUP_CONCAT(x.destination ORDER BY x.end_time DESC SEPARATOR ','), ',', 1
-                   ) AS last_destination,
-                   MAX(x.end_time) AS last_end_time
-               FROM (
-                   SELECT
-                       pf.id,
-                       f.destination,
-                       COALESCE(
-                           f.arrival_time,
-                           ADDTIME(f.departure_time, fl.length_minutes)
-                       ) AS end_time
-                   FROM Pilots_on_Flights pf
-                   JOIN Flight f ON f.flight_number = pf.flight_number
-                   LEFT JOIN FlightLength fl
-                       ON fl.origin=f.origin AND fl.destination=f.destination
-                   WHERE f.departure_time < %s
-               ) x
-               WHERE x.end_time < %s
-               GROUP BY x.id
-           ) lastf ON lastf.id = p.id
-           WHERE 1=1
-             {cert_clause}
-             AND (
-                 lastf.id IS NULL
-                 OR lastf.last_destination = %s
-             )
-           ORDER BY p.id
-           """
-        with DB.get_cursor() as cursor:
-            cursor.execute(query, (dep_dt, dep_dt, origin))
-            return cursor.fetchall() or []
-
-    @staticmethod
-    def list_available_attendants_for_new_flight(origin: str, dep_dt: datetime, require_large: bool):
-        origin = (origin or "").strip()
-        cert_clause = "AND fa.big_aircraft_cert = 1" if require_large else ""
-
-        query = f"""
-           SELECT
-               fa.id,
-               fa.first_name_he,
-               fa.last_name_he,
-               fa.big_aircraft_cert,
-               lastf.last_destination,
-               lastf.last_end_time
-           FROM FlightAttendant fa
-           LEFT JOIN (
-               SELECT
-                   x.id,
-                   SUBSTRING_INDEX(
-                       GROUP_CONCAT(x.destination ORDER BY x.end_time DESC SEPARATOR ','), ',', 1
-                   ) AS last_destination,
-                   MAX(x.end_time) AS last_end_time
-               FROM (
-                   SELECT
-                       ff.id,
-                       f.destination,
-                       COALESCE(
-                           f.arrival_time,
-                           ADDTIME(f.departure_time, fl.length_minutes)
-                       ) AS end_time
-                   FROM FlightAttendants_on_Flights ff
-                   JOIN Flight f ON f.flight_number = ff.flight_number
-                   LEFT JOIN FlightLength fl
-                       ON fl.origin=f.origin AND fl.destination=f.destination
-                   WHERE f.departure_time < %s
-               ) x
-               WHERE x.end_time < %s
-               GROUP BY x.id
-           ) lastf ON lastf.id = fa.id
-           WHERE 1=1
-             {cert_clause}
-             AND (
-                 lastf.id IS NULL
-                 OR lastf.last_destination = %s
-             )
-           ORDER BY fa.id
-           """
-        with DB.get_cursor() as cursor:
-            cursor.execute(query, (dep_dt, dep_dt, origin))
-            return cursor.fetchall() or []
-
-    @staticmethod
-    def generate_next_flight_number() -> int:
+    def generate_next_flight_number() -> int:  # Generates the next flight_number using MAX+1
         with DB.get_cursor() as cursor:
             cursor.execute("SELECT COALESCE(MAX(flight_number), 1000) AS m FROM Flight")
             row = cursor.fetchone() or {}
         return int(row.get("m") or 1000) + 1
 
     @staticmethod
-    def list_available_aircrafts_for_route(origin: str, dep_dt: datetime, require_large: bool):
-        """
-        מחזיר מטוסים זמינים לשיבוץ:
-        1) המטוס לא יכול להיות בטיסה שחופפת (הטיסה האחרונה שלו חייבת להסתיים לפני dep_dt)
-        2) היעד האחרון של המטוס חייב להיות origin
-        3) אם אין למטוס היסטוריה בכלל -> מניחים שהוא ב-TLV, ולכן מותר רק אם origin == 'TLV'
-        4) אם require_large=True -> רק Large
-        """
+    def list_available_aircrafts_for_route(origin: str, dep_dt: datetime, require_large: bool):  # Returns aircrafts available by last destination/time and optional Large requirement
         origin = (origin or "").strip()
-
         size_clause = " AND LOWER(a.aircraft_size) = 'large' " if require_large else ""
 
         query = f"""
@@ -765,13 +531,11 @@ class Flight:
             WHERE 1=1
               {size_clause}
               AND (
-                    lf.aircraft_id IS NULL AND %s = 'TLV'
+                    (lf.aircraft_id IS NULL AND %s = 'TLV')
                     OR lf.last_destination = %s
                   )
             ORDER BY a.aircraft_id ASC
         """
-
-        # placeholders: 4
         params = (dep_dt, dep_dt, origin, origin)
 
         with DB.get_cursor() as cursor:
@@ -779,37 +543,37 @@ class Flight:
             return cursor.fetchall() or []
 
     @staticmethod
-    def get_pilots_by_ids(ids):
+    def get_pilots_by_ids(ids):  # Fetches pilot dicts (id + names) by list of ids for display
         if not ids:
             return []
         placeholders = ",".join(["%s"] * len(ids))
         q = f"""
-               SELECT id, first_name_he, last_name_he
-               FROM Pilot
-               WHERE id IN ({placeholders})
-               ORDER BY id
-           """
+            SELECT id, first_name_he, last_name_he
+            FROM Pilot
+            WHERE id IN ({placeholders})
+            ORDER BY id
+        """
         with DB.get_cursor() as cursor:
             cursor.execute(q, tuple(ids))
-            return cursor.fetchall()
+            return cursor.fetchall() or []
 
     @staticmethod
-    def get_attendants_by_ids(ids):
+    def get_attendants_by_ids(ids):  # Fetches attendant dicts (id + names) by list of ids for display
         if not ids:
             return []
         placeholders = ",".join(["%s"] * len(ids))
         q = f"""
-               SELECT id, first_name_he, last_name_he
-               FROM FlightAttendant
-               WHERE id IN ({placeholders})
-               ORDER BY id
-           """
+            SELECT id, first_name_he, last_name_he
+            FROM FlightAttendant
+            WHERE id IN ({placeholders})
+            ORDER BY id
+        """
         with DB.get_cursor() as cursor:
             cursor.execute(q, tuple(ids))
-            return cursor.fetchall()
+            return cursor.fetchall() or []
 
     @staticmethod
-    def get_all_airports_distinct():
+    def get_all_airports_distinct():  # Returns all unique airports appearing in FlightLength (origin/destination union)
         with DB.get_cursor() as cursor:
             cursor.execute("""
                 SELECT airport FROM (
@@ -819,75 +583,64 @@ class Flight:
                 ) AS all_airports
                 ORDER BY airport
             """)
-            return [row["airport"] for row in cursor.fetchall()]
+            return [row["airport"] for row in (cursor.fetchall() or [])]
 
     @staticmethod
-    def list_available_pilots_for_new_flight(origin: str, dep_dt: datetime, require_large: bool):
+    def list_available_pilots_for_new_flight(origin: str, dep_dt: datetime, require_large: bool):  # Lists available pilots by last location and Large certification (deduped version)
         origin = (origin or "").strip()
-
         cert_clause = " AND p.big_aircraft_cert = 1 " if require_large else ""
 
         query = f"""
+            SELECT
+                p.id,
+                p.first_name_he,
+                p.last_name_he,
+                p.big_aircraft_cert,
+                lf.last_destination,
+                lf.last_end_time
+            FROM Pilot p
+            LEFT JOIN (
                 SELECT
-                    p.id,
-                    p.first_name_he,
-                    p.last_name_he,
-                    p.big_aircraft_cert,
-                    lf.last_destination,
-                    lf.last_end_time
-                FROM Pilot p
-                LEFT JOIN (
+                    t.crew_id,
+                    SUBSTRING_INDEX(
+                        GROUP_CONCAT(t.destination ORDER BY t.end_time DESC SEPARATOR ','), ',', 1
+                    ) AS last_destination,
+                    MAX(t.end_time) AS last_end_time
+                FROM (
                     SELECT
-                        t.crew_id,
-                        SUBSTRING_INDEX(
-                            GROUP_CONCAT(t.destination ORDER BY t.end_time DESC SEPARATOR ','), ',', 1
-                        ) AS last_destination,
-                        MAX(t.end_time) AS last_end_time
-                    FROM (
-                        SELECT
-                            pf.id AS crew_id,
-                            f.destination,
-                            COALESCE(
-                                f.arrival_time,
-                                ADDTIME(f.departure_time, fl.length_minutes)
-                            ) AS end_time
-                        FROM Pilots_on_Flights pf
-                        JOIN Flight f
-                          ON f.flight_number = pf.flight_number
-                        LEFT JOIN FlightLength fl
-                          ON fl.origin = f.origin AND fl.destination = f.destination
-                        WHERE f.departure_time < %s
-                    ) t
-                    WHERE t.end_time <= %s
-                    GROUP BY t.crew_id
-                ) lf ON lf.crew_id = p.id
-                WHERE 1=1
-                  {cert_clause}
-                  AND (
-                        (lf.crew_id IS NULL AND %s = 'TLV')
-                        OR lf.last_destination = %s
-                      )
-                ORDER BY p.id ASC
-            """
-
+                        pf.id AS crew_id,
+                        f.destination,
+                        COALESCE(
+                            f.arrival_time,
+                            ADDTIME(f.departure_time, fl.length_minutes)
+                        ) AS end_time
+                    FROM Pilots_on_Flights pf
+                    JOIN Flight f
+                      ON f.flight_number = pf.flight_number
+                    LEFT JOIN FlightLength fl
+                      ON fl.origin = f.origin AND fl.destination = f.destination
+                    WHERE f.departure_time < %s
+                ) t
+                WHERE t.end_time <= %s
+                GROUP BY t.crew_id
+            ) lf ON lf.crew_id = p.id
+            WHERE 1=1
+              {cert_clause}
+              AND (
+                    (lf.crew_id IS NULL AND %s = 'TLV')
+                    OR lf.last_destination = %s
+                  )
+            ORDER BY p.id ASC
+        """
         params = (dep_dt, dep_dt, origin, origin)
 
         with DB.get_cursor() as cursor:
             cursor.execute(query, params)
             return cursor.fetchall() or []
 
-
     @staticmethod
-    def list_available_attendants_for_new_flight(origin: str, dep_dt: datetime, require_large: bool):
-        """
-        מחזיר דיילים זמינים לשיבוץ:
-        1) הדייל לא יכול להיות בטיסה שחופפת (הטיסה האחרונה שלו חייבת להסתיים לפני dep_dt)
-        2) היעד האחרון של הדייל חייב להיות origin
-        3) אם אין היסטוריה -> מניחים TLV, ולכן מותר רק אם origin == 'TLV'
-        4) אם require_large=True -> רק בעלי big_aircraft_cert=1
-        """
+    def list_available_attendants_for_new_flight(origin: str, dep_dt: datetime, require_large: bool):  # Lists available attendants by last location and Large certification
         origin = (origin or "").strip()
-
         cert_clause = " AND fa.big_aircraft_cert = 1 " if require_large else ""
 
         query = f"""
@@ -932,7 +685,6 @@ class Flight:
                   )
             ORDER BY fa.id ASC
         """
-
         params = (dep_dt, dep_dt, origin, origin)
 
         with DB.get_cursor() as cursor:

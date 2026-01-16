@@ -4,8 +4,7 @@ import re
 
 
 class RegisteredUser:
-    def __init__(self, email, first_name_en, last_name_en, password,
-                 birth_date=None, passport_number=None, registration_date=None):
+    def __init__(self, email, first_name_en, last_name_en, password, birth_date=None, passport_number=None, registration_date=None):
         self.email = (email or "").strip().lower()
         self.first_name = first_name_en
         self.last_name = last_name_en
@@ -14,18 +13,11 @@ class RegisteredUser:
         self.passport = passport_number
         self.registration_date = registration_date
 
-    # ----------------------------
-    # Debug helper
-    # ----------------------------
     @staticmethod
-    def _dbg(msg: str):
-        print(f"[DBG][RegisteredUser] {msg}")
+    def _dbg(msg: str): print(f"[DBG][RegisteredUser] {msg}")  # Print debug messages for user operations
 
-    # ----------------------------
-    # Lookup helpers
-    # ----------------------------
     @staticmethod
-    def get_by_email(email: str):
+    def get_by_email(email: str):  # Fetch a registered user by email (case-insensitive)
         email = (email or "").strip().lower()
         if not email:
             return None
@@ -47,7 +39,7 @@ class RegisteredUser:
             )
 
     @staticmethod
-    def email_exists(email: str) -> bool:
+    def email_exists(email: str) -> bool:  # Check if a registered user already exists for this email
         email = (email or "").strip().lower()
         if not email:
             return False
@@ -56,11 +48,8 @@ class RegisteredUser:
             cursor.execute("SELECT 1 FROM RegisteredUser WHERE LOWER(email) = %s LIMIT 1", (email,))
             return cursor.fetchone() is not None
 
-    # ----------------------------
-    # Phones (unlimited)
-    # ----------------------------
     @staticmethod
-    def list_phones(email: str) -> list[str]:
+    def list_phones(email: str) -> list[str]:  # Return all saved phone numbers for a registered user
         email = (email or "").strip().lower()
         if not email:
             return []
@@ -79,7 +68,7 @@ class RegisteredUser:
             return [r.get("phone_number") for r in rows if r.get("phone_number")]
 
     @staticmethod
-    def add_phone(email: str, phone_number: str):
+    def add_phone(email: str, phone_number: str):  # Add a phone number for a user (ignores duplicates)
         email = (email or "").strip().lower()
         phone_number = (phone_number or "").strip()
 
@@ -96,7 +85,7 @@ class RegisteredUser:
         return True, None
 
     @staticmethod
-    def delete_phone(email: str, phone_number: str):
+    def delete_phone(email: str, phone_number: str):  # Delete a specific phone number for a user
         email = (email or "").strip().lower()
         phone_number = (phone_number or "").strip()
 
@@ -114,11 +103,7 @@ class RegisteredUser:
         return True, None
 
     @staticmethod
-    def _parse_phones_multiline(raw: str) -> list[str]:
-        """
-        קולט טלפונים בטקסט רב-שורות או עם פסיקים ומחזיר רשימה ייחודית (בסדר ההופעה).
-        מתאים ל-textarea (בלי JS).
-        """
+    def _parse_phones_multiline(raw: str) -> list[str]:  # Parse multiline/comma-separated phones into a deduped list (preserves order)
         raw = (raw or "").strip()
         if not raw:
             return []
@@ -128,28 +113,21 @@ class RegisteredUser:
         for line in raw.splitlines():
             p = line.strip()
             if p:
-                # ניקוי עדין: להוריד רווחים בתוך המספר
                 p = re.sub(r"\s+", "", p)
                 parts.append(p)
 
-        seen = set()
-        out = []
+        seen, out = set(), []
         for p in parts:
             if p not in seen:
                 seen.add(p)
                 out.append(p)
         return out
 
-    # ✅ Alias נוח (כי הרבה פעמים קוראים לזה parse_phones)
     @staticmethod
-    def parse_phones(raw: str) -> list[str]:
-        return RegisteredUser._parse_phones_multiline(raw)
+    def parse_phones(raw: str) -> list[str]: return RegisteredUser._parse_phones_multiline(raw)  # Public alias for phone parsing
 
     @staticmethod
-    def replace_phones_from_text(email: str, phones_text: str):
-        """
-        מחליף את כל מספרי הטלפון של המשתמש לפי textarea.
-        """
+    def replace_phones_from_text(email: str, phones_text: str):  # Replace all phone numbers for a user from textarea input
         email = (email or "").strip().lower()
         if not email:
             return False, "אימייל חסר"
@@ -166,11 +144,8 @@ class RegisteredUser:
 
         return True, None
 
-    # ----------------------------
-    # Profile read helper (user + all phones)
-    # ----------------------------
     @staticmethod
-    def get_profile_with_phones(email: str):
+    def get_profile_with_phones(email: str):  # Load user profile and all phones in one call
         email = (email or "").strip().lower()
         if not email:
             return None, []
@@ -213,16 +188,8 @@ class RegisteredUser:
         )
         return user, phones
 
-    # ----------------------------
-    # Save (MISSING IN YOUR FILE) ✅
-    # ----------------------------
-    def save(self):
-        """
-        יוצר רשומה ב-RegisteredUser.
-        registration_date אצלך הוא DATE => נשמור YYYY-MM-DD.
-        """
+    def save(self):  # Insert a new RegisteredUser row into the database
         reg_date = datetime.now().strftime("%Y-%m-%d")
-
         query = """
             INSERT INTO RegisteredUser
               (email, first_name_en, last_name_en, birth_date, registration_date, passport_number, password)
@@ -232,31 +199,18 @@ class RegisteredUser:
         with DB.get_cursor() as cursor:
             cursor.execute(
                 query,
-                (
-                    self.email,
-                    self.first_name,
-                    self.last_name,
-                    self.birth_date,
-                    reg_date,
-                    self.passport,
-                    self.password,
-                ),
+                (self.email, self.first_name, self.last_name, self.birth_date, reg_date, self.passport, self.password),
             )
 
-    # ----------------------------
-    # Register ✅ (multi phones)
-    # ----------------------------
     @staticmethod
-    def register(data: dict):
+    def register(data: dict):  # Create a new registered user and store all provided phone numbers
         email = (data.get("email") or "").strip().lower()
         password = data.get("password") or ""
         confirm_password = data.get("confirm_password") or ""
 
-        # ✅ textarea של כמה מספרים
         phone_numbers_text = (data.get("phone_numbers") or "").strip()
         phones = RegisteredUser._parse_phones_multiline(phone_numbers_text)
 
-        # ✅ תאימות אחורה: אם עדיין יש input אחד בשם phone_number
         single_phone = (data.get("phone_number") or "").strip()
         if single_phone and single_phone not in phones:
             phones.append(single_phone)
@@ -281,7 +235,6 @@ class RegisteredUser:
             )
             new_user.save()
 
-            # ✅ שמירת כל הטלפונים
             for ph in phones:
                 RegisteredUser.add_phone(email, ph)
 
@@ -290,19 +243,8 @@ class RegisteredUser:
         except Exception as e:
             return None, f"Database error: {str(e)}"
 
-    # ----------------------------
-    # Profile update + phones in one call
-    # ----------------------------
     @staticmethod
-    def update_profile_and_phones(
-        email: str,
-        first_name_en: str,
-        last_name_en: str,
-        birth_date,
-        passport_number: str,
-        phones_text: str,
-        password: str = None,
-    ):
+    def update_profile_and_phones(email: str, first_name_en: str, last_name_en: str, birth_date, passport_number: str, phones_text: str, password: str = None):  # Update profile fields and replace phones in one transaction
         email = (email or "").strip().lower()
         if not email:
             return False, "אימייל חסר"
@@ -314,16 +256,13 @@ class RegisteredUser:
         if not first_name_en or not last_name_en:
             return False, "שם פרטי ושם משפחה הם שדות חובה"
 
-        bd = birth_date
-        if isinstance(birth_date, str):
-            bd = birth_date.strip() or None
+        bd = birth_date.strip() or None if isinstance(birth_date, str) else birth_date
 
         phones = RegisteredUser._parse_phones_multiline(phones_text)
         if not phones:
             return False, "אנא הזן לפחות מספר טלפון אחד"
 
         with DB.get_cursor() as cursor:
-            # 1) Update user
             if password is None or str(password).strip() == "":
                 cursor.execute(
                     """
@@ -350,7 +289,6 @@ class RegisteredUser:
                     (first_name_en, last_name_en, bd, passport_number, password, email),
                 )
 
-            # 2) Replace phones
             cursor.execute("DELETE FROM RegisteredPhone WHERE LOWER(email)=%s", (email,))
             for p in phones:
                 cursor.execute(
@@ -360,11 +298,8 @@ class RegisteredUser:
 
         return True, None
 
-    # ----------------------------
-    # Login
-    # ----------------------------
     @staticmethod
-    def login(email, password):
+    def login(email, password):  # Authenticate a registered user by email and password
         email = (email or "").strip().lower()
         password = password or ""
 

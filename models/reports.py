@@ -6,7 +6,7 @@ class ManagerReports:
         """
         Query 1:
         ממוצע תפוסת טיסות שהתקיימו (arrival_time < NOW()) באחוזים
-        ""
+        """
         query = """
         SELECT
     ROUND(

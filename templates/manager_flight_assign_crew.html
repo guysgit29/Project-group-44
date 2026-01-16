@@ -23,7 +23,6 @@
     </div>
   {% endif %}
 
-  <!-- כרטיס פרטי טיסה/דראפט -->
   <div style="margin-top:16px; padding:14px; border:1px solid #e5e7eb; border-radius:12px; background:#fff;">
     <div style="display:flex; gap:18px; flex-wrap:wrap; align-items:center;">
       <div><b>נתיב:</b> {{ draft.origin }} → {{ draft.destination }}</div>
@@ -43,9 +42,7 @@
 
   <hr style="margin:20px 0;">
 
-  <!-- ===================== -->
-  <!-- טייסים -->
-  <!-- ===================== -->
+
   <h3>שיבוץ טייסים</h3>
 
   <div style="margin-bottom:10px; padding:10px; border:1px solid #f1f5f9; border-radius:10px; background:#fafafa;">
@@ -110,9 +107,7 @@
 
   <hr style="margin:20px 0;">
 
-  <!-- ===================== -->
-  <!-- דיילים -->
-  <!-- ===================== -->
+
   <h3>שיבוץ דיילים</h3>
 
   <div style="margin-bottom:10px; padding:10px; border:1px solid #f1f5f9; border-radius:10px; background:#fafafa;">
@@ -177,9 +172,6 @@
 
   <hr style="margin:20px 0;">
 
-  <!-- ===================== -->
-  <!-- המשך -->
-  <!-- ===================== -->
   <form method="POST">
     <input type="hidden" name="action" value="continue">
     {% if missing_counts.pilots == 0 and missing_counts.attendants == 0 %}

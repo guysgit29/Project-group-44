@@ -1,36 +1,24 @@
-from datetime import date
-from database import DB
-from datetime import datetime,timedelta
+from datetime import date, datetime, timedelta
 import re
+
+from database import DB
 from models.flight import Flight
 
+
 class Booking:
-    def __init__(self, booking_id, flight_number, price, status='Active'):
+    """Handles booking lifecycle: fetch, create, cancel, pricing, and user flight history."""
+
+    def __init__(self, booking_id, flight_number, price, status="Active"):
         self.booking_id = booking_id
         self.flight_number = flight_number
         self.price = price
         self.status = status
 
-        # ----------------------------
-        # Debug helper
-        # ----------------------------
-        @staticmethod
-        def _dbg(msg: str):
-            print(f"[DBG][Booking] {msg}")
+    @staticmethod
+    def _dbg(msg: str): print(f"[DBG][Booking] {msg}")  # Print debug messages for booking operations
 
     @staticmethod
-    def get_by_id(booking_id):
-        """
-        FIX FOR AttributeError: Fetches a booking object by its ID.
-
-        """
-        with DB.get_cursor() as cursor:
-            cursor.execute("SELECT * FROM Booking WHERE booking_id = %s", (booking_id,))
-            row = cursor.fetchone()
-            return Booking.from_db(row) if row else None
-
-    @staticmethod
-    def from_db(row):
+    def from_db(row):  # Convert DB row dict into a Booking object
         if not row:
             return None
         return Booking(
@@ -39,59 +27,55 @@ class Booking:
             row.get("price"),
             row.get("booking_status", "Active"),
         )
-    @staticmethod
-    def _dbg(msg: str):
-        print(f"[DBG][Booking] {msg}")
 
     @staticmethod
-    def get_by_id(booking_id):
+    def get_by_id(booking_id):  # Fetch a booking by booking_id
         with DB.get_cursor() as cursor:
             cursor.execute("SELECT * FROM Booking WHERE booking_id = %s", (booking_id,))
             row = cursor.fetchone()
             return Booking.from_db(row) if row else None
 
     @staticmethod
-    def get_by_id_and_email(booking_id, email):
-        """Used for public booking search"""
-        query = "SELECT * FROM Booking WHERE booking_id = %s AND (registered_email = %s OR guest_email = %s)"
+    def get_by_id_and_email(booking_id, email):  # Fetch a booking by id if it belongs to the given email
+        query = """
+            SELECT *
+            FROM Booking
+            WHERE booking_id = %s
+              AND (registered_email = %s OR guest_email = %s)
+        """
         with DB.get_cursor() as cursor:
             cursor.execute(query, (booking_id, email, email))
             row = cursor.fetchone()
             return Booking.from_db(row) if row else None
 
-    def get_details(self):
-        """Fixes AttributeError for manage_booking page"""
+    def get_details(self):  # Load booking + flight info and seat tickets for manage pages
         with DB.get_cursor() as cursor:
-            cursor.execute("""
-                SELECT B.*, F.origin, F.destination, F.departure_time, F.arrival_time, F.flight_status,
-                COALESCE(B.registered_email, B.guest_email) as email
-                FROM Booking B JOIN Flight F ON B.flight_number = F.flight_number
-                WHERE B.booking_id = %s""", (self.booking_id,))
+            cursor.execute(
+                """
+                SELECT
+                    B.*,
+                    F.origin, F.destination, F.departure_time, F.arrival_time, F.flight_status,
+                    COALESCE(B.registered_email, B.guest_email) AS email
+                FROM Booking B
+                JOIN Flight F ON B.flight_number = F.flight_number
+                WHERE B.booking_id = %s
+                """,
+                (self.booking_id,),
+            )
             order = cursor.fetchone()
 
             cursor.execute("SELECT * FROM Ticket WHERE booking_id = %s", (self.booking_id,))
-            seats = cursor.fetchall()
+            seats = cursor.fetchall() or []
+
             return order, seats
 
-    def cancel(self):
-        """
-        Cancel booking:
-        - free seats in Seats_on_Flights
-        - delete tickets
-        - mark booking canceled + apply fee
-        - refresh flight status
-        """
+    def cancel(self):  # Cancel a booking by freeing seats, deleting tickets, updating booking, and refreshing flight status
         with DB.get_cursor() as cursor:
-            # ensure we have flight_number
             if not self.flight_number:
-                cursor.execute(
-                    "SELECT flight_number FROM Booking WHERE booking_id = %s",
-                    (self.booking_id,),
-                )
+                cursor.execute("SELECT flight_number FROM Booking WHERE booking_id = %s", (self.booking_id,))
                 r = cursor.fetchone()
                 self.flight_number = r.get("flight_number") if r else None
 
-            # 1) read all tickets for this booking (needed to free seats)
             cursor.execute(
                 """
                 SELECT aircraft_id, class_type, row_num, column_number, flight_number
@@ -102,7 +86,6 @@ class Booking:
             )
             tickets = cursor.fetchall() or []
 
-            # 2) free seats (available=1) for those tickets
             for t in tickets:
                 cursor.execute(
                     """
@@ -116,17 +99,15 @@ class Booking:
                     """,
                     (
                         int(t["aircraft_id"]),
-                        (t["class_type"] or "").strip(),  # חשוב: strip
+                        (t["class_type"] or "").strip(),
                         int(t["row_num"]),
                         int(t["column_number"]),
                         int(t["flight_number"]),
                     ),
                 )
 
-            # 3) delete tickets
             cursor.execute("DELETE FROM Ticket WHERE booking_id = %s", (self.booking_id,))
 
-            # 4) mark booking canceled
             cursor.execute(
                 """
                 UPDATE Booking
@@ -137,16 +118,20 @@ class Booking:
                 (self.booking_id,),
             )
 
-        # 5) recompute flight status
         if self.flight_number:
-            from models.flight import Flight
             Flight.update_status_by_capacity(int(self.flight_number))
 
     @staticmethod
-    def get_user_flights(email):
+    def get_user_flights(email):  # Fetch all bookings for a user, joined with flight basic details
         query = """
-            SELECT B.booking_id, B.flight_number, B.price, B.booking_status,
-                   F.origin, F.destination, F.departure_time
+            SELECT
+                B.booking_id,
+                B.flight_number,
+                B.price,
+                B.booking_status,
+                F.origin,
+                F.destination,
+                F.departure_time
             FROM Booking B
             JOIN Flight F ON B.flight_number = F.flight_number
             WHERE B.registered_email = %s OR B.guest_email = %s
@@ -154,33 +139,22 @@ class Booking:
         """
         with DB.get_cursor() as cursor:
             cursor.execute(query, (email, email))
-            return cursor.fetchall()
+            return cursor.fetchall() or []
 
     @staticmethod
-    def sync_past_bookings():
-        """עדכון אוטומטי של הזמנות שזמן הטיסה שלהן עבר"""
+    def sync_past_bookings():  # Auto-mark bookings as Completed when departure_time is in the past
         query = """
             UPDATE Booking B
             JOIN Flight F ON B.flight_number = F.flight_number
             SET B.booking_status = 'Completed'
-            WHERE B.booking_status = 'Active' 
+            WHERE B.booking_status = 'Active'
               AND F.departure_time < NOW()
         """
         with DB.get_cursor() as cursor:
             cursor.execute(query)
 
     @staticmethod
-    def from_db(row):
-        """Helper to convert DB row to Python object"""
-        if not row: return None
-        return Booking(row['booking_id'], row['flight_number'], row['price'], row['booking_status'])
-
-    # ----------------------------
-    # Seat parsing
-    # ----------------------------
-    @staticmethod
-    def _parse_seat_val(seat_val: str):
-        # "Economy-1-4" -> ("Economy", 1, 4)
+    def _parse_seat_val(seat_val: str):  # Parse seat string like "Economy-1-4" into (class_type, row, col)
         parts = (seat_val or "").split("-")
         if len(parts) != 3:
             return None
@@ -193,21 +167,15 @@ class Booking:
         return class_type, row_num, col_num
 
     @staticmethod
-    def _get_aircraft_id_for_flight(cursor, flight_number: int):
+    def _get_aircraft_id_for_flight(cursor, flight_number: int):  # Resolve aircraft_id for a given flight_number
         cursor.execute("SELECT aircraft_id FROM Flight WHERE flight_number = %s", (flight_number,))
         f = cursor.fetchone()
         if not f or f.get("aircraft_id") is None:
             return None
         return int(f["aircraft_id"])
 
-    # ----------------------------
-    # Pricing (matches your get_seat_map join logic)
-    # ----------------------------
     @staticmethod
-    def get_pricing_for_selected_seats(flight_number: int, selected_seats: list[str]):
-        """
-        Returns: (details_list, total)
-        """
+    def get_pricing_for_selected_seats(flight_number: int, selected_seats: list[str]):  # Calculate per-seat pricing and total for chosen seats
         Booking._dbg(f"get_pricing_for_selected_seats(flight={flight_number}, seats={selected_seats})")
 
         parsed = [Booking._parse_seat_val(s) for s in (selected_seats or [])]
@@ -238,8 +206,7 @@ class Booking:
             rows = cursor.fetchall() or []
             price_map = {r["class_type"]: float(r["class_price"] or 0.0) for r in rows}
 
-            details = []
-            total = 0.0
+            details, total = [], 0.0
             for class_type, row_num, col_num in parsed:
                 price = float(price_map.get(class_type, 0.0))
                 details.append(
@@ -257,11 +224,8 @@ class Booking:
             Booking._dbg(f"pricing: aircraft_id={aircraft_id}, total={total}, details_count={len(details)}")
             return details, total
 
-    # ----------------------------
-    # Booking id generation BK0001...
-    # ----------------------------
     @staticmethod
-    def get_next_booking_id() -> str:
+    def get_next_booking_id() -> str:  # Generate the next booking id in BK0001 format
         with DB.get_cursor() as cursor:
             cursor.execute(
                 """
@@ -272,29 +236,25 @@ class Booking:
             )
             row = cursor.fetchone() or {}
             max_num = int(row.get("max_num") or 0)
-            next_num = max_num + 1
-            bid = f"BK{next_num:04d}"
+            bid = f"BK{(max_num + 1):04d}"
             Booking._dbg(f"get_next_booking_id -> {bid} (max_num={max_num})")
             return bid
 
-    # ----------------------------
-    # Create booking + tickets
-    # ----------------------------
     @staticmethod
     def create_booking_with_tickets(
-            flight_number: int,
-            first_name: str,
-            last_name: str,
-            email: str,
-            selected_seats: list[str],
-            payment_method: str,
-            logged_in_registered: bool,
-            phone_numbers_text: str = "",
-            passport_number: str = "",
-    ):
+        flight_number: int,
+        first_name: str,
+        last_name: str,
+        email: str,
+        selected_seats: list[str],
+        payment_method: str,
+        logged_in_registered: bool,
+        phone_numbers_text: str = "",
+        passport_number: str = "",
+    ):  # Create a booking and its tickets after validating seat availability and pricing
         email = (email or "").strip().lower()
         phones = Booking._parse_phone_numbers(phone_numbers_text)
-        passport_number = (passport_number or "").strip()  # כרגע לא נשמר
+        passport_number = (passport_number or "").strip()
 
         Booking._dbg(
             "create_booking_with_tickets("
@@ -306,7 +266,6 @@ class Booking:
             Booking._dbg("create_booking: missing email or seats -> None")
             return None
 
-        # לא חובה, אבל מומלץ: enforce גם פה
         if not phones and not logged_in_registered:
             Booking._dbg("create_booking: guest must provide at least 1 phone -> None")
             return None
@@ -325,7 +284,6 @@ class Booking:
         seats = [_seat_key(d) for d in details]
 
         with DB.get_cursor() as cursor:
-            # 0) Ensure Guest exists + save many phones (only for guests)
             if not logged_in_registered:
                 cursor.execute("SELECT 1 FROM GuestUser WHERE email=%s LIMIT 1", (email,))
                 if not cursor.fetchone():
@@ -340,7 +298,6 @@ class Booking:
                         (email, ph),
                     )
 
-            # 1) Validate Seat existence (set-based)
             cursor.execute(
                 """
                 SELECT class_type, row_num, column_number
@@ -353,13 +310,11 @@ class Booking:
                 (r["class_type"], int(r["row_num"]), int(r["column_number"]))
                 for r in (cursor.fetchall() or [])
             }
-
             missing = [s for s in seats if s not in existing_seats]
             if missing:
                 Booking._dbg(f"SEAT NOT FOUND in Seat table: {missing} -> None")
                 return None
 
-            # 2) Ticket conflict check (set-based)
             cursor.execute(
                 """
                 SELECT class_type, row_num, column_number
@@ -372,13 +327,11 @@ class Booking:
                 (r["class_type"], int(r["row_num"]), int(r["column_number"]))
                 for r in (cursor.fetchall() or [])
             }
-
             conflict = [s for s in seats if s in taken]
             if conflict:
                 Booking._dbg(f"CONFLICT: seats already taken: {conflict} -> None")
                 return None
 
-            # 3) Insert Booking
             booking_id = Booking.get_next_booking_id()
             registered_email = email if logged_in_registered else None
             guest_email = None if logged_in_registered else email
@@ -401,7 +354,6 @@ class Booking:
                 ),
             )
 
-            # 4) Insert Tickets
             try:
                 for class_type, row_num, col_num in seats:
                     cursor.execute(
@@ -411,14 +363,7 @@ class Booking:
                         VALUES
                           (%s, %s, %s, %s, %s, %s)
                         """,
-                        (
-                            booking_id,
-                            int(flight_number),
-                            aircraft_id,
-                            class_type,
-                            row_num,
-                            col_num,
-                        ),
+                        (booking_id, int(flight_number), aircraft_id, class_type, row_num, col_num),
                     )
             except Exception as e:
                 Booking._dbg(f"ERROR inserting Ticket: {repr(e)} -> cleanup")
@@ -437,22 +382,16 @@ class Booking:
         return booking_id
 
     @staticmethod
-    def get_user_flights_split(user_email: str, now=None):
-        """
-        Returns (active_bookings, history_bookings)
-        Active = departure_time > now AND booking_status == 'Active'
-        Everything else goes to history.
-        """
+    def get_user_flights_split(user_email: str, now=None):  # Split bookings into upcoming active and history lists
         Booking.sync_past_bookings()
         all_bookings = Booking.get_user_flights(user_email)
 
         now = now or datetime.now()
-
         active, history = [], []
+
         for b in all_bookings:
             dep = b.get("departure_time")
             status = (b.get("booking_status") or "").strip()
-
             if dep and dep > now and status == "Active":
                 active.append(b)
             else:
@@ -461,19 +400,7 @@ class Booking:
         return active, history
 
     @staticmethod
-    def calc_cancel_flags(order_data: dict, now=None):
-        """
-        Rules:
-        can_cancel iff:
-          - booking_status != 'Canceled by Customer'
-          - flight_status in ('Active','Full')
-          - departure_time - now > 72h
-
-        show_block_message iff:
-          - booking active (not canceled)
-          - flight not completed
-          - cannot cancel
-        """
+    def calc_cancel_flags(order_data: dict, now=None):  # Decide if booking can be canceled based on status and time-to-departure
         now = now or datetime.now()
 
         booking_status = (order_data.get("booking_status") or "").strip()
@@ -491,66 +418,32 @@ class Booking:
         can_cancel = booking_active and flight_cancelable_status and more_than_36h
         show_block_message = booking_active and flight_not_completed and (not can_cancel)
 
-        block_message = (
-            "הזמנה זו לא ניתנת לביטול מאחר ונותרו פחות מ-36 שעות להמראה"
-            if show_block_message else None
-        )
-
+        block_message = "הזמנה זו לא ניתנת לביטול מאחר ונותרו פחות מ-36 שעות להמראה" if show_block_message else None
         return can_cancel, show_block_message, block_message
 
     @staticmethod
-    def get_details_by_id(booking_id: str):
-        b = Booking(booking_id, None, None)
-        return b.get_details()
+    def get_details_by_id(booking_id: str):  # Convenience wrapper to return order+seats without constructing object manually
+        return Booking(booking_id, None, None).get_details()
 
     @staticmethod
-    def _parse_phones_multiline(raw: str) -> list[str]:
-        if not raw:
-            return []
-        # תומך בשורות / פסיקים
-        parts = []
-        for line in raw.replace(",", "\n").splitlines():
-            p = line.strip()
-            if p:
-                parts.append(p)
-        # unique, preserving order
-        seen = set()
-        out = []
-        for p in parts:
-            if p not in seen:
-                seen.add(p)
-                out.append(p)
-        return out
-
-    @staticmethod
-    def _normalize_phone(raw: str) -> str:
-        """
-        Normalize phone for storage:
-        - strip spaces
-        - keep digits and leading +
-        Example: '050-123 4567' -> '0501234567'
-        """
+    def _normalize_phone(raw: str) -> str:  # Normalize phone string into digits (keeps leading + if present)
         s = (raw or "").strip()
         if not s:
             return ""
         s = s.replace(" ", "").replace("-", "")
-        # allow leading +
         if s.startswith("+"):
             return "+" + re.sub(r"\D", "", s[1:])
         return re.sub(r"\D", "", s)
 
     @staticmethod
-    def _parse_phone_numbers(phone_numbers_text: str) -> list[str]:
-        """
-        Accepts multiline or comma-separated input and returns a deduped list.
-        """
+    def _parse_phone_numbers(phone_numbers_text: str) -> list[str]:  # Parse multiline/comma-separated phones into a deduped list
         text = (phone_numbers_text or "").strip()
         if not text:
             return []
 
         parts = re.split(r"[,\n\r\t]+", text)
-        out = []
-        seen = set()
+        out, seen = [], set()
+
         for p in parts:
             norm = Booking._normalize_phone(p)
             if not norm:
@@ -558,10 +451,11 @@ class Booking:
             if norm not in seen:
                 seen.add(norm)
                 out.append(norm)
+
         return out
 
     @staticmethod
-    def get_user_flights_for_page(user_email, selected_status=""):
+    def get_user_flights_for_page(user_email, selected_status=""):  # Fetch bookings for profile page with optional status filter
         q = """
             SELECT
                 b.booking_id,
@@ -585,12 +479,10 @@ class Booking:
             WHERE (b.registered_email = %s OR b.guest_email = %s)
             ORDER BY f.departure_time DESC
         """
-
         with DB.get_cursor() as cursor:
             cursor.execute(q, (user_email, user_email))
             flights = cursor.fetchall() or []
 
-        # source of truth: booking_status
         for f in flights:
             f["display_status"] = (f.get("booking_status") or "").strip()
 
