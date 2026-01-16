@@ -55,7 +55,7 @@
 
   <!-- ===== דוח 3 ===== -->
   <div style="padding:16px; background:#fff; border:1px solid #e5e7eb; border-radius:14px; margin-bottom:16px;">
-    <h3 style="margin:0 0 10px 0;">3) שעות טיסה לכל עובד (קצר/ארוך/סה״כ)</h3>
+    <h3 style="margin:0 0 10px 0;">3) שעות טיסה לכל עובד (קצר/ארוך)</h3>
 
     {% if report3_rows and report3_rows|length > 0 %}
       <table style="width:100%; border-collapse:collapse;">
@@ -63,7 +63,6 @@
           <tr style="background:#f4f4f4;">
             <th style="border:1px solid #ddd; padding:8px;">ת.ז</th>
             <th style="border:1px solid #ddd; padding:8px;">שם</th>
-            <th style="border:1px solid #ddd; padding:8px;">תפקיד</th>
             <th style="border:1px solid #ddd; padding:8px;">שעות קצרות</th>
             <th style="border:1px solid #ddd; padding:8px;">שעות ארוכות</th>
             <th style="border:1px solid #ddd; padding:8px;">סה״כ שעות</th>
@@ -74,12 +73,42 @@
             <tr>
               <td style="border:1px solid #ddd; padding:8px;">{{ row.id }}</td>
               <td style="border:1px solid #ddd; padding:8px;">{{ row.first_name_he }} {{ row.last_name_he }}</td>
-              <td style="border:1px solid #ddd; padding:8px;">
-                {% if row.job_title == 'Pilot' %} טייס {% else %} דייל/ת {% endif %}
-              </td>
               <td style="border:1px solid #ddd; padding:8px;">{{ row.short_flight_hours }}</td>
               <td style="border:1px solid #ddd; padding:8px;">{{ row.long_flight_hours }}</td>
-              <td style="border:1px solid #ddd; padding:8px; font-weight:900;">{{ row.total_hours }}</td>
+              <td style="border:1px solid #ddd; padding:8px; font-weight:900;">
+                {{ (row.short_flight_hours | float) + (row.long_flight_hours | float) }}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <div style="color:#6b7280; margin-top:8px;">
+        * סה״כ מחושב בטמפלייט: קצר + ארוך.
+      </div>
+    {% else %}
+      <p style="color:#6b7280; margin:0;">אין נתונים להצגה.</p>
+    {% endif %}
+  </div>
+
+  <!-- ===== דוח 4 ===== -->
+  <div style="padding:16px; background:#fff; border:1px solid #e5e7eb; border-radius:14px; margin-bottom:16px;">
+    <h3 style="margin:0 0 10px 0;">4) שיעור ביטולים חודשי</h3>
+
+    {% if report4_rows and report4_rows|length > 0 %}
+      <table style="width:100%; border-collapse:collapse;">
+        <thead>
+          <tr style="background:#f4f4f4;">
+            <th style="border:1px solid #ddd; padding:8px;">חודש</th>
+            <th style="border:1px solid #ddd; padding:8px;">אחוז ביטולים</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in report4_rows %}
+            <tr>
+              <td style="border:1px solid #ddd; padding:8px;">{{ row.booking_month }}</td>
+              <td style="border:1px solid #ddd; padding:8px; font-weight:900;">
+                {{ row.cancellation_rate_percentage }}
+              </td>
             </tr>
           {% endfor %}
         </tbody>
@@ -89,31 +118,38 @@
     {% endif %}
   </div>
 
-  <!-- ===== דוח 4 ===== -->
+  <!-- ===== דוח 5 ===== -->
   <div style="padding:16px; background:#fff; border:1px solid #e5e7eb; border-radius:14px;">
-    <h3 style="margin:0 0 10px 0;">4) שיעור ביטולים חודשי</h3>
+    <h3 style="margin:0 0 10px 0;">5) ניצול מטוסים חודשי ומסלול דומיננטי</h3>
 
-    {% if report4_rows and report4_rows|length > 0 %}
+    {% if report5_rows and report5_rows|length > 0 %}
       <table style="width:100%; border-collapse:collapse;">
         <thead>
           <tr style="background:#f4f4f4;">
+            <th style="border:1px solid #ddd; padding:8px;">מטוס</th>
             <th style="border:1px solid #ddd; padding:8px;">חודש</th>
-            <th style="border:1px solid #ddd; padding:8px;">סה״כ הזמנות</th>
-            <th style="border:1px solid #ddd; padding:8px;">מס׳ ביטולים</th>
-            <th style="border:1px solid #ddd; padding:8px;">אחוז ביטולים</th>
+            <th style="border:1px solid #ddd; padding:8px;">טיסות שבוצעו</th>
+            <th style="border:1px solid #ddd; padding:8px;">טיסות שבוטלו</th>
+            <th style="border:1px solid #ddd; padding:8px;">ניצול</th>
+            <th style="border:1px solid #ddd; padding:8px;">מסלול דומיננטי</th>
           </tr>
         </thead>
         <tbody>
-          {% for row in report4_rows %}
+          {% for row in report5_rows %}
             <tr>
-              <td style="border:1px solid #ddd; padding:8px;">{{ row.booking_month }}</td>
-              <td style="border:1px solid #ddd; padding:8px;">{{ row.total_bookings }}</td>
-              <td style="border:1px solid #ddd; padding:8px;">{{ row.cancelled_count }}</td>
-              <td style="border:1px solid #ddd; padding:8px; font-weight:900;">{{ row.cancellation_rate_percentage }}%</td>
+              <td style="border:1px solid #ddd; padding:8px;">{{ row.aircraft_id }}</td>
+              <td style="border:1px solid #ddd; padding:8px;">{{ row.work_month }}</td>
+              <td style="border:1px solid #ddd; padding:8px;">{{ row.performed_flights }}</td>
+              <td style="border:1px solid #ddd; padding:8px;">{{ row.cancelled_flights }}</td>
+              <td style="border:1px solid #ddd; padding:8px; font-weight:900;">{{ row.utilization_percentage }}</td>
+              <td style="border:1px solid #ddd; padding:8px;">{{ row.dominant_route }}</td>
             </tr>
           {% endfor %}
         </tbody>
       </table>
+      <div style="color:#6b7280; margin-top:8px;">
+        * אם אין טיסות בחודש מסוים, המסלול יוצג כ-No Flights.
+      </div>
     {% else %}
       <p style="color:#6b7280; margin:0;">אין נתונים להצגה.</p>
     {% endif %}

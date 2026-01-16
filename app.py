@@ -1460,6 +1460,17 @@ def manager_reports():
     r2 = ManagerReports.report_2_revenue_by_aircraft_and_class()
     r3 = ManagerReports.report_3_crew_hours_short_long()
     r4 = ManagerReports.report_4_monthly_cancellation_rate()
+    r5 = ManagerReports.report_5_fleet_monthly_utilization_and_dominant_route()
+
+    return render_template(
+        "manager_reports.html",
+        report1_avg=r1,
+        report2_rows=r2,
+        report3_rows=r3,
+        report4_rows=r4,
+        report5_rows=r5
+    )
+
 
     return render_template(
         "manager_reports.html",
