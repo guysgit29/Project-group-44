@@ -816,3 +816,10 @@ div[class*="background"],
   .page-wrap{ padding:24px 14px; }
   .checkout{ max-width:100%; }
 }
+
+.grid-2{
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  align-items: start; /* במקום end */
+}

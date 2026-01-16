@@ -1,4 +1,4 @@
-FlyTAU – Flight Booking System (Group 44)
+FlyTAU By Group 44
 
 FlyTAU is a web-based flight booking system developed as an academic project as part of two courses:
 	•	Database Systems Design
