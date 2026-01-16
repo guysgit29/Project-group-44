@@ -1470,16 +1470,6 @@ def manager_reports():
         report4_rows=r4,
         report5_rows=r5
     )
-
-
-    return render_template(
-        "manager_reports.html",
-        report1_avg=r1,
-        report2_rows=r2,
-        report3_rows=r3,
-        report4_rows=r4
-    )
-
 def _require_logged_in_user():
     return session.get("role") == "registered" and session.get("user_email")
 
