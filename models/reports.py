@@ -182,65 +182,74 @@ WHERE f.arrival_time < NOW();
         - dominant_route: המסלול השכיח באותו חודש (Completed) או 'No Flights'
         """
         query = """
-        WITH Route_Stats AS (
-            SELECT 
-                aircraft_id,
-                DATE_FORMAT(departure_time, '%Y-%m') AS work_month,
-                CONCAT(origin, '-', destination) AS route_name,
-                COUNT(*) AS route_count
-            FROM 
-                Flight
-            WHERE 
-                flight_status = 'Completed'
-            GROUP BY 
-                aircraft_id, work_month, route_name
-        ), 
-        Dominant_Routes AS (
-            SELECT 
-                aircraft_id,
-                work_month,
-                route_name,
-                ROW_NUMBER() OVER (
-                    PARTITION BY aircraft_id, work_month
-                    ORDER BY route_count DESC, route_name ASC
-                ) AS rn
-            FROM 
-                Route_Stats
-        )
-        SELECT 
-            a.aircraft_id,
-            DATE_FORMAT(f.departure_time, '%Y-%m') AS work_month,
-            SUM(CASE 
-                WHEN f.flight_status = 'Completed' THEN 1 
-                ELSE 0 
-            END) AS performed_flights,
-            SUM(CASE 
-                WHEN f.flight_status = 'Canceled' THEN 1 
-                ELSE 0 
-            END) AS cancelled_flights,
-            CONCAT(
-                ROUND(
-                    (COUNT(DISTINCT CASE 
-                        WHEN f.flight_status = 'Completed' 
-                        THEN DATE(f.departure_time) 
-                    END) / 30.0) * 100, 0
-                ),
-                '%'
-            ) AS utilization_percentage,
-            IFNULL(dr.route_name, 'No Flights') AS dominant_route
-        FROM 
-            Aircraft a
-        LEFT JOIN 
-            Flight f ON a.aircraft_id = f.aircraft_id
-        LEFT JOIN 
-            Dominant_Routes dr 
-                ON a.aircraft_id = dr.aircraft_id 
-                AND DATE_FORMAT(f.departure_time, '%Y-%m') = dr.work_month 
-                AND dr.rn = 1
-        GROUP BY 
-            a.aircraft_id, 
-            DATE_FORMAT(f.departure_time, '%Y-%m'),
-            dr.route_name;
+        -- Query 5
+WITH Route_Stats AS (
+    -- Step 1: Aggregate completed flights by route and month
+    SELECT 
+        aircraft_id,
+        DATE_FORMAT(departure_time, '%Y-%m') AS work_month,
+        CONCAT(origin, '-', destination) AS route_name,
+        COUNT(*) AS route_count
+    FROM 
+        Flight
+    WHERE 
+        flight_status = 'Completed'
+    GROUP BY 
+        aircraft_id, work_month, route_name
+), 
+Dominant_Routes AS (
+    -- Step 2: Rank routes to identify the most frequent one
+    -- Uses route_name ASC as a tie-breaker to ensure a single result
+    SELECT 
+        aircraft_id,
+        work_month,
+        route_name,
+        ROW_NUMBER() OVER (PARTITION BY aircraft_id, work_month ORDER BY route_count DESC, route_name ASC) AS rn
+    FROM 
+        Route_Stats
+)
+-- Step 3: Main fleet report
+SELECT 
+    a.aircraft_id,
+    DATE_FORMAT(f.departure_time, '%Y-%m') AS work_month,
+    
+    -- Count performed flights
+    SUM(CASE 
+        WHEN f.flight_status = 'Completed' THEN 1 
+        ELSE 0 
+    END) AS performed_flights,
+
+    -- Count canceled flights
+    SUM(CASE 
+        WHEN f.flight_status = 'Canceled' THEN 1 
+        ELSE 0 
+    END) AS cancelled_flights,
+
+    -- Calculate utilization percentage (0 decimals + '%')
+    CONCAT(
+        ROUND(
+            (COUNT(DISTINCT CASE 
+                WHEN f.flight_status = 'Completed' 
+                THEN DATE(f.departure_time) 
+            END) / 30.0) * 100, 0),'%') AS utilization_percentage,
+
+    -- Display dominant route or default text
+    IFNULL(dr.route_name, 'No Flights') AS dominant_route
+
+FROM 
+    Aircraft a
+LEFT JOIN 
+    Flight f ON a.aircraft_id = f.aircraft_id
+LEFT JOIN 
+    Dominant_Routes dr ON a.aircraft_id = dr.aircraft_id 
+                        AND DATE_FORMAT(f.departure_time, '%Y-%m') = dr.work_month 
+                        AND dr.rn = 1
+WHERE 
+    f.departure_time <= NOW()
+GROUP BY 
+    a.aircraft_id, 
+    DATE_FORMAT(f.departure_time, '%Y-%m'),
+    dr.route_name;
         """
         with DB.get_cursor() as cursor:
             cursor.execute(query)
