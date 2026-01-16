@@ -8,27 +8,25 @@ class ManagerReports:
         ממוצע תפוסת טיסות שהתקיימו (arrival_time < NOW()) באחוזים
         """
         query = """
-        SELECT 
-            AVG(
-                (CASE 
-                    WHEN t.tickets_sold IS NULL THEN 0 
-                    ELSE t.tickets_sold 
-                 END / sof.total_capacity) * 100
-            ) AS average_flight_occupancy_percentage
-        FROM 
-            Flight f
-        JOIN (
-            SELECT flight_number, COUNT(*) AS total_capacity
-            FROM Seats_on_Flights
-            GROUP BY flight_number
-        ) sof ON f.flight_number = sof.flight_number
-        LEFT JOIN (
-            SELECT flight_number, COUNT(*) AS tickets_sold
-            FROM Ticket
-            GROUP BY flight_number
-        ) t ON f.flight_number = t.flight_number
-        WHERE 
-            f.arrival_time < NOW();
+        SELECT
+    ROUND(
+        AVG(
+            (COALESCE(t.tickets_sold, 0) / (sof.total_capacity * 1.0)) * 100
+        ),
+        2
+    ) AS average_flight_occupancy_percentage
+FROM Flight f
+JOIN (
+    SELECT flight_number, COUNT(*) AS total_capacity
+    FROM Seats_on_Flights
+    GROUP BY flight_number
+) sof ON f.flight_number = sof.flight_number
+LEFT JOIN (
+    SELECT flight_number, COUNT(*) AS tickets_sold
+    FROM Ticket
+    GROUP BY flight_number
+) t ON f.flight_number = t.flight_number
+WHERE f.arrival_time < NOW();
         """
         with DB.get_cursor() as cursor:
             cursor.execute(query)
