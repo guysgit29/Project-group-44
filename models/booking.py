@@ -523,3 +523,42 @@ class Booking:
                 seen.add(norm)
                 out.append(norm)
         return out
+
+    @staticmethod
+    def get_user_flights_for_page(user_email, selected_status=""):
+        q = """
+            SELECT
+                b.booking_id,
+                b.price,
+                b.booking_date,
+                b.booking_status,
+
+                f.flight_number,
+                f.aircraft_id,
+                f.origin,
+                f.destination,
+                f.departure_time,
+                f.arrival_time,
+                f.flight_status,
+
+                ru.first_name_en AS first_name,
+                ru.last_name_en  AS last_name
+            FROM Booking b
+            JOIN Flight f ON f.flight_number = b.flight_number
+            LEFT JOIN RegisteredUser ru ON ru.email = b.registered_email
+            WHERE (b.registered_email = %s OR b.guest_email = %s)
+            ORDER BY f.departure_time DESC
+        """
+
+        with DB.get_cursor() as cursor:
+            cursor.execute(q, (user_email, user_email))
+            flights = cursor.fetchall() or []
+
+        # source of truth: booking_status
+        for f in flights:
+            f["display_status"] = (f.get("booking_status") or "").strip()
+
+        if selected_status:
+            flights = [f for f in flights if f.get("display_status") == selected_status]
+
+        return flights

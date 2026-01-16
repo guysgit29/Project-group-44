@@ -1,98 +1,160 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="container">
-    <div style="margin-bottom: 40px;">
-{% set user = (active[0] if active else (history[0] if history else None)) %}
+<main class="container" style="max-width:1100px; margin:50px auto; text-align:right; direction:rtl;">
 
-        <h1 style="font-size: 2.2rem; color: var(--primary-navy); margin-bottom: 10px;">
-            שלום,
-            {% if user %}
-                {{ user.first_name }} {{ user.last_name }}
-            {% else %}
-                {{ session['user_id'] }}
-            {% endif %}
-        </h1>
-        <p style="color: #636e72;">נהל את הנסיעות שלך, צפה בכרטיסים ובצע שינויים בהזמנות קיימות.</p>
-    </div>
+  <style>
+    .btn{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      height:42px;
+      min-width:160px;
+      padding:0 16px;
+      border-radius:12px;
+      font-weight:900;
+      text-decoration:none;
+      border:none;
+      cursor:pointer;
+      white-space:nowrap;
+    }
 
-    <section>
-        <h2 style="font-size: 1.4rem; border-right: 4px solid var(--primary-navy); padding-right: 15px;">✈️ טיסות עתידיות</h2>
-        {% if active %}
-            <table class="professional-table">
-                <thead>
-                    <tr>
-                        <th>מספר הזמנה</th>
-                        <th>יעד</th>
-                        <th>זמן המראה</th>
-                        <th>סטטוס</th>
-                        <th></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for flight in active %}
-                    <tr>
-                        <td><strong>{{ flight.booking_id }}</strong></td>
-                        <td>
-                            <div style="font-weight: 700;">{{ flight.origin }} ➔ {{ flight.destination }}</div>
-                            <small style="color: #999;">טיסה: {{ flight.flight_number }}</small>
-                        </td>
-                        <td style="direction: ltr; font-weight: 600;">{{ flight.departure_time.strftime('%d/%m/%Y %H:%M') }}</td>
-                        <td><span class="badge badge-active">מאושרת</span></td>
-                        <td style="text-align: left;">
-                            <a href="{{ url_for('manage_booking', booking_id=flight.booking_id) }}" class="btn-premium">ניהול כרטיס</a>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        {% else %}
-            <div style="background: white; padding: 40px; text-align: center; border-radius: 8px; margin-top: 20px;">
-                <p>אין לך טיסות עתידיות כרגע.</p>
-                <a href="/" style="color: var(--primary-navy); font-weight: bold;">חפש טיסה חדשה ➔</a>
-            </div>
-        {% endif %}
-    </section>
+    .btn-manage{ background:#003366; color:white; }
+    .btn-view{ background:#ffffff; color:#003366; border:1px solid #003366; }
+    .btn-disabled{ background:#e5e7eb; color:#6b7280; cursor:not-allowed; }
 
-    <section style="margin-top: 60px;">
-        <h2 style="font-size: 1.4rem; color: #636e72; border-right: 4px solid #ddd; padding-right: 15px;">📜 היסטוריה וביטולים</h2>
-        {% if history %}
-           <table class="professional-table" style="opacity: 0.8;">
-    <thead>
+    .badge{
+      display:inline-flex;
+      padding:6px 10px;
+      border-radius:999px;
+      font-weight:900;
+      font-size:0.9rem;
+      border:1px solid transparent;
+      white-space:nowrap;
+    }
+
+    .badge-active{ background:#e8f1ff; color:#003366; border-color:#cfe2ff; }
+    .badge-completed{ background:#ecfdf5; color:#065f46; border-color:#bbf7d0; }
+    .badge-canceled{ background:#ffebe6; color:#bf2600; border-color:#ffd7cc; }
+
+    .actions-wrap{
+      display:flex;
+      gap:10px;
+      justify-content:center;
+      flex-wrap:wrap;
+    }
+
+    table{ width:100%; border-collapse:collapse; }
+    th, td{ border:1px solid #ddd; padding:10px; vertical-align:middle; }
+    thead tr{ background:#f4f4f4; }
+
+    .muted{ color:#6b7280; font-weight:700; }
+    .price{ text-align:left; font-weight:900; direction:ltr; }
+    .dt{ direction:ltr; font-weight:800; }
+  </style>
+
+  <h2 style="margin-bottom:10px;">הטיסות שלי</h2>
+  <p class="muted" style="margin-bottom:18px;">ניהול ההזמנות שלך עם פרטי טיסה מלאים וסינון.</p>
+
+  <!-- סינון -->
+  <form method="GET" action="{{ url_for('my_flights') }}" style="margin-bottom:18px;">
+    <label for="status" style="margin-left:10px; font-weight:900;">סינון לפי סטטוס:</label>
+
+    <select id="status" name="status" style="padding:8px; border-radius:10px;">
+      <option value="" {% if not selected_status %}selected{% endif %}>כל הטיסות</option>
+      <option value="Active" {% if selected_status == 'Active' %}selected{% endif %}>Active</option>
+      <option value="Completed" {% if selected_status == 'Completed' %}selected{% endif %}>Completed</option>
+      <option value="Canceled by Customer" {% if selected_status == 'Canceled by Customer' %}selected{% endif %}>Canceled by Customer</option>
+      <option value="Canceled by airline" {% if selected_status == 'Canceled by airline' %}selected{% endif %}>Canceled by airline</option>
+    </select>
+
+    <button type="submit"
+            style="margin-right:10px; padding:8px 14px; background:#003366; color:white; border:none; cursor:pointer; border-radius:10px; font-weight:900;">
+      סנן
+    </button>
+  </form>
+
+  <p class="muted" style="margin-bottom:10px;">
+    נמצאו {{ flights|length if flights else 0 }} טיסות
+  </p>
+
+  {% if flights and flights|length > 0 %}
+    <table>
+      <thead>
         <tr>
-            <th>מספר הזמנה</th>
-            <th>יעד</th>
-            <th>תאריך</th>
-            <th>סטטוס</th>
-            <th>מחיר</th>
-            <th></th>
+          <th>מס׳ הזמנה</th>
+          <th>מס׳ טיסה</th>
+          <th>מטוס</th>
+          <th>מוצא</th>
+          <th>יעד</th>
+          <th>המראה</th>
+          <th>נחיתה</th>
+          <th>סטטוס</th>
+          <th>מחיר</th>
+          <th style="text-align:center;">פעולות</th>
         </tr>
-    </thead>
-    <tbody>
-        {% for flight in history %}
-        <tr>
-            <td>{{ flight.booking_id }}</td>
-            <td>{{ flight.origin }} ➔ {{ flight.destination }}</td>
-            <td style="direction: ltr;">{{ flight.departure_time.strftime('%d/%m/%Y') }}</td>
+      </thead>
+
+      <tbody>
+        {% for f in flights %}
+          {% set st = (f.display_status or '')|trim %}
+          {% set bid = f.booking_id %}
+          <tr>
+            <td><strong>{{ bid }}</strong></td>
+            <td>{{ f.flight_number }}</td>
+            <td>{{ f.aircraft_id }}</td>
+            <td>{{ f.origin }}</td>
+            <td>{{ f.destination }}</td>
+
+            <td class="dt">
+              {{ f.departure_time.strftime('%d/%m/%Y %H:%M') if f.departure_time else '' }}
+            </td>
+
+            <td class="dt">
+              {{ f.arrival_time.strftime('%d/%m/%Y %H:%M') if f.arrival_time else '' }}
+            </td>
+
             <td>
-                <span class="badge {{ 'badge-history' if flight.booking_status == 'Completed' else '' }}"
-                      style="{{ 'background: #ffebe6; color: #bf2600;' if 'Canceled' in flight.booking_status else '' }}">
-                    {{ flight.booking_status }}
-                </span>
+              {% if st == 'Active' %}
+                <span class="badge badge-active">Active</span>
+              {% elif st == 'Completed' %}
+                <span class="badge badge-completed">Completed</span>
+              {% else %}
+                <span class="badge badge-canceled">{{ st }}</span>
+              {% endif %}
             </td>
-            <td style="text-align: left; font-weight: bold;">₪{{ "{:,.2f}".format(flight.price) }}</td>
-            <td style="text-align: left;">
-                <a href="{{ url_for('manage_booking', booking_id=flight.booking_id) }}"
-                   class="btn-premium"
-                   style="background:#f5f6fa; color:#2c3e50; border:1px solid #dcdde1;">
+
+            <td class="price">
+              ₪{{ "{:,.2f}".format(f.price or 0) }}
+            </td>
+
+            <td>
+              <div class="actions-wrap">
+                {% if st == 'Active' %}
+                  <a class="btn btn-manage"
+                     href="{{ url_for('manage_booking', booking_id=bid) }}">
+                    ניהול כרטיס
+                  </a>
+                {% else %}
+                  <a class="btn btn-view"
+                     href="{{ url_for('manage_booking', booking_id=bid) }}">
                     צפייה בהזמנה
-                </a>
+                  </a>
+                {% endif %}
+              </div>
             </td>
-        </tr>
+          </tr>
         {% endfor %}
-    </tbody>
-</table>
-        {% endif %}
-    </section>
-</div>
+      </tbody>
+    </table>
+
+  {% else %}
+    <div style="background:white; padding:30px; border-radius:12px; text-align:center; border:1px solid #eee;">
+      <p style="font-weight:900; margin-bottom:10px;">אין טיסות להצגה לפי הסינון הנוכחי.</p>
+      <a href="{{ url_for('home_page') }}" style="color:#003366; font-weight:900; text-decoration:none;">
+        חיפוש טיסה חדשה →
+      </a>
+    </div>
+  {% endif %}
+</main>
 {% endblock %}

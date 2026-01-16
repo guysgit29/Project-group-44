@@ -50,14 +50,14 @@ def my_flights():
     if 'user_id' not in session:
         return redirect(url_for('login_page'))
 
-    active_bookings, history_bookings = Booking.get_user_flights_split(session['user_id'])
+    selected_status = (request.args.get("status") or "").strip()
+    flights = Booking.get_user_flights_for_page(session["user_id"], selected_status)
 
     return render_template(
-        'my_flights.html',
-        active=active_bookings,
-        history=history_bookings
+        "my_flights.html",
+        flights=flights,
+        selected_status=selected_status
     )
-# --- Booking Management Routes ---
 
 @app.route('/search_booking', methods=['GET', 'POST'])
 def search_booking():
