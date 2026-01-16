@@ -1049,10 +1049,6 @@ def manager_set_pricing():
         error=error
     )
 
-
-# =========================================================
-# Step 4/5 - assign crew
-# =========================================================
 @app.route("/manager_assign_crew", methods=["GET", "POST"])
 def manager_assign_crew():
     if not _require_manager():
@@ -1066,12 +1062,11 @@ def manager_assign_crew():
     if not pricing.get("economy_price"):
         return redirect(url_for("manager_set_pricing"))
 
-    origin = draft.get("origin")
-    departure_str = draft.get("departure_dt")
-    if not origin or not departure_str:
+    if not draft.get("origin") or not draft.get("destination") or not draft.get("departure_dt"):
         return redirect(url_for("manager_flight_create"))
 
-    dep_dt = datetime.strptime(departure_str, "%Y-%m-%d %H:%M:%S")
+    origin = draft["origin"]
+    dep_dt = datetime.strptime(draft["departure_dt"], "%Y-%m-%d %H:%M:%S")
 
     aircraft_id = int(draft["aircraft_id"])
     aircraft_size = (draft.get("aircraft_size") or Flight.get_aircraft_size(aircraft_id) or "").strip().lower()
@@ -1082,13 +1077,17 @@ def manager_assign_crew():
     draft.setdefault("pilot_ids", [])
     draft.setdefault("attendant_ids", [])
 
+    # normalize to int
+    draft["pilot_ids"] = [int(x) for x in (draft.get("pilot_ids") or [])]
+    draft["attendant_ids"] = [int(x) for x in (draft.get("attendant_ids") or [])]
+
     error = None
     flash_msg = None
     action = request.form.get("action") if request.method == "POST" else None
 
     if request.method == "POST":
         if action == "assign_pilot":
-            pilot_id = request.form.get("pilot_id")
+            pilot_id = (request.form.get("pilot_id") or "").strip()
             if not pilot_id:
                 error = "לא נבחר טייס"
             else:
@@ -1103,7 +1102,7 @@ def manager_assign_crew():
                     flash_msg = "טייס שובץ בהצלחה"
 
         elif action == "remove_pilot":
-            pilot_id = request.form.get("pilot_id")
+            pilot_id = (request.form.get("pilot_id") or "").strip()
             if pilot_id:
                 pid = int(pilot_id)
                 if pid in draft["pilot_ids"]:
@@ -1114,7 +1113,7 @@ def manager_assign_crew():
                     error = "הטייס לא נמצא ברשימת המשובצים"
 
         elif action == "assign_attendant":
-            attendant_id = request.form.get("attendant_id")
+            attendant_id = (request.form.get("attendant_id") or "").strip()
             if not attendant_id:
                 error = "לא נבחר דייל/ת"
             else:
@@ -1129,7 +1128,7 @@ def manager_assign_crew():
                     flash_msg = "דייל/ת שובץ/ה בהצלחה"
 
         elif action == "remove_attendant":
-            attendant_id = request.form.get("attendant_id")
+            attendant_id = (request.form.get("attendant_id") or "").strip()
             if attendant_id:
                 aid = int(attendant_id)
                 if aid in draft["attendant_ids"]:
@@ -1148,23 +1147,22 @@ def manager_assign_crew():
                 _draft_set(draft)
                 return redirect(url_for("manager_flight_confirm"))
 
-    # ✅ זמינים עם שמות (כבר יש במודל שלך)
-    available_pilots = Flight.list_available_pilots_for_new_flight(origin, dep_dt, require_large=(aircraft_size == "large"))
-    available_attendants = Flight.list_available_attendants_for_new_flight(origin, dep_dt, require_large=(aircraft_size == "large"))
+    # בדיוק כמו מטוסים: origin + dep_dt + require_large
+    require_large = (aircraft_size == "large")
+    available_pilots = Flight.list_available_pilots_for_new_flight(origin, dep_dt, require_large)
+    available_attendants = Flight.list_available_attendants_for_new_flight(origin, dep_dt, require_large)
 
-    # הסתר מי שכבר שובץ
-    available_pilots = [p for p in (available_pilots or []) if int(p["id"]) not in draft["pilot_ids"]]
-    available_attendants = [a for a in (available_attendants or []) if int(a["id"]) not in draft["attendant_ids"]]
+    # להסיר מי שכבר שובץ
+    pilot_set = set(draft["pilot_ids"])
+    att_set = set(draft["attendant_ids"])
+    available_pilots = [p for p in (available_pilots or []) if int(p["id"]) not in pilot_set]
+    available_attendants = [a for a in (available_attendants or []) if int(a["id"]) not in att_set]
 
-    # ✅ משובצים עם שם + ת״ז (SQL ישיר)
-    assigned_pilots = Flight.get_pilots_by_ids(draft["pilot_ids"])
-    assigned_attendants = Flight.get_attendants_by_ids(draft["attendant_ids"])
+    assigned_pilots = Flight.get_pilots_by_ids(draft["pilot_ids"]) if draft["pilot_ids"] else []
+    assigned_attendants = Flight.get_attendants_by_ids(draft["attendant_ids"]) if draft["attendant_ids"] else []
 
     assigned_counts = {"pilots": len(draft["pilot_ids"]), "attendants": len(draft["attendant_ids"])}
-    missing_counts = {
-        "pilots": int(need["pilots"]) - assigned_counts["pilots"],
-        "attendants": int(need["attendants"]) - assigned_counts["attendants"],
-    }
+    missing_counts = {"pilots": need["pilots"] - assigned_counts["pilots"], "attendants": need["attendants"] - assigned_counts["attendants"]}
 
     return render_template(
         "manager_flight_assign_crew.html",
@@ -1174,12 +1172,11 @@ def manager_assign_crew():
         required=need,
         available_pilots=available_pilots,
         available_attendants=available_attendants,
-        assigned_pilots=assigned_pilots,           # ✅ כולל id + שם
-        assigned_attendants=assigned_attendants,   # ✅ כולל id + שם
+        assigned_pilots=assigned_pilots,
+        assigned_attendants=assigned_attendants,
         assigned_counts=assigned_counts,
         missing_counts=missing_counts,
     )
-
 # =========================================================
 # Step 5/5 - confirm & persist (Flight + Crew + Prices + Seats_on_Flights)
 # =========================================================

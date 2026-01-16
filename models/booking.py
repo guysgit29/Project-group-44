@@ -76,12 +76,13 @@ class Booking:
     def cancel(self):
         """
         Cancel booking:
+        - free seats in Seats_on_Flights
         - delete tickets
         - mark booking canceled + apply fee
-        - IMPORTANT: refresh flight status (Full/Active) after seats are freed
+        - refresh flight status
         """
         with DB.get_cursor() as cursor:
-            # ensure we have flight_number even if this object was created manually
+            # ensure we have flight_number
             if not self.flight_number:
                 cursor.execute(
                     "SELECT flight_number FROM Booking WHERE booking_id = %s",
@@ -90,18 +91,53 @@ class Booking:
                 r = cursor.fetchone()
                 self.flight_number = r.get("flight_number") if r else None
 
+            # 1) read all tickets for this booking (needed to free seats)
+            cursor.execute(
+                """
+                SELECT aircraft_id, class_type, row_num, column_number, flight_number
+                FROM Ticket
+                WHERE booking_id = %s
+                """,
+                (self.booking_id,),
+            )
+            tickets = cursor.fetchall() or []
+
+            # 2) free seats (available=1) for those tickets
+            for t in tickets:
+                cursor.execute(
+                    """
+                    UPDATE Seats_on_Flights
+                    SET available = 1
+                    WHERE aircraft_id   = %s
+                      AND class_type    = %s
+                      AND row_num       = %s
+                      AND column_number = %s
+                      AND flight_number = %s
+                    """,
+                    (
+                        int(t["aircraft_id"]),
+                        (t["class_type"] or "").strip(),  # חשוב: strip
+                        int(t["row_num"]),
+                        int(t["column_number"]),
+                        int(t["flight_number"]),
+                    ),
+                )
+
+            # 3) delete tickets
             cursor.execute("DELETE FROM Ticket WHERE booking_id = %s", (self.booking_id,))
+
+            # 4) mark booking canceled
             cursor.execute(
                 """
                 UPDATE Booking
                 SET booking_status = 'Canceled by Customer',
-                    price = price * 0.05
+                    price = price * 0.95
                 WHERE booking_id = %s
                 """,
                 (self.booking_id,),
             )
 
-        # NEW: always recompute flight status after cancellation
+        # 5) recompute flight status
         if self.flight_number:
             from models.flight import Flight
             Flight.update_status_by_capacity(int(self.flight_number))

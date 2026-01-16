@@ -820,3 +820,121 @@ class Flight:
                 ORDER BY airport
             """)
             return [row["airport"] for row in cursor.fetchall()]
+
+    @staticmethod
+    def list_available_pilots_for_new_flight(origin: str, dep_dt: datetime, require_large: bool):
+        origin = (origin or "").strip()
+
+        cert_clause = " AND p.big_aircraft_cert = 1 " if require_large else ""
+
+        query = f"""
+                SELECT
+                    p.id,
+                    p.first_name_he,
+                    p.last_name_he,
+                    p.big_aircraft_cert,
+                    lf.last_destination,
+                    lf.last_end_time
+                FROM Pilot p
+                LEFT JOIN (
+                    SELECT
+                        t.crew_id,
+                        SUBSTRING_INDEX(
+                            GROUP_CONCAT(t.destination ORDER BY t.end_time DESC SEPARATOR ','), ',', 1
+                        ) AS last_destination,
+                        MAX(t.end_time) AS last_end_time
+                    FROM (
+                        SELECT
+                            pf.id AS crew_id,
+                            f.destination,
+                            COALESCE(
+                                f.arrival_time,
+                                ADDTIME(f.departure_time, fl.length_minutes)
+                            ) AS end_time
+                        FROM Pilots_on_Flights pf
+                        JOIN Flight f
+                          ON f.flight_number = pf.flight_number
+                        LEFT JOIN FlightLength fl
+                          ON fl.origin = f.origin AND fl.destination = f.destination
+                        WHERE f.departure_time < %s
+                    ) t
+                    WHERE t.end_time <= %s
+                    GROUP BY t.crew_id
+                ) lf ON lf.crew_id = p.id
+                WHERE 1=1
+                  {cert_clause}
+                  AND (
+                        (lf.crew_id IS NULL AND %s = 'TLV')
+                        OR lf.last_destination = %s
+                      )
+                ORDER BY p.id ASC
+            """
+
+        params = (dep_dt, dep_dt, origin, origin)
+
+        with DB.get_cursor() as cursor:
+            cursor.execute(query, params)
+            return cursor.fetchall() or []
+
+
+    @staticmethod
+    def list_available_attendants_for_new_flight(origin: str, dep_dt: datetime, require_large: bool):
+        """
+        מחזיר דיילים זמינים לשיבוץ:
+        1) הדייל לא יכול להיות בטיסה שחופפת (הטיסה האחרונה שלו חייבת להסתיים לפני dep_dt)
+        2) היעד האחרון של הדייל חייב להיות origin
+        3) אם אין היסטוריה -> מניחים TLV, ולכן מותר רק אם origin == 'TLV'
+        4) אם require_large=True -> רק בעלי big_aircraft_cert=1
+        """
+        origin = (origin or "").strip()
+
+        cert_clause = " AND fa.big_aircraft_cert = 1 " if require_large else ""
+
+        query = f"""
+            SELECT
+                fa.id,
+                fa.first_name_he,
+                fa.last_name_he,
+                fa.big_aircraft_cert,
+                lf.last_destination,
+                lf.last_end_time
+            FROM FlightAttendant fa
+            LEFT JOIN (
+                SELECT
+                    t.crew_id,
+                    SUBSTRING_INDEX(
+                        GROUP_CONCAT(t.destination ORDER BY t.end_time DESC SEPARATOR ','), ',', 1
+                    ) AS last_destination,
+                    MAX(t.end_time) AS last_end_time
+                FROM (
+                    SELECT
+                        ff.id AS crew_id,
+                        f.destination,
+                        COALESCE(
+                            f.arrival_time,
+                            ADDTIME(f.departure_time, fl.length_minutes)
+                        ) AS end_time
+                    FROM FlightAttendants_on_Flights ff
+                    JOIN Flight f
+                      ON f.flight_number = ff.flight_number
+                    LEFT JOIN FlightLength fl
+                      ON fl.origin = f.origin AND fl.destination = f.destination
+                    WHERE f.departure_time < %s
+                ) t
+                WHERE t.end_time <= %s
+                GROUP BY t.crew_id
+            ) lf ON lf.crew_id = fa.id
+            WHERE 1=1
+              {cert_clause}
+              AND (
+                    (lf.crew_id IS NULL AND %s = 'TLV')
+                    OR lf.last_destination = %s
+                  )
+            ORDER BY fa.id ASC
+        """
+
+        params = (dep_dt, dep_dt, origin, origin)
+
+        with DB.get_cursor() as cursor:
+            cursor.execute(query, params)
+            return cursor.fetchall() or []

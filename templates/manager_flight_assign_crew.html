@@ -3,10 +3,10 @@
 
 <div style="max-width:1100px; margin:50px auto; direction:rtl; text-align:right;">
 
-  <h2> שיבוץ צוות — שלב 4/5</h2>
+  <h2>שיבוץ צוות — שלב 4/5</h2>
 
   <div style="margin-bottom:15px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-    <a href="{{ url_for('manager_assign_aircraft') }}" style="text-decoration:none; color:#003366; font-weight:bold;">← חזרה לשלב 3</a>
+    <a href="{{ url_for('manager_set_pricing') }}" style="text-decoration:none; color:#003366; font-weight:bold;">← חזרה לשלב 3</a>
     <span style="color:#666;">|</span>
     <a href="{{ url_for('manager_dashboard') }}" style="text-decoration:none; color:#003366; font-weight:bold;">חזרה לדשבורד</a>
   </div>
@@ -28,7 +28,7 @@
     <div style="display:flex; gap:18px; flex-wrap:wrap; align-items:center;">
       <div><b>נתיב:</b> {{ draft.origin }} → {{ draft.destination }}</div>
       <div><b>המראה:</b> {{ draft.departure_dt }}</div>
-      <div><b>נחיתה:</b> {{ draft.arrival_dt }}</div>
+      <div><b>נחיתה:</b> {{ draft.arrival_dt or draft.arrival_dt_preview }}</div>
       <div>
         <b>סוג מטוס:</b>
         {% set s = (draft.aircraft_size or "")|lower %}
@@ -70,8 +70,12 @@
 
     {% elif available_pilots and available_pilots|length > 0 %}
       <select name="pilot_id" style="padding:8px; min-width:320px;">
+        <option value="" selected disabled>בחר טייס</option>
         {% for p in available_pilots %}
-          <option value="{{ p.id }}">{{ p.id }} — {{ p.first_name_he }} {{ p.last_name_he }}</option>
+          {% set pid = p.get('id') if p is mapping else p.id %}
+          {% set fn  = p.get('first_name_he') if p is mapping else p.first_name_he %}
+          {% set ln  = p.get('last_name_he') if p is mapping else p.last_name_he %}
+          <option value="{{ pid }}">{{ pid }} — {{ fn }} {{ ln }}</option>
         {% endfor %}
       </select>
       <button type="submit" style="padding:8px 12px;">שבץ טייס</button>
@@ -84,12 +88,12 @@
     {% endif %}
   </form>
 
-    {% if assigned_pilots and assigned_pilots|length > 0 %}
+  {% if assigned_pilots and assigned_pilots|length > 0 %}
     <ul style="padding-right:18px;">
       {% for p in assigned_pilots %}
         {% set pid = p.get('id') if p is mapping else p.id %}
-        {% set fn = p.get('first_name_he') if p is mapping else p.first_name_he %}
-        {% set ln = p.get('last_name_he') if p is mapping else p.last_name_he %}
+        {% set fn  = p.get('first_name_he') if p is mapping else p.first_name_he %}
+        {% set ln  = p.get('last_name_he') if p is mapping else p.last_name_he %}
         <li style="margin-bottom:6px;">
           {{ pid }} — {{ fn }} {{ ln }}
           <form method="POST" style="display:inline;">
@@ -133,8 +137,12 @@
 
     {% elif available_attendants and available_attendants|length > 0 %}
       <select name="attendant_id" style="padding:8px; min-width:320px;">
+        <option value="" selected disabled>בחר דייל/ת</option>
         {% for a in available_attendants %}
-          <option value="{{ a.id }}">{{ a.id }} — {{ a.first_name_he }} {{ a.last_name_he }}</option>
+          {% set aid = a.get('id') if a is mapping else a.id %}
+          {% set fn  = a.get('first_name_he') if a is mapping else a.first_name_he %}
+          {% set ln  = a.get('last_name_he') if a is mapping else a.last_name_he %}
+          <option value="{{ aid }}">{{ aid }} — {{ fn }} {{ ln }}</option>
         {% endfor %}
       </select>
       <button type="submit" style="padding:8px 12px;">שבץ דייל/ת</button>
@@ -151,8 +159,8 @@
     <ul style="padding-right:18px;">
       {% for a in assigned_attendants %}
         {% set aid = a.get('id') if a is mapping else a.id %}
-        {% set fn = a.get('first_name_he') if a is mapping else a.first_name_he %}
-        {% set ln = a.get('last_name_he') if a is mapping else a.last_name_he %}
+        {% set fn  = a.get('first_name_he') if a is mapping else a.first_name_he %}
+        {% set ln  = a.get('last_name_he') if a is mapping else a.last_name_he %}
         <li style="margin-bottom:6px;">
           {{ aid }} — {{ fn }} {{ ln }}
           <form method="POST" style="display:inline;">
