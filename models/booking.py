@@ -1,13 +1,9 @@
 from datetime import date, datetime, timedelta
 import re
-
 from database import DB
 from models.flight import Flight
-
-
 class Booking:
     """Handles booking lifecycle: fetch, create, cancel, pricing, and user flight history."""
-
     def __init__(self, booking_id, flight_number, price, status="Active"):
         self.booking_id = booking_id
         self.flight_number = flight_number
@@ -63,10 +59,8 @@ class Booking:
                 (self.booking_id,),
             )
             order = cursor.fetchone()
-
             cursor.execute("SELECT * FROM Ticket WHERE booking_id = %s", (self.booking_id,))
             seats = cursor.fetchall() or []
-
             return order, seats
 
     def cancel(self):  # Cancel a booking by freeing seats, deleting tickets, updating booking, and refreshing flight status
@@ -75,7 +69,6 @@ class Booking:
                 cursor.execute("SELECT flight_number FROM Booking WHERE booking_id = %s", (self.booking_id,))
                 r = cursor.fetchone()
                 self.flight_number = r.get("flight_number") if r else None
-
             cursor.execute(
                 """
                 SELECT aircraft_id, class_type, row_num, column_number, flight_number
@@ -85,14 +78,13 @@ class Booking:
                 (self.booking_id,),
             )
             tickets = cursor.fetchall() or []
-
             for t in tickets:
                 cursor.execute(
                     """
                     UPDATE Seats_on_Flights
                     SET available = 1
                     WHERE aircraft_id   = %s
-                      AND class_type    = %s
+                      AND LOWER(class_type) = LOWER(%s)
                       AND row_num       = %s
                       AND column_number = %s
                       AND flight_number = %s
@@ -105,9 +97,7 @@ class Booking:
                         int(t["flight_number"]),
                     ),
                 )
-
             cursor.execute("DELETE FROM Ticket WHERE booking_id = %s", (self.booking_id,))
-
             cursor.execute(
                 """
                 UPDATE Booking
@@ -117,7 +107,6 @@ class Booking:
                 """,
                 (self.booking_id,),
             )
-
         if self.flight_number:
             Flight.update_status_by_capacity(int(self.flight_number))
 
@@ -177,22 +166,18 @@ class Booking:
     @staticmethod
     def get_pricing_for_selected_seats(flight_number: int, selected_seats: list[str]):  # Calculate per-seat pricing and total for chosen seats
         Booking._dbg(f"get_pricing_for_selected_seats(flight={flight_number}, seats={selected_seats})")
-
         parsed = [Booking._parse_seat_val(s) for s in (selected_seats or [])]
         parsed = [p for p in parsed if p is not None]
         if not flight_number or not parsed:
             Booking._dbg("pricing: no flight_number or no parsed seats -> ([],0)")
             return [], 0.0
-
         with DB.get_cursor() as cursor:
             aircraft_id = Booking._get_aircraft_id_for_flight(cursor, int(flight_number))
             if aircraft_id is None:
                 Booking._dbg("pricing: cannot find aircraft_id for flight -> ([],0)")
                 return [], 0.0
-
             class_types = sorted({p[0] for p in parsed})
             placeholders = ",".join(["%s"] * len(class_types))
-
             cursor.execute(
                 f"""
                 SELECT class_type, class_price
@@ -205,7 +190,6 @@ class Booking:
             )
             rows = cursor.fetchall() or []
             price_map = {r["class_type"]: float(r["class_price"] or 0.0) for r in rows}
-
             details, total = [], 0.0
             for class_type, row_num, col_num in parsed:
                 price = float(price_map.get(class_type, 0.0))
@@ -220,7 +204,6 @@ class Booking:
                     }
                 )
                 total += price
-
             Booking._dbg(f"pricing: aircraft_id={aircraft_id}, total={total}, details_count={len(details)}")
             return details, total
 
@@ -255,34 +238,26 @@ class Booking:
         email = (email or "").strip().lower()
         phones = Booking._parse_phone_numbers(phone_numbers_text)
         passport_number = (passport_number or "").strip()
-
         Booking._dbg(
             "create_booking_with_tickets("
             f"flight={flight_number}, email={email}, logged_in_registered={logged_in_registered}, "
             f"payment={payment_method}, seats={selected_seats}, phones={phones})"
         )
-
         if not email or not selected_seats:
             Booking._dbg("create_booking: missing email or seats -> None")
             return None
-
         if not phones and not logged_in_registered:
             Booking._dbg("create_booking: guest must provide at least 1 phone -> None")
             return None
-
         details, total = Booking.get_pricing_for_selected_seats(int(flight_number), selected_seats)
         if not details:
             Booking._dbg("create_booking: details empty -> None")
             return None
-
         aircraft_id = int(details[0]["aircraft_id"])
         Booking._dbg(f"create_booking: aircraft_id={aircraft_id}, seats_count={len(details)}, total={total}")
-
         def _seat_key(d):
             return (d["class_type"], int(d["row_num"]), int(d["column_number"]))
-
         seats = [_seat_key(d) for d in details]
-
         with DB.get_cursor() as cursor:
             if not logged_in_registered:
                 cursor.execute("SELECT 1 FROM GuestUser WHERE email=%s LIMIT 1", (email,))
@@ -291,13 +266,11 @@ class Booking:
                         "INSERT INTO GuestUser (email, first_name_en, last_name_en) VALUES (%s,%s,%s)",
                         (email, first_name, last_name),
                     )
-
                 for ph in phones:
                     cursor.execute(
                         "INSERT IGNORE INTO GuestPhone (email, phone_number) VALUES (%s,%s)",
                         (email, ph),
                     )
-
             cursor.execute(
                 """
                 SELECT class_type, row_num, column_number
@@ -314,7 +287,6 @@ class Booking:
             if missing:
                 Booking._dbg(f"SEAT NOT FOUND in Seat table: {missing} -> None")
                 return None
-
             cursor.execute(
                 """
                 SELECT class_type, row_num, column_number
@@ -331,11 +303,9 @@ class Booking:
             if conflict:
                 Booking._dbg(f"CONFLICT: seats already taken: {conflict} -> None")
                 return None
-
             booking_id = Booking.get_next_booking_id()
             registered_email = email if logged_in_registered else None
             guest_email = None if logged_in_registered else email
-
             cursor.execute(
                 """
                 INSERT INTO Booking
@@ -353,7 +323,6 @@ class Booking:
                     "Active",
                 ),
             )
-
             try:
                 for class_type, row_num, col_num in seats:
                     cursor.execute(
@@ -376,7 +345,6 @@ class Booking:
                 except Exception as e3:
                     Booking._dbg(f"cleanup Booking failed: {repr(e3)}")
                 return None
-
         Flight.update_status_by_capacity(int(flight_number))
         Booking._dbg(f"create_booking: SUCCESS booking_id={booking_id}")
         return booking_id
@@ -385,10 +353,8 @@ class Booking:
     def get_user_flights_split(user_email: str, now=None):  # Split bookings into upcoming active and history lists
         Booking.sync_past_bookings()
         all_bookings = Booking.get_user_flights(user_email)
-
         now = now or datetime.now()
         active, history = [], []
-
         for b in all_bookings:
             dep = b.get("departure_time")
             status = (b.get("booking_status") or "").strip()
@@ -396,28 +362,22 @@ class Booking:
                 active.append(b)
             else:
                 history.append(b)
-
         return active, history
 
     @staticmethod
     def calc_cancel_flags(order_data: dict, now=None):  # Decide if booking can be canceled based on status and time-to-departure
         now = now or datetime.now()
-
         booking_status = (order_data.get("booking_status") or "").strip()
         flight_status = (order_data.get("flight_status") or "").strip()
         departure_time = order_data.get("departure_time")
-
         booking_active = booking_status != "Canceled by Customer"
         flight_cancelable_status = flight_status in ("Active", "Full")
         flight_not_completed = flight_status != "Completed"
-
         more_than_36h = False
         if departure_time:
             more_than_36h = (departure_time - now) > timedelta(hours=36)
-
         can_cancel = booking_active and flight_cancelable_status and more_than_36h
         show_block_message = booking_active and flight_not_completed and (not can_cancel)
-
         block_message = "הזמנה זו לא ניתנת לביטול מאחר ונותרו פחות מ-36 שעות להמראה" if show_block_message else None
         return can_cancel, show_block_message, block_message
 
@@ -440,10 +400,8 @@ class Booking:
         text = (phone_numbers_text or "").strip()
         if not text:
             return []
-
         parts = re.split(r"[,\n\r\t]+", text)
         out, seen = [], set()
-
         for p in parts:
             norm = Booking._normalize_phone(p)
             if not norm:
@@ -451,7 +409,6 @@ class Booking:
             if norm not in seen:
                 seen.add(norm)
                 out.append(norm)
-
         return out
 
     @staticmethod
@@ -462,7 +419,6 @@ class Booking:
                 b.price,
                 b.booking_date,
                 b.booking_status,
-
                 f.flight_number,
                 f.aircraft_id,
                 f.origin,
@@ -470,7 +426,6 @@ class Booking:
                 f.departure_time,
                 f.arrival_time,
                 f.flight_status,
-
                 ru.first_name_en AS first_name,
                 ru.last_name_en  AS last_name
             FROM Booking b
@@ -482,11 +437,8 @@ class Booking:
         with DB.get_cursor() as cursor:
             cursor.execute(q, (user_email, user_email))
             flights = cursor.fetchall() or []
-
         for f in flights:
             f["display_status"] = (f.get("booking_status") or "").strip()
-
         if selected_status:
             flights = [f for f in flights if f.get("display_status") == selected_status]
-
         return flights

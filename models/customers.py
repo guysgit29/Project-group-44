@@ -1,8 +1,6 @@
 from database import DB
 from datetime import datetime
 import re
-
-
 class RegisteredUser:
     def __init__(self, email, first_name_en, last_name_en, password, birth_date=None, passport_number=None, registration_date=None):
         self.email = (email or "").strip().lower()
@@ -21,13 +19,11 @@ class RegisteredUser:
         email = (email or "").strip().lower()
         if not email:
             return None
-
         with DB.get_cursor() as cursor:
             cursor.execute("SELECT * FROM RegisteredUser WHERE LOWER(email) = %s", (email,))
             row = cursor.fetchone()
             if not row:
                 return None
-
             return RegisteredUser(
                 email=row.get("email"),
                 first_name_en=row.get("first_name_en"),
@@ -43,7 +39,6 @@ class RegisteredUser:
         email = (email or "").strip().lower()
         if not email:
             return False
-
         with DB.get_cursor() as cursor:
             cursor.execute("SELECT 1 FROM RegisteredUser WHERE LOWER(email) = %s LIMIT 1", (email,))
             return cursor.fetchone() is not None
@@ -53,7 +48,6 @@ class RegisteredUser:
         email = (email or "").strip().lower()
         if not email:
             return []
-
         with DB.get_cursor() as cursor:
             cursor.execute(
                 """
@@ -71,12 +65,10 @@ class RegisteredUser:
     def add_phone(email: str, phone_number: str):  # Add a phone number for a user (ignores duplicates)
         email = (email or "").strip().lower()
         phone_number = (phone_number or "").strip()
-
         if not email:
             return False, "אימייל חסר"
         if not phone_number:
             return False, "מספר טלפון ריק"
-
         with DB.get_cursor() as cursor:
             cursor.execute(
                 "INSERT IGNORE INTO RegisteredPhone (email, phone_number) VALUES (%s, %s)",
@@ -88,10 +80,8 @@ class RegisteredUser:
     def delete_phone(email: str, phone_number: str):  # Delete a specific phone number for a user
         email = (email or "").strip().lower()
         phone_number = (phone_number or "").strip()
-
         if not email or not phone_number:
             return False, "נתונים חסרים"
-
         with DB.get_cursor() as cursor:
             cursor.execute(
                 """
@@ -107,7 +97,6 @@ class RegisteredUser:
         raw = (raw or "").strip()
         if not raw:
             return []
-
         raw = raw.replace(",", "\n")
         parts = []
         for line in raw.splitlines():
@@ -115,7 +104,6 @@ class RegisteredUser:
             if p:
                 p = re.sub(r"\s+", "", p)
                 parts.append(p)
-
         seen, out = set(), []
         for p in parts:
             if p not in seen:
@@ -131,9 +119,7 @@ class RegisteredUser:
         email = (email or "").strip().lower()
         if not email:
             return False, "אימייל חסר"
-
         phones = RegisteredUser._parse_phones_multiline(phones_text)
-
         with DB.get_cursor() as cursor:
             cursor.execute("DELETE FROM RegisteredPhone WHERE LOWER(email)=%s", (email,))
             for p in phones:
@@ -141,7 +127,6 @@ class RegisteredUser:
                     "INSERT IGNORE INTO RegisteredPhone (email, phone_number) VALUES (%s, %s)",
                     (email, p),
                 )
-
         return True, None
 
     @staticmethod
@@ -149,7 +134,6 @@ class RegisteredUser:
         email = (email or "").strip().lower()
         if not email:
             return None, []
-
         with DB.get_cursor() as cursor:
             cursor.execute(
                 """
@@ -164,7 +148,6 @@ class RegisteredUser:
             ru = cursor.fetchone()
             if not ru:
                 return None, []
-
             cursor.execute(
                 """
                 SELECT phone_number
@@ -176,7 +159,6 @@ class RegisteredUser:
             )
             rows = cursor.fetchall() or []
             phones = [r.get("phone_number") for r in rows if r.get("phone_number")]
-
         user = RegisteredUser(
             email=ru.get("email"),
             first_name_en=ru.get("first_name_en"),
@@ -187,7 +169,6 @@ class RegisteredUser:
             registration_date=ru.get("registration_date"),
         )
         return user, phones
-
     def save(self):  # Insert a new RegisteredUser row into the database
         reg_date = datetime.now().strftime("%Y-%m-%d")
         query = """
@@ -207,14 +188,11 @@ class RegisteredUser:
         email = (data.get("email") or "").strip().lower()
         password = data.get("password") or ""
         confirm_password = data.get("confirm_password") or ""
-
         phone_numbers_text = (data.get("phone_numbers") or "").strip()
         phones = RegisteredUser._parse_phones_multiline(phone_numbers_text)
-
         single_phone = (data.get("phone_number") or "").strip()
         if single_phone and single_phone not in phones:
             phones.append(single_phone)
-
         if not email:
             return None, "אימייל חסר"
         if password != confirm_password:
@@ -223,7 +201,6 @@ class RegisteredUser:
             return None, "האימייל שהוזן משוייך לחשבון קיים, אנא התחבר או צור חשבון עם מייל שונה"
         if not phones:
             return None, "אנא הזן לפחות מספר טלפון אחד"
-
         try:
             new_user = RegisteredUser(
                 email=email,
@@ -234,12 +211,9 @@ class RegisteredUser:
                 passport_number=data.get("passport_number"),
             )
             new_user.save()
-
             for ph in phones:
                 RegisteredUser.add_phone(email, ph)
-
             return new_user, None
-
         except Exception as e:
             return None, f"Database error: {str(e)}"
 
@@ -248,20 +222,15 @@ class RegisteredUser:
         email = (email or "").strip().lower()
         if not email:
             return False, "אימייל חסר"
-
         first_name_en = (first_name_en or "").strip()
         last_name_en = (last_name_en or "").strip()
         passport_number = (passport_number or "").strip()
-
         if not first_name_en or not last_name_en:
             return False, "שם פרטי ושם משפחה הם שדות חובה"
-
         bd = birth_date.strip() or None if isinstance(birth_date, str) else birth_date
-
         phones = RegisteredUser._parse_phones_multiline(phones_text)
         if not phones:
             return False, "אנא הזן לפחות מספר טלפון אחד"
-
         with DB.get_cursor() as cursor:
             if password is None or str(password).strip() == "":
                 cursor.execute(
@@ -288,21 +257,18 @@ class RegisteredUser:
                     """,
                     (first_name_en, last_name_en, bd, passport_number, password, email),
                 )
-
             cursor.execute("DELETE FROM RegisteredPhone WHERE LOWER(email)=%s", (email,))
             for p in phones:
                 cursor.execute(
                     "INSERT IGNORE INTO RegisteredPhone (email, phone_number) VALUES (%s, %s)",
                     (email, p),
                 )
-
         return True, None
 
     @staticmethod
     def login(email, password):  # Authenticate a registered user by email and password
         email = (email or "").strip().lower()
         password = password or ""
-
         query = """
             SELECT email, first_name_en, last_name_en, password, birth_date, passport_number, registration_date
             FROM RegisteredUser
@@ -311,7 +277,6 @@ class RegisteredUser:
         with DB.get_cursor() as cursor:
             cursor.execute(query, (email, password))
             result = cursor.fetchone()
-
             if result:
                 return RegisteredUser(
                     email=result.get("email"),
@@ -323,3 +288,55 @@ class RegisteredUser:
                     registration_date=result.get("registration_date"),
                 )
         return None
+
+
+    @staticmethod
+    def get_full_name_by_email(email: str) -> str:  # Resolve a customer's full name by email (RegisteredUser, else GuestUser)
+        email = (email or "").strip().lower()
+        if not email:
+            return ""
+
+        with DB.get_cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT first_name_en, last_name_en
+                FROM RegisteredUser
+                WHERE LOWER(email) = %s
+                LIMIT 1
+                """,
+                (email,),
+            )
+            row = cursor.fetchone()
+
+            if not row:
+                cursor.execute(
+                    """
+                    SELECT first_name_en, last_name_en
+                    FROM GuestUser
+                    WHERE LOWER(email) = %s
+                    LIMIT 1
+                    """,
+                    (email,),
+                )
+                row = cursor.fetchone()
+
+        if not row:
+            return ""
+
+        first = (row.get("first_name_en") or "").strip()
+        last = (row.get("last_name_en") or "").strip()
+        return f"{first} {last}".strip()
+
+    @staticmethod
+    def split_phones_text(raw: str) -> list[str]:  # Split multiline/comma-separated phone text into unique values (preserves appearance order)
+        raw = (raw or "").strip()
+        if not raw:
+            return []
+
+        raw = raw.replace(",", "\n")
+        out, seen = [], set()
+        for p in (x.strip() for x in raw.splitlines()):
+            if p and p not in seen:
+                seen.add(p)
+                out.append(p)
+        return out

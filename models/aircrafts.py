@@ -1,12 +1,8 @@
 from database import DB
-
-
 class Aircraft:
     """Manages aircraft records plus related classes/seats creation and UI data retrieval."""
-
     MANUFACTURERS = ["Boeing", "Airbus", "Dassault"]
     ALLOWED_SIZES = {"Large", "Small"}
-
     def __init__(self, aircraft_id, manufacturer, size):
         self.id = aircraft_id
         self.manufacturer = manufacturer
@@ -41,21 +37,16 @@ class Aircraft:
             WHERE 1=1
         """
         params = []
-
         if aircraft_id:
             query += " AND aircraft_id LIKE %s"
             params.append(f"%{aircraft_id}%")
-
         if manufacturer:
             query += " AND manufacturer = %s"
             params.append(manufacturer)
-
         if size:
             query += " AND aircraft_size = %s"
             params.append(size)
-
         query += " ORDER BY aircraft_id DESC"
-
         with DB.get_cursor() as cursor:
             cursor.execute(query, params)
             return cursor.fetchall() or []
@@ -79,9 +70,7 @@ class Aircraft:
     def get_classes_for_aircrafts(aircraft_ids):  # Get seat-layout and seat-count per class for multiple aircrafts
         if not aircraft_ids:
             return {}
-
         placeholders = ",".join(["%s"] * len(aircraft_ids))
-
         with DB.get_cursor() as cursor:
             cursor.execute(
                 f"""
@@ -102,16 +91,13 @@ class Aircraft:
                 tuple(aircraft_ids),
             )
             rows = cursor.fetchall() or []
-
         return Aircraft._group_rows_by_aircraft_id(rows)
 
     @staticmethod
     def get_flights_for_aircrafts(aircraft_ids):  # Get flight history for multiple aircrafts
         if not aircraft_ids:
             return {}
-
         placeholders = ",".join(["%s"] * len(aircraft_ids))
-
         with DB.get_cursor() as cursor:
             cursor.execute(
                 f"""
@@ -130,7 +116,6 @@ class Aircraft:
                 tuple(aircraft_ids),
             )
             rows = cursor.fetchall() or []
-
         return Aircraft._group_rows_by_aircraft_id(rows)
 
     @staticmethod
@@ -146,7 +131,6 @@ class Aircraft:
             """,
             (aircraft_id, class_type, int(total_rows), int(total_cols)),
         )
-
         for r in range(1, int(total_rows) + 1):
             for c in range(1, int(total_cols) + 1):
                 cursor.execute(
@@ -167,16 +151,13 @@ class Aircraft:
         business_cols: int | None,
     ) -> int:  # Create an aircraft and auto-generate its classes and seats
         aircraft_id = Aircraft.get_next_aircraft_id()
-
         has_business = (
             business_rows is not None
             and business_cols is not None
             and int(business_rows) > 0
             and int(business_cols) > 0
         )
-
         aircraft_size = "Large" if has_business else "Small"
-
         with DB.get_cursor() as cursor:
             cursor.execute(
                 """
@@ -185,12 +166,9 @@ class Aircraft:
                 """,
                 (aircraft_id, manufacturer, purchase_date, aircraft_size),
             )
-
             Aircraft._insert_class_and_seats(cursor, aircraft_id, "Economy", int(economy_rows), int(economy_cols))
-
             if has_business:
                 Aircraft._insert_class_and_seats(cursor, aircraft_id, "Business", int(business_rows), int(business_cols))
-
         return aircraft_id
 
     @staticmethod
@@ -198,13 +176,10 @@ class Aircraft:
         aircraft_id = (args.get("aircraft_id") or "").strip()
         manufacturer = (args.get("manufacturer") or "").strip()
         size = (args.get("size") or "").strip()
-
         if manufacturer not in Aircraft.MANUFACTURERS:
             manufacturer = ""
-
         if size and size not in Aircraft.ALLOWED_SIZES:
             size = ""
-
         return {"aircraft_id": aircraft_id, "manufacturer": manufacturer, "size": size}
 
     @staticmethod
@@ -214,49 +189,36 @@ class Aircraft:
             manufacturer=filters.get("manufacturer") or None,
             size=filters.get("size") or None,
         )
-
         aircraft_ids = [int(a["aircraft_id"]) for a in aircrafts] if aircrafts else []
-
         classes_map = Aircraft.get_classes_for_aircrafts(aircraft_ids)
         flights_map = Aircraft.get_flights_for_aircrafts(aircraft_ids)
-
         return aircrafts, classes_map, flights_map
 
     @staticmethod
     def build_pending_from_form(form) -> tuple[dict | None, str | None]:  # Validate the create-aircraft form and return a session-ready pending dict
         manufacturer = (form.get("manufacturer") or "").strip()
         purchase_date = (form.get("purchase_date") or "").strip()
-
         econ_rows = (form.get("economy_rows") or "").strip()
         econ_cols = (form.get("economy_cols") or "").strip()
-
         biz_rows = (form.get("business_rows") or "").strip()
         biz_cols = (form.get("business_cols") or "").strip()
-
         if manufacturer not in Aircraft.MANUFACTURERS:
             return None, "יצרן לא תקין"
-
         if not purchase_date:
             return None, "חובה לבחור תאריך רכישה"
-
         if not econ_rows.isdigit() or int(econ_rows) <= 0:
             return None, "מספר שורות באקונומי חייב להיות מספר חיובי"
-
         if not econ_cols.isdigit() or int(econ_cols) <= 0:
             return None, "מספר עמודות באקונומי חייב להיות מספר חיובי"
-
         business_rows_val = None
         business_cols_val = None
-
         if biz_rows or biz_cols:
             if (not biz_rows.isdigit()) or (not biz_cols.isdigit()) or int(biz_rows) <= 0 or int(biz_cols) <= 0:
                 return None, "אם ממלאים עסקים – חייבים גם שורות וגם עמודות במספר חיובי"
             business_rows_val = int(biz_rows)
             business_cols_val = int(biz_cols)
-
         next_id = Aircraft.get_next_aircraft_id()
         size = "Large" if (business_rows_val and business_cols_val) else "Small"
-
         pending = {
             "aircraft_id": next_id,
             "manufacturer": manufacturer,
@@ -267,7 +229,6 @@ class Aircraft:
             "business_rows": business_rows_val,
             "business_cols": business_cols_val,
         }
-
         return pending, None
 
     @staticmethod
