@@ -9,7 +9,7 @@ from models.employees import Manager, Pilot, FlightAttendant, StaffService
 from models.flight import Flight
 from models.aircrafts import Aircraft
 from models.reports import ManagerReports
-app = Flask(__name__)
+app = Flask(__name__)#
 
 
 app.secret_key = "flytau_secret_key"
