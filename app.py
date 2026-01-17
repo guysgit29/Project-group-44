@@ -11,6 +11,7 @@ from models.aircrafts import Aircraft
 from models.reports import ManagerReports
 app = Flask(__name__)
 
+
 app.secret_key = "flytau_secret_key"
 app.config.update(SESSION_TYPE="filesystem", PERMANENT_SESSION_LIFETIME=timedelta(minutes=30))
 Session(app)
