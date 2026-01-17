@@ -223,20 +223,36 @@ def manager_dashboard():  # Renders the manager dashboard
     return render_template("manager_dashboard.html")
 
 @app.route("/manager_flights")
-def manager_flights():  # Lists flights for managers with filters and cancellation eligibility
+def manager_flights():
     if session.get("role") != "manager":
         return redirect(url_for("manager_login"))
+
     selected_status = (request.args.get("status", "") or "").strip()
     aircraft_id_raw = (request.args.get("aircraft_id", "") or "").strip()
+    selected_origin = (request.args.get("origin", "") or "").strip().upper()
+    selected_destination = (request.args.get("destination", "") or "").strip().upper()
+
     aircraft_id = int(aircraft_id_raw) if aircraft_id_raw.isdigit() else None
-    flights, aircraft_ids = Flight.manager_list_page_data(selected_status, aircraft_id)
+
+    flights, aircraft_ids, all_origins, all_destinations = Flight.manager_list_page_data(
+        selected_status=selected_status,
+        aircraft_id=aircraft_id,
+        origin=selected_origin,
+        destination=selected_destination,
+    )
+
     flash_msg = session.pop("flash_msg", None)
+
     return render_template(
         "manager_flights.html",
         flights=flights,
         selected_status=selected_status,
         selected_aircraft_id=aircraft_id_raw,
+        selected_origin=selected_origin,
+        selected_destination=selected_destination,
         aircraft_ids=aircraft_ids,
+        all_origins=all_origins,
+        all_destinations=all_destinations,
         flash_msg=flash_msg,
     )
 
@@ -738,66 +754,104 @@ def manager_assign_crew():  # Step 4: assigns required crew and updates the new-
     )
 
 @app.route("/manager_flight_confirm", methods=["GET", "POST"])
-def manager_flight_confirm():  # Step 5: confirms and persists the new flight (flight, crew, and pricing)
+def manager_flight_confirm():
     if not _require_manager():
         return redirect(url_for("manager_login"))
+
     draft = _draft_get() or {}
+
     must = ["origin", "destination", "departure_dt", "aircraft_id"]
     if any(not draft.get(k) for k in must):
         return redirect(url_for("manager_flight_create"))
+
     pricing = draft.get("pricing") or {}
     if not pricing.get("economy_price"):
         return redirect(url_for("manager_set_pricing"))
+
     pilot_ids = draft.get("pilot_ids") or []
     attendant_ids = draft.get("attendant_ids") or []
     if not pilot_ids or not attendant_ids:
         return redirect(url_for("manager_assign_crew"))
+
     origin = draft["origin"]
     destination = draft["destination"]
-    dep_dt = datetime.strptime(draft["departure_dt"], "%Y-%m-%d %H:%M:%S")
-    arr_preview = draft.get("arrival_dt_preview")
+
+    try:
+        dep_dt = datetime.strptime(draft["departure_dt"], "%Y-%m-%d %H:%M:%S")
+    except Exception:
+        return redirect(url_for("manager_flight_create"))
+
     aircraft_id = int(draft["aircraft_id"])
     aircraft = Flight.get_aircraft_by_id(aircraft_id)
-    aircraft_size = (draft.get("aircraft_size") or (aircraft.get("aircraft_size") if aircraft else "") or "").strip().lower()
+
+    aircraft_size = (
+        (draft.get("aircraft_size") or (aircraft.get("aircraft_size") if aircraft else "") or "")
+        .strip()
+        .lower()
+    )
+
     info = Flight.get_route_info(origin, destination)
     if not info:
         return redirect(url_for("manager_flight_create"))
+
+    try:
+        duration_sec = int(info.get("duration_sec") or 0)
+    except Exception:
+        duration_sec = 0
+
+    arrival_dt = None
+    if duration_sec > 0:
+        arrival_dt = dep_dt + timedelta(seconds=duration_sec)
+
+    arrival_preview = arrival_dt or draft.get("arrival_dt_preview")
+
     assigned_pilots = Flight.get_pilots_by_ids(pilot_ids) if pilot_ids else []
     assigned_attendants = Flight.get_attendants_by_ids(attendant_ids) if attendant_ids else []
+
     error = None
+
     if request.method == "POST":
-        flight_number = Flight.generate_next_flight_number()
-        duration_sec = int(info.get("duration_sec") or 0)
-        if duration_sec > 6 * 3600 and aircraft_size != "large":
-            error = "לא ניתן לאשר: טיסה מעל 6 שעות חייבת מטוס Large"
+        if duration_sec <= 0:
+            error = "Cannot confirm: no duration defined for this route (FlightLength)"
+        elif duration_sec > 6 * 3600 and aircraft_size != "large":
+            error = "Cannot confirm: flights over 6 hours require a Large aircraft"
         else:
+            arr_dt = dep_dt + timedelta(seconds=duration_sec)
+
             eco_price = float(pricing.get("economy_price"))
-            bus_price = pricing.get("business_price")
-            bus_price = float(bus_price) if bus_price not in (None, "", 0) else None
+            bus_price_raw = pricing.get("business_price")
+            bus_price = float(bus_price_raw) if bus_price_raw not in (None, "", 0, "0") else None
+
+            flight_number = Flight.generate_next_flight_number()
+
             with DB.get_cursor() as cursor:
                 cursor.execute(
                     """
-                    INSERT INTO Flight (flight_number, aircraft_id, origin, destination, departure_time, flight_status)
-                    VALUES (%s,%s,%s,%s,%s,%s)
+                    INSERT INTO Flight
+                      (flight_number, aircraft_id, origin, destination, departure_time, arrival_time, flight_status)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s)
                     """,
-                    (int(flight_number), int(aircraft_id), origin, destination, dep_dt, "Active"),
+                    (int(flight_number), int(aircraft_id), origin, destination, dep_dt, arr_dt, "Active"),
                 )
+
                 for pid in pilot_ids:
                     cursor.execute(
                         """
-                        INSERT INTO Pilots_on_Flights (id, flight_number)
+                        INSERT INTO pilots_on_flights (id, flight_number)
                         VALUES (%s,%s)
                         """,
                         (int(pid), int(flight_number)),
                     )
+
                 for aid in attendant_ids:
                     cursor.execute(
                         """
-                        INSERT INTO FlightAttendants_on_Flights (id, flight_number)
+                        INSERT INTO flightattendants_on_flights (id, flight_number)
                         VALUES (%s,%s)
                         """,
                         (int(aid), int(flight_number)),
                     )
+
                 cursor.execute(
                     """
                     INSERT INTO Classes_on_Flights (aircraft_id, class_type, flight_number, class_price)
@@ -805,6 +859,7 @@ def manager_flight_confirm():  # Step 5: confirms and persists the new flight (f
                     """,
                     (int(aircraft_id), "Economy", int(flight_number), eco_price),
                 )
+
                 if bus_price is not None:
                     cursor.execute(
                         """
@@ -823,8 +878,21 @@ def manager_flight_confirm():  # Step 5: confirms and persists the new flight (f
                             """,
                             (int(aircraft_id), "Business", int(flight_number), bus_price),
                         )
+
+                cursor.execute(
+                    """
+                    INSERT INTO Seats_on_Flights
+                      (aircraft_id, class_type, row_num, column_number, flight_number, available)
+                    SELECT s.aircraft_id, s.class_type, s.row_num, s.column_number, %s, 1
+                    FROM Seat s
+                    WHERE s.aircraft_id = %s
+                    """,
+                    (int(flight_number), int(aircraft_id)),
+                )
+
             _draft_clear()
             return redirect(url_for("manager_flight_manage", flight_number=int(flight_number)))
+
     return render_template(
         "manager_flight_confirm.html",
         error=error,
@@ -833,7 +901,7 @@ def manager_flight_confirm():  # Step 5: confirms and persists the new flight (f
         origin=origin,
         destination=destination,
         departure_dt=dep_dt,
-        arrival_preview=arr_preview,
+        arrival_preview=arrival_preview,
         aircraft=aircraft,
         pricing=pricing,
         pilot_ids=pilot_ids,

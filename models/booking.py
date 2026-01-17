@@ -102,7 +102,7 @@ class Booking:
                 """
                 UPDATE Booking
                 SET booking_status = 'Canceled by Customer',
-                    price = price * 0.95
+                    price = price * 0.05
                 WHERE booking_id = %s
                 """,
                 (self.booking_id,),
@@ -365,19 +365,26 @@ class Booking:
         return active, history
 
     @staticmethod
-    def calc_cancel_flags(order_data: dict, now=None):  # Decide if booking can be canceled based on status and time-to-departure
+    def calc_cancel_flags(order_data: dict,
+                          now=None):  # Decide if booking can be canceled based on status and time-to-departure
         now = now or datetime.now()
         booking_status = (order_data.get("booking_status") or "").strip()
         flight_status = (order_data.get("flight_status") or "").strip()
         departure_time = order_data.get("departure_time")
+
         booking_active = booking_status != "Canceled by Customer"
         flight_cancelable_status = flight_status in ("Active", "Full")
         flight_not_completed = flight_status != "Completed"
+
         more_than_36h = False
         if departure_time:
             more_than_36h = (departure_time - now) > timedelta(hours=36)
+
         can_cancel = booking_active and flight_cancelable_status and more_than_36h
-        show_block_message = booking_active and flight_not_completed and (not can_cancel)
+
+        # השינוי: בדיקה ספציפית שהסטטוס הוא Active
+        show_block_message = (booking_status == "Active") and flight_not_completed and (not can_cancel)
+
         block_message = "הזמנה זו לא ניתנת לביטול מאחר ונותרו פחות מ-36 שעות להמראה" if show_block_message else None
         return can_cancel, show_block_message, block_message
 

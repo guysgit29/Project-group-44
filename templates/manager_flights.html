@@ -4,89 +4,154 @@
 <main class="container" style="max-width:1100px; margin:50px auto; text-align:right; direction:rtl;">
 
   <style>
-    .btn{
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      height:42px;
-      min-width:140px;
-      padding:0 16px;
-      border-radius:12px;
-      font-weight:900;
-      text-decoration:none;
-      border:none;
-      cursor:pointer;
-      white-space:nowrap;
+    /* כפתורים */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      height: 38px; /* קצת יותר קומפקטי */
+      min-width: 120px;
+      padding: 0 12px;
+      border-radius: 8px;
+      font-weight: 700;
+      text-decoration: none;
+      border: none;
+      cursor: pointer;
+      white-space: nowrap;
+      font-size: 0.9rem;
+      transition: opacity 0.2s;
+    }
+    .btn:hover { opacity: 0.9; }
+
+    .btn-manage { background: #003366; color: white; }
+    .btn-view { background: #ffffff; color: #003366; border: 1px solid #003366; }
+    .btn-disabled { background: #e5e7eb; color: #6b7280; cursor: not-allowed; }
+
+    .actions-wrap {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      flex-wrap: wrap;
     }
 
-    .btn-manage{ background:#003366; color:white; }
-    .btn-view{ background:#ffffff; color:#003366; border:1px solid #003366; }
-    .btn-cancel{ background:#b91c1c; color:white; }
-    .btn-disabled{ background:#e5e7eb; color:#6b7280; cursor:not-allowed; }
+    /* טבלה */
+    table { width: 100%; border-collapse: collapse; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+    th, td { border-bottom: 1px solid #eee; padding: 12px; vertical-align: middle; }
+    thead tr { background: #003366; color: white; }
+    th { border: none; font-weight: 600; }
+    tr:hover { background-color: #f9fafb; }
 
-    .actions-wrap{
-      display:flex;
-      gap:10px;
-      justify-content:center;
-      flex-wrap:wrap;
+    /* טופס סינון מעוצב */
+    .filter-container {
+      background: #f8f9fa;
+      padding: 15px;
+      border-radius: 10px;
+      border: 1px solid #e5e7eb;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px;
+      align-items: flex-end; /* מיישר את הכפתור עם השדות */
+      margin-bottom: 25px;
     }
 
-    table{ width:100%; border-collapse:collapse; }
-    th, td{ border:1px solid #ddd; padding:8px; vertical-align:middle; }
-    thead tr{ background:#f4f4f4; }
+    .filter-group {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .filter-group label {
+      font-size: 0.85rem;
+      font-weight: bold;
+      color: #374151;
+    }
+
+    .filter-select {
+      padding: 8px 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      min-width: 140px;
+      background-color: white;
+      outline: none;
+    }
+    .filter-select:focus { border-color: #003366; }
+
+    .btn-filter {
+      height: 38px;
+      padding: 0 20px;
+      background: #003366;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
+    }
   </style>
 
-  <h2>ניהול טיסות – מנהל</h2>
+  <h2 style="color:#003366;">ניהול טיסות – מנהל</h2>
 
   <div style="margin-bottom:15px;">
-    <a href="{{ url_for('manager_dashboard') }}"
-       style="text-decoration:none; color:#003366; font-weight:bold;">
-      ← חזרה לדשבורד מנהל
+    <a href="{{ url_for('manager_dashboard') }}" style="text-decoration:none; color:#003366; font-weight:bold;">
+      ← חזרה לדשבורד
     </a>
   </div>
 
   {% if flash_msg %}
-    <div style="
-      margin-bottom:14px;
-      padding:12px 14px;
-      border-radius:10px;
-      background:#fef3c7;
-      border:1px solid #f59e0b;
-      color:#92400e;
-      font-weight:800;">
+    <div style="margin-bottom:14px; padding:12px 14px; border-radius:10px; background:#fef3c7; border:1px solid #f59e0b; color:#92400e; font-weight:800;">
       {{ flash_msg }}
     </div>
   {% endif %}
 
-  <form method="GET" action="{{ url_for('manager_flights') }}" style="margin-bottom:20px;">
-    <label for="status" style="margin-left:10px;">סינון לפי סטטוס:</label>
+  <form method="GET" action="{{ url_for('manager_flights') }}" class="filter-container">
 
-    <select id="status" name="status" style="padding:6px;">
-      <option value="" {% if not selected_status %}selected{% endif %}>כל הטיסות</option>
-      <option value="Active" {% if selected_status == 'Active' %}selected{% endif %}>Active</option>
-      <option value="Full" {% if selected_status == 'Full' %}selected{% endif %}>Full</option>
-      <option value="Canceled" {% if selected_status == 'Canceled' %}selected{% endif %}>Canceled</option>
-      <option value="Completed" {% if selected_status == 'Completed' %}selected{% endif %}>Completed</option>
-    </select>
+    <div class="filter-group">
+      <label for="status">סטטוס</label>
+      <select id="status" name="status" class="filter-select">
+        <option value="" {% if not selected_status %}selected{% endif %}>הכל</option>
+        <option value="Active" {% if selected_status == 'Active' %}selected{% endif %}>Active</option>
+        <option value="Full" {% if selected_status == 'Full' %}selected{% endif %}>Full</option>
+        <option value="Canceled" {% if selected_status == 'Canceled' %}selected{% endif %}>Canceled</option>
+        <option value="Completed" {% if selected_status == 'Completed' %}selected{% endif %}>Completed</option>
+      </select>
+    </div>
 
-    <label for="aircraft_id" style="margin-right:15px; margin-left:10px;">סינון לפי מספר מטוס:</label>
+    <div class="filter-group">
+      <label for="aircraft_id">מספר מטוס</label>
+      <select id="aircraft_id" name="aircraft_id" class="filter-select">
+        <option value="" {% if not selected_aircraft_id %}selected{% endif %}>הכל</option>
+        {% for aid in aircraft_ids %}
+          <option value="{{ aid }}" {% if (selected_aircraft_id|default('')|string)|trim == (aid|string) %}selected{% endif %}>
+            {{ aid }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
 
-    <select id="aircraft_id" name="aircraft_id" style="padding:6px;">
-      <option value="" {% if not selected_aircraft_id %}selected{% endif %}>כל המטוסים</option>
-      {% for aid in aircraft_ids %}
-        <option value="{{ aid }}" {% if (selected_aircraft_id|default('')|string)|trim and (selected_aircraft_id|int == aid) %}selected{% endif %}>
-          {{ aid }}
-        </option>
-      {% endfor %}
-    </select>
+    <div class="filter-group">
+      <label for="origin">מוצא</label>
+      <select id="origin" name="origin" class="filter-select">
+        <option value="" {% if not selected_origin %}selected{% endif %}>הכל</option>
+        {% for org in all_origins %}
+          <option value="{{ org }}" {% if selected_origin == org %}selected{% endif %}>{{ org }}</option>
+        {% endfor %}
+      </select>
+    </div>
 
-    <button type="submit"
-            style="margin-right:10px; padding:6px 12px; background:#003366; color:white; border:none; cursor:pointer;">
-      סנן
-    </button>
+    <div class="filter-group">
+      <label for="destination">יעד</label>
+      <select id="destination" name="destination" class="filter-select">
+        <option value="" {% if not selected_destination %}selected{% endif %}>הכל</option>
+        {% for dest in all_destinations %}
+          <option value="{{ dest }}" {% if selected_destination == dest %}selected{% endif %}>{{ dest }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <button type="submit" class="btn-filter">סנן תוצאות</button>
   </form>
 
-  <p style="color:#555; margin-bottom:10px;">
+  <p style="color:#666; font-size:0.9rem; margin-bottom:10px;">
     נמצאו {{ flights|length if flights else 0 }} טיסות
   </p>
 
@@ -104,65 +169,50 @@
           <th style="text-align:center;">פעולות</th>
         </tr>
       </thead>
-
       <tbody>
         {% for f in flights %}
           {% set st = (f.flight_status or '')|trim %}
-
           <tr>
             <td>{{ f.flight_number }}</td>
             <td>{{ f.aircraft_id }}</td>
-            <td>{{ f.origin }}</td>
-            <td>{{ f.destination }}</td>
-            <td>{{ f.departure_time }}</td>
-            <td>{{ f.arrival_time }}</td>
+            <td><strong>{{ f.origin }}</strong></td>
+            <td><strong>{{ f.destination }}</strong></td>
+            <td style="direction:ltr; text-align:right;">{{ f.departure_time }}</td>
+            <td style="direction:ltr; text-align:right;">{{ f.arrival_time }}</td>
 
-            <!-- סטטוס -->
             <td>
-              {% if st == 'Canceled' %}
-                Canceled
-              {% else %}
+              <span style="
+                padding: 4px 8px; border-radius: 4px; font-size: 0.85rem; font-weight: bold;
+                {% if st == 'Canceled' %} background:#fee2e2; color:#991b1b;
+                {% elif st == 'Completed' %} background:#dcfce7; color:#166534;
+                {% elif st == 'Active' %} background:#e0f2fe; color:#075985;
+                {% else %} background:#f3f4f6; color:#374151; {% endif %}
+              ">
                 {{ st }}
-              {% endif %}
+              </span>
             </td>
 
-           <!-- פעולות -->
-<td>
-  <div class="actions-wrap">
-
-    {% if st in ['Canceled', 'Canceled by Manager'] %}
-      <span class="btn btn-disabled" style="min-width:200px;">
-        אין פעולות לטיסה שבוטלה
-      </span>
-
-    {% elif st == 'Completed' %}
-      <a class="btn btn-view"
-         href="{{ url_for('manager_flight_view', flight_number=f.flight_number) }}">
-        צפייה בפרטים
-      </a>
-
-    {% elif st in ['Active','Full'] %}
-      <a class="btn btn-manage"
-         href="{{ url_for('manager_flight_manage', flight_number=f.flight_number) }}">
-        ניהול טיסה
-      </a>
-
-      {% if f.is_departing_soon %}
-        <span class="btn btn-disabled">
-          טיסה יוצאת בקרוב
-        </span>
-      {% endif %}
-
-    {% endif %}
-
-  </div>
-</td>
+            <td>
+              <div class="actions-wrap">
+                {% if st in ['Canceled', 'Canceled by Manager'] %}
+                  <span class="btn btn-disabled" style="width:100%;">בוטלה</span>
+                {% elif st == 'Completed' %}
+                  <a class="btn btn-view" href="{{ url_for('manager_flight_view', flight_number=f.flight_number) }}">פרטים</a>
+                {% elif st in ['Active','Full'] %}
+                  <a class="btn btn-manage" href="{{ url_for('manager_flight_manage', flight_number=f.flight_number) }}">ניהול</a>
+                  {% if f.is_departing_soon %}
+                    {% endif %}
+                {% endif %}
+              </div>
+            </td>
           </tr>
         {% endfor %}
       </tbody>
     </table>
   {% else %}
-    <p>אין טיסות להצגה</p>
+    <div style="text-align:center; padding:40px; background:#f9fafb; border-radius:8px;">
+      <p style="font-size:1.1rem; color:#666;">לא נמצאו טיסות התואמות את החיפוש.</p>
+    </div>
   {% endif %}
 
 </main>

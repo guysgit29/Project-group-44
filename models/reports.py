@@ -1,5 +1,7 @@
 # models/reports.py
 from database import DB
+
+
 class ManagerReports:
     @staticmethod
     def report_1_avg_occupancy_past_flights():
@@ -101,7 +103,7 @@ WHERE f.arrival_time < NOW();
                 fl.length_minutes
             FROM 
                 Pilot p
-            JOIN Pilots_on_Flights pof ON p.id = pof.id
+            JOIN pilots_on_flights pof ON p.id = pof.id
             JOIN Flight f ON pof.flight_number = f.flight_number
             JOIN FlightLength fl ON f.origin = fl.origin AND f.destination = fl.destination
             WHERE f.flight_status = 'Completed'
@@ -115,7 +117,7 @@ WHERE f.arrival_time < NOW();
                 fl.length_minutes
             FROM 
                 FlightAttendant fa
-            JOIN FlightAttendants_on_Flights faof ON fa.id = faof.id
+            JOIN flightattendants_on_flights faof ON fa.id = faof.id
             JOIN Flight f ON faof.flight_number = f.flight_number
             JOIN FlightLength fl ON f.origin = fl.origin AND f.destination = fl.destination
             WHERE f.flight_status = 'Completed'
@@ -212,7 +214,7 @@ Dominant_Routes AS (
 SELECT 
     a.aircraft_id,
     DATE_FORMAT(f.departure_time, '%Y-%m') AS work_month,
-    
+
     -- Count performed flights
     SUM(CASE 
         WHEN f.flight_status = 'Completed' THEN 1 
@@ -225,13 +227,13 @@ SELECT
         ELSE 0 
     END) AS cancelled_flights,
 
-    -- Calculate utilization percentage (0 decimals + '%')
+    -- Calculate utilization percentage (2 decimals + '%')
     CONCAT(
         ROUND(
             (COUNT(DISTINCT CASE 
                 WHEN f.flight_status = 'Completed' 
                 THEN DATE(f.departure_time) 
-            END) / 30.0) * 100, 0),'%') AS utilization_percentage,
+            END) / 30.0) * 100, 2),'%') AS utilization_percentage,
 
     -- Display dominant route or default text
     IFNULL(dr.route_name, 'No Flights') AS dominant_route
