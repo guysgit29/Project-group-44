@@ -140,7 +140,7 @@ select, input, button{ font-family: inherit; }
 }
 
 /* -----------------------------
-   Header / Nav
+   Header / Nav (Base)
 ----------------------------- */
 .flytau-header{
   position: sticky;
@@ -178,7 +178,7 @@ select, input, button{ font-family: inherit; }
   display: flex;
   align-items: center;
   gap: 12px;
-  flex-wrap: wrap;
+  flex-wrap: wrap;              /* בסיס: מותר לשבור שורה */
   justify-content: flex-start;
 }
 
@@ -544,6 +544,7 @@ tr:last-child td{ border-bottom: none !important; }
   margin-top: 8px;
 }
 
+/* Mobile header behavior */
 @media (max-width: 900px){
   .flytau-nav{
     flex-direction: column;
@@ -821,5 +822,66 @@ div[class*="background"],
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
-  align-items: start; /* במקום end */
+  align-items: start;
+}
+
+/* =========================================================
+   Header – Desktop: single row, NO scroll, NO wrap
+   (applies on wide screens; mobile stays stacked)
+   ========================================================= */
+@media (min-width: 901px){
+
+  /* 3-column grid: brand | menu | user */
+  .flytau-header .flytau-nav{
+    width: min(var(--page-max), calc(100% - (var(--page-pad) * 2))) !important;
+    margin: 0 auto !important;
+    padding: 12px 0 !important;
+
+    display: grid !important;
+    grid-template-columns: auto 1fr auto !important;
+    align-items: center !important;
+    gap: 10px !important;
+  }
+
+  .flytau-header .flytau-nav__center{ min-width: 0 !important; }
+
+  /* menu: one line, no wrap, no scroll */
+  .flytau-header .flytau-menu{
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex-wrap: nowrap !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    gap: 8px !important;
+  }
+
+  /* compact manager/customer links so they fit */
+  .flytau-header .flytau-menu .nav-link{
+    padding: 6px 8px !important;
+    font-size: 0.92rem !important;
+    border-radius: 9px !important;
+  }
+
+  /* keep edges in one line */
+  .flytau-header .flytau-nav__edge{
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+    flex-wrap: nowrap !important;
+    min-width: 0 !important;
+  }
+
+  /* greeting must not push layout */
+  .flytau-header .flytau-nav__edge--left .nav-text{
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    max-width: 240px !important;
+  }
+
+  /* if still tight – hide greeting (logout stays) */
+  @media (max-width: 1200px){
+    .flytau-header .flytau-nav__edge--left .nav-text{ display:none !important; }
+  }
 }

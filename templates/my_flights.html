@@ -1,10 +1,11 @@
 {% extends "base.html" %}
 
 {% block content %}
-<main class="container" style="max-width:1100px; margin:50px auto; text-align:right; direction:rtl;">
+<div class="my-flights-page" style="max-width:1100px; margin:50px auto; text-align:right; direction:rtl;">
 
   <style>
-    .btn{
+    /* scoped to this page only */
+    .my-flights-page .mf-btn{
       display:inline-flex;
       align-items:center;
       justify-content:center;
@@ -19,11 +20,10 @@
       white-space:nowrap;
     }
 
-    .btn-manage{ background:#003366; color:white; }
-    .btn-view{ background:#ffffff; color:#003366; border:1px solid #003366; }
-    .btn-disabled{ background:#e5e7eb; color:#6b7280; cursor:not-allowed; }
+    .my-flights-page .mf-btn-manage{ background:#003366; color:white; }
+    .my-flights-page .mf-btn-view{ background:#ffffff; color:#003366; border:1px solid #003366; }
 
-    .badge{
+    .my-flights-page .badge{
       display:inline-flex;
       padding:6px 10px;
       border-radius:999px;
@@ -33,34 +33,64 @@
       white-space:nowrap;
     }
 
-    .badge-active{ background:#e8f1ff; color:#003366; border-color:#cfe2ff; }
-    .badge-completed{ background:#ecfdf5; color:#065f46; border-color:#bbf7d0; }
-    .badge-canceled{ background:#ffebe6; color:#bf2600; border-color:#ffd7cc; }
+    .my-flights-page .badge-active{ background:#e8f1ff; color:#003366; border-color:#cfe2ff; }
+    .my-flights-page .badge-completed{ background:#ecfdf5; color:#065f46; border-color:#bbf7d0; }
+    .my-flights-page .badge-canceled{ background:#ffebe6; color:#bf2600; border-color:#ffd7cc; }
 
-    .actions-wrap{
+    .my-flights-page .actions-wrap{
       display:flex;
       gap:10px;
       justify-content:center;
       flex-wrap:wrap;
     }
 
-    table{ width:100%; border-collapse:collapse; }
-    th, td{ border:1px solid #ddd; padding:10px; vertical-align:middle; }
-    thead tr{ background:#f4f4f4; }
+    .my-flights-page table{ width:100%; border-collapse:collapse; }
+    .my-flights-page th, .my-flights-page td{ border:1px solid #ddd; padding:10px; vertical-align:middle; }
+    .my-flights-page thead tr{ background:#f4f4f4; }
 
-    .muted{ color:#6b7280; font-weight:700; }
-    .price{ text-align:left; font-weight:900; direction:ltr; }
-    .dt{ direction:ltr; font-weight:800; }
+    .my-flights-page .muted{ color:#6b7280; font-weight:700; }
+    .my-flights-page .price{ text-align:left; font-weight:900; direction:ltr; }
+    .my-flights-page .dt{ direction:ltr; font-weight:800; }
+
+    /* make the filter row align nicely */
+    .my-flights-page .filter-row{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      align-items:center;
+      margin-bottom:18px;
+    }
+    .my-flights-page .filter-row label{ font-weight:900; }
+    .my-flights-page .filter-row select{
+      width:auto;
+      min-width:220px;
+      padding:8px 12px;
+      border-radius:10px;
+    }
+    .my-flights-page .filter-row button{
+      padding:8px 14px;
+      border-radius:10px;
+      font-weight:900;
+      background:#003366;
+      color:white;
+      border:none;
+      cursor:pointer;
+    }
+
+    @media (max-width: 700px){
+      .my-flights-page .filter-row select{ width:100%; min-width:0; }
+      .my-flights-page .filter-row button{ width:100%; }
+    }
   </style>
 
   <h2 style="margin-bottom:10px;">הטיסות שלי</h2>
   <p class="muted" style="margin-bottom:18px;">ניהול ההזמנות שלך עם פרטי טיסה מלאים וסינון.</p>
 
   <!-- סינון -->
-  <form method="GET" action="{{ url_for('my_flights') }}" style="margin-bottom:18px;">
-    <label for="status" style="margin-left:10px; font-weight:900;">סינון לפי סטטוס:</label>
+  <form method="GET" action="{{ url_for('my_flights') }}" class="filter-row">
+    <label for="status">סינון לפי סטטוס:</label>
 
-    <select id="status" name="status" style="padding:8px; border-radius:10px;">
+    <select id="status" name="status">
       <option value="" {% if not selected_status %}selected{% endif %}>כל הטיסות</option>
       <option value="Active" {% if selected_status == 'Active' %}selected{% endif %}>Active</option>
       <option value="Completed" {% if selected_status == 'Completed' %}selected{% endif %}>Completed</option>
@@ -68,10 +98,7 @@
       <option value="Canceled by airline" {% if selected_status == 'Canceled by airline' %}selected{% endif %}>Canceled by airline</option>
     </select>
 
-    <button type="submit"
-            style="margin-right:10px; padding:8px 14px; background:#003366; color:white; border:none; cursor:pointer; border-radius:10px; font-weight:900;">
-      סנן
-    </button>
+    <button type="submit">סנן</button>
   </form>
 
   <p class="muted" style="margin-bottom:10px;">
@@ -131,12 +158,12 @@
             <td>
               <div class="actions-wrap">
                 {% if st == 'Active' %}
-                  <a class="btn btn-manage"
+                  <a class="mf-btn mf-btn-manage"
                      href="{{ url_for('manage_booking', booking_id=bid) }}">
                     ניהול כרטיס
                   </a>
                 {% else %}
-                  <a class="btn btn-view"
+                  <a class="mf-btn mf-btn-view"
                      href="{{ url_for('manage_booking', booking_id=bid) }}">
                     צפייה בהזמנה
                   </a>
@@ -156,5 +183,6 @@
       </a>
     </div>
   {% endif %}
-</main>
+
+</div>
 {% endblock %}
