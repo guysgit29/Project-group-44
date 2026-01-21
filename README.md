@@ -8,8 +8,18 @@ The project integrates a relational database (**MySQL**) with a **Flask** backen
 
 ---
 
+## Key Assumptions
+
+### The following assumptions were made:
+- The default location of new aircrafts and staff members who have not yet operated any flights is TLV.
+- Staff and aircrafts remains at the location of the last flight they participated, therefore, any future flight they are assigned to must depart from that location.
+- On the Seats_on_flights table, 1=Vacant, 0=Occupied (By a customer)
+- For the GuestCustomers and RegisteredCustomers tables there is a disjoint with no overlap between them.
+- The departure and landing times are only on Israeli time with no time zones consideration.
+- The conclusions presented on the Queries page of the Manager Dashboard are valid only for the data currently available on the website and are not updated automatically.
+---
 ## Live Website
-http://guyeylat.pythonanywhere.com/
+https://guyeylat.pythonanywhere.com/
 
 ---
 
