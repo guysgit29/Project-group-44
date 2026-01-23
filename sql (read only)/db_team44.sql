@@ -1,8 +1,7 @@
 DROP DATABASE IF EXISTS flytau;
 CREATE DATABASE flytau;
 USE flytau;
-ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY 'rootroot';
-FLUSH PRIVILEGES;
+
 -- =================================================
 -- Manager / Pilot / FlightAttendant
 -- =================================================
@@ -13,6 +12,7 @@ CREATE TABLE Manager (
     start_date DATE,
     city VARCHAR(100),
     street VARCHAR(100),
+    phone_num VARCHAR(100),
     house_number INT,
     password VARCHAR(20),
     PRIMARY KEY (id)
@@ -26,6 +26,7 @@ CREATE TABLE Pilot (
     city VARCHAR(100),
     street VARCHAR(100),
     house_number INT,
+    phone_num VARCHAR(100),
     big_aircraft_cert TINYINT,
     PRIMARY KEY (id)
 );
@@ -38,24 +39,22 @@ CREATE TABLE FlightAttendant (
     city VARCHAR(100),
     street VARCHAR(100),
     house_number INT,
+    phone_num VARCHAR(100),
     big_aircraft_cert TINYINT,
     PRIMARY KEY (id)
 );
 
 -- =================================================
--- Aircraft
+-- Aircraft / Class / Seat
 -- =================================================
 CREATE TABLE Aircraft (
     aircraft_id INT NOT NULL,
     manufacturer VARCHAR(100),
     purchase_date DATE,
-    aircraft_size VARCHAR(50),
+    aircraft_size VARCHAR(50), -- 'Large' / 'Small'
     PRIMARY KEY (aircraft_id)
 );
 
--- =================================================
--- Class
--- =================================================
 CREATE TABLE Class (
     aircraft_id INT NOT NULL,
     class_type VARCHAR(50) NOT NULL,
@@ -65,9 +64,6 @@ CREATE TABLE Class (
     FOREIGN KEY (aircraft_id) REFERENCES Aircraft(aircraft_id)
 );
 
--- =================================================
--- Seat
--- =================================================
 CREATE TABLE Seat (
     aircraft_id INT NOT NULL,
     class_type VARCHAR(50) NOT NULL,
@@ -79,7 +75,7 @@ CREATE TABLE Seat (
 );
 
 -- =================================================
--- GuestUser
+-- Users
 -- =================================================
 CREATE TABLE GuestUser (
     email VARCHAR(255) NOT NULL,
@@ -95,9 +91,6 @@ CREATE TABLE GuestPhone (
     FOREIGN KEY (email) REFERENCES GuestUser(email)
 );
 
--- =================================================
--- RegisteredUser
--- =================================================
 CREATE TABLE RegisteredUser (
     email VARCHAR(255) NOT NULL,
     first_name_en VARCHAR(50),
@@ -117,7 +110,7 @@ CREATE TABLE RegisteredPhone (
 );
 
 -- =================================================
--- FlightLength (הזזה לפני טבלת Flight כדי שהטריגר יוכל להסתמך עליה)
+-- FlightLength / Flight (+ trigger arrival time)
 -- =================================================
 CREATE TABLE FlightLength (
     origin VARCHAR(100) NOT NULL,
@@ -126,37 +119,29 @@ CREATE TABLE FlightLength (
     PRIMARY KEY (origin, destination)
 );
 
--- =================================================
--- Flight
--- =================================================
 CREATE TABLE Flight (
     flight_number INT NOT NULL,
     aircraft_id INT,
     origin VARCHAR(100),
     destination VARCHAR(100),
     departure_time DATETIME,
-    arrival_time DATETIME DEFAULT NULL, -- שדה נגזר המאפשר NULL עבור הטריגר
+    arrival_time DATETIME DEFAULT NULL,
     flight_status VARCHAR(50),
     PRIMARY KEY (flight_number),
     FOREIGN KEY (aircraft_id) REFERENCES Aircraft(aircraft_id)
 );
 
--- =================================================
--- Trigger: Calculate Arrival Time
--- =================================================
 DELIMITER //
 CREATE TRIGGER before_flight_insert
 BEFORE INSERT ON Flight
 FOR EACH ROW
 BEGIN
     DECLARE duration_val TIME;
-    
-    -- שליפת משך הטיסה מטבלת אורך טיסה לפי מוצא ויעד
-    SELECT length_minutes INTO duration_val 
-    FROM FlightLength 
+
+    SELECT length_minutes INTO duration_val
+    FROM FlightLength
     WHERE origin = NEW.origin AND destination = NEW.destination;
-    
-    -- עדכון זמן הנחיתה: המראה + משך
+
     IF duration_val IS NOT NULL THEN
         SET NEW.arrival_time = ADDTIME(NEW.departure_time, duration_val);
     END IF;
@@ -165,7 +150,7 @@ END;
 DELIMITER ;
 
 -- =================================================
--- Booking
+-- Booking / Ticket
 -- =================================================
 CREATE TABLE Booking (
     booking_id VARCHAR(6) NOT NULL,
@@ -181,9 +166,6 @@ CREATE TABLE Booking (
     FOREIGN KEY (flight_number) REFERENCES Flight(flight_number)
 );
 
--- =================================================
--- Ticket
--- =================================================
 CREATE TABLE Ticket (
     booking_id VARCHAR(6) NOT NULL,
     flight_number INT NOT NULL,
@@ -192,12 +174,7 @@ CREATE TABLE Ticket (
     row_num INT NOT NULL,
     column_number INT NOT NULL,
     PRIMARY KEY (
-        booking_id,
-        flight_number,
-        aircraft_id,
-        class_type,
-        row_num,
-        column_number
+        booking_id, flight_number, aircraft_id, class_type, row_num, column_number
     ),
     FOREIGN KEY (booking_id) REFERENCES Booking(booking_id),
     FOREIGN KEY (flight_number) REFERENCES Flight(flight_number),
@@ -206,7 +183,7 @@ CREATE TABLE Ticket (
 );
 
 -- =================================================
--- FlightAttendants on flights
+-- Crew assignment tables
 -- =================================================
 CREATE TABLE FlightAttendants_on_Flights (
     id INT NOT NULL,
@@ -216,9 +193,6 @@ CREATE TABLE FlightAttendants_on_Flights (
     FOREIGN KEY (flight_number) REFERENCES Flight(flight_number)
 );
 
--- =================================================
--- Pilots on Flights
--- =================================================
 CREATE TABLE Pilots_on_Flights (
     id INT NOT NULL,
     flight_number INT NOT NULL,
@@ -228,7 +202,7 @@ CREATE TABLE Pilots_on_Flights (
 );
 
 -- =================================================
--- Classes on Flights
+-- Classes_on_Flights / Seats_on_Flights / Seats_in_Booking
 -- =================================================
 CREATE TABLE Classes_on_Flights (
     aircraft_id INT NOT NULL,
@@ -242,9 +216,6 @@ CREATE TABLE Classes_on_Flights (
         REFERENCES Flight(flight_number)
 );
 
--- =================================================
--- Seats on flights
--- =================================================
 CREATE TABLE Seats_on_Flights (
     aircraft_id INT NOT NULL,
     class_type VARCHAR(50) NOT NULL,
@@ -252,37 +223,47 @@ CREATE TABLE Seats_on_Flights (
     column_number INT NOT NULL,
     flight_number INT NOT NULL,
     available TINYINT,
-    PRIMARY KEY (
-        aircraft_id,
-        class_type,
-        row_num,
-        column_number,
-        flight_number
-    ),
+    PRIMARY KEY (aircraft_id, class_type, row_num, column_number, flight_number),
     FOREIGN KEY (aircraft_id, class_type, row_num, column_number)
         REFERENCES Seat(aircraft_id, class_type, row_num, column_number),
     FOREIGN KEY (flight_number)
         REFERENCES Flight(flight_number)
 );
 
--- =================================================
--- Seats in Booking
--- =================================================
-CREATE TABLE Seats_in_Booking (
-    aircraft_id INT NOT NULL,
-    class_type VARCHAR(50) NOT NULL,
-    row_num INT NOT NULL,
-    column_number INT NOT NULL,
-    booking_id VARCHAR(6) NOT NULL,
-    PRIMARY KEY (
-        aircraft_id,
-        class_type,
-        row_num,
-        column_number,
-        booking_id
-    ),
-    FOREIGN KEY (aircraft_id, class_type, row_num, column_number)
-        REFERENCES Seat(aircraft_id, class_type, row_num, column_number),
-    FOREIGN KEY (booking_id)
-        REFERENCES Booking(booking_id)
-);
+DROP TRIGGER IF EXISTS trg_flight_after_insert_seed_seats;
+DELIMITER $$
+
+CREATE TRIGGER trg_flight_after_insert_seed_seats
+AFTER INSERT ON Flight
+FOR EACH ROW
+BEGIN
+  INSERT IGNORE INTO Seats_on_Flights (
+    aircraft_id, class_type, row_num, column_number, flight_number, available
+  )
+  SELECT
+    s.aircraft_id, s.class_type, s.row_num, s.column_number,
+    NEW.flight_number,
+    1
+  FROM Seat s
+  WHERE s.aircraft_id = NEW.aircraft_id;
+END$$
+
+DELIMITER ;
+
+DROP TRIGGER IF EXISTS trg_ticket_ai_mark_unavailable;
+DELIMITER $$
+
+CREATE TRIGGER trg_ticket_ai_mark_unavailable
+AFTER INSERT ON Ticket
+FOR EACH ROW
+BEGIN
+  UPDATE Seats_on_Flights sof
+  SET sof.available = 0
+  WHERE sof.aircraft_id   = NEW.aircraft_id
+    AND sof.class_type    = NEW.class_type
+    AND sof.row_num       = NEW.row_num
+    AND sof.column_number = NEW.column_number
+    AND sof.flight_number = NEW.flight_number;
+END$$
+
+DELIMITER ;

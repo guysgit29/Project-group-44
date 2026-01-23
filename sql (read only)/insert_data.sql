@@ -1,5 +1,3 @@
-DROP DATABASE IF EXISTS flytau;
-CREATE DATABASE flytau;
 USE flytau;
 
 -- =================================================
