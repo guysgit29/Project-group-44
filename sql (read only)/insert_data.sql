@@ -1,0 +1,736 @@
+DROP DATABASE IF EXISTS flytau;
+CREATE DATABASE flytau;
+USE flytau;
+
+-- =================================================
+-- DATA
+-- =================================================
+
+
+-- 1) Managers (2)
+INSERT INTO Manager (id, first_name_he, last_name_he, start_date, city, street, phone_num, house_number, password) VALUES
+(123456782,'גיא','אילת','2020-02-10','Tel Aviv','Ibn Gabirol','052-5551234',18,'admin123'),
+(234567891,'דנה','לוי','2021-06-01','Haifa','HaNassi','054-7778899',45,'manager456');
+
+-- 2) Registered Users (4) + Phones
+INSERT INTO RegisteredUser (email, first_name_en, last_name_en, birth_date, registration_date, passport_number, password) VALUES
+('guy.eylat@example.com','Guy','Eylat','2002-07-14','2025-01-10','P12345678','pass123'),
+('dana.levy@example.com','Dana','Levy','1999-11-22','2025-02-05','P87654321','pass123'),
+('noam.sade@example.com','Noam','Sade','2001-03-03','2025-03-11','P11223344','pass123'),
+('maya.cohen@example.com','Maya','Cohen','2000-09-09','2025-04-20','P99887766','pass123');
+
+INSERT INTO RegisteredPhone (email, phone_number) VALUES
+('guy.eylat@example.com','052-1010101'),
+('guy.eylat@example.com','050-3334445'),
+('dana.levy@example.com','054-2020202'),
+('noam.sade@example.com','053-3030303'),
+('maya.cohen@example.com','058-4040404');
+
+-- 3) Guests (8) + Phones
+INSERT INTO GuestUser (email, first_name_en, last_name_en) VALUES
+('guest1@mail.com','Avi','Bar'),
+('guest2@mail.com','Lior','Shani'),
+('guest3@mail.com','Tom','Green'),
+('guest4@mail.com','Noa','Halevi'),
+('guest5@mail.com','Dan','Peretz'),
+('guest6@mail.com','Tali','Sharon'),
+('guest7@mail.com','Itay','Mizrahi'),
+('guest8@mail.com','Roni','Levi');
+
+INSERT INTO GuestPhone (email, phone_number) VALUES
+('guest1@mail.com','050-7000001'),
+('guest2@mail.com','050-7000002'),
+('guest3@mail.com','050-7000003'),
+('guest4@mail.com','050-7000004'),
+('guest5@mail.com','050-7000005'),
+('guest6@mail.com','050-7000006'),
+('guest7@mail.com','050-7000007'),
+('guest8@mail.com','050-7000008');
+
+-- 4) Pilots (25)
+INSERT INTO Pilot (id, first_name_he, last_name_he, start_date, city, street, house_number, phone_num, big_aircraft_cert) VALUES
+(301234567,'אורי','כהן','2012-03-01','Rishon LeZion','Rothschild',12,'050-1112233',1),
+(309876543,'רון','שחר','2014-06-15','Tel Aviv','Allenby',77,'050-1112244',1),
+(312345678,'דני','אבנר','2015-11-20','Netanya','Herzl',6,'050-1112255',1),
+(318765432,'יואב','יצחק','2016-01-10','Holon','Sokolov',19,'050-1112266',1),
+(320123456,'עופר','לוי','2017-09-05','Jerusalem','Jaffa',101,'050-1112277',1),
+(325678901,'ניר','דויד','2018-02-01','Petah Tikva','Haim Ozer',8,'050-1112288',0),
+(331234568,'אסי','עזר','2019-07-07','Beer Sheva','Rager',24,'050-1112299',0),
+(339999111,'טל','מור','2020-04-01','Ashdod','HaBanim',3,'052-3001111',0),
+(342222333,'ארז','טל','2021-08-18','Kfar Saba','Weizmann',14,'052-3002222',0),
+(351111222,'גיא','זוהר','2022-12-01','Modiin','HaHashmonaim',9,'052-3003333',0),
+(352111223,'תומר','בן-דוד','2016-05-10','Tel Aviv','Dizengoff',120,'053-4001111',1),
+(352111224,'נועם','שקד','2017-07-12','Ramat Gan','Bialik',8,'053-4002222',1),
+(352111225,'אלון','ברק','2018-09-15','Haifa','Moriah',33,'053-4003333',1),
+(352111226,'עמית','רז','2019-11-22','Herzliya','Sokolov',11,'053-4004444',1),
+(352111227,'מיכאל','שרון','2020-02-02','Holon','Eilat',5,'053-4005555',1),
+(352111228,'יונתן','מזרחי','2014-01-20','Jerusalem','King George',44,'054-6001111',0),
+(352111229,'איתי','גפן','2015-03-17','Rehovot','Herzl',29,'054-6002222',0),
+(352111230,'שחר','אילון','2016-06-30','Netanya','Smilansky',7,'054-6003333',0),
+(352111231,'רועי','פרץ','2017-10-01','Ashkelon','Bar Kochva',9,'054-6004444',0),
+(352111232,'אדם','שלו','2018-12-12','Kiryat Ono','HaNesiim',4,'054-6005555',0),
+(352111233,'יובל','כץ','2019-04-19','Petah Tikva','Jabotinsky',73,'055-7001111',0),
+(352111234,'ליאור','קמחי','2020-08-08','Beer Sheva','Rager',40,'055-7002222',0),
+(352111235,'דור','חורי','2021-01-09','Modiin','HaHashmonaim',19,'055-7003333',0),
+(352111236,'עידן','דניאל','2021-10-11','Tel Aviv','Ben Yehuda',55,'055-7004444',0),
+(352111237,'חגי','בר','2022-03-03','Haifa','HaAtzmaut',18,'055-7005555',0);
+
+-- 5) Flight Attendants (50)
+INSERT INTO FlightAttendant (id, first_name_he, last_name_he, start_date, city, street, house_number, phone_num, big_aircraft_cert) VALUES
+(401234567,'רחל','שלום','2020-01-05','Tel Aviv','Dizengoff',90,'050-8001111',1),
+(409876543,'שירה','חן','2020-02-10','Ramat Gan','Bialik',12,'050-8002222',1),
+(412345678,'מעיין','אטיאס','2020-03-12','Givatayim','Katznelson',31,'050-8003333',1),
+(418765432,'עדי','ביטי','2020-04-20','Holon','Eilat',7,'050-8004444',1),
+(420123456,'נועה','קירל','2020-05-01','Haifa','HaAtzmaut',18,'050-8005555',1),
+(425678901,'אנה','זק','2020-06-14','Tel Aviv','Ben Yehuda',55,'050-8006666',1),
+(431234568,'גל','גדות','2020-07-03','Jerusalem','King George',22,'050-8007777',1),
+(439999111,'רותם','סלע','2020-08-19','Netanya','Smilansky',10,'050-8008888',1),
+(442222333,'נטע','ברזילי','2020-09-10','Ashkelon','Bar Kochva',8,'052-9001111',1),
+(451111222,'לירון','ויצמן','2020-10-01','Herzliya','Sokolov',15,'052-9002222',1),
+
+(461234567,'יונה','אליאן','2021-01-15','Beer Sheva','Rager',40,'052-9003333',0),
+(469876543,'תיקי','דיין','2021-02-20','Rehovot','Herzl',29,'052-9004444',0),
+(472345678,'חנה','לסלאו','2021-03-25','Petah Tikva','Jabotinsky',73,'052-9005555',0),
+(478765432,'מיקי','קם','2021-04-14','Rishon LeZion','HaRav Kook',11,'053-9101111',0),
+(480123456,'אורנה','בנאי','2021-05-09','Tel Aviv','Frishman',27,'053-9102222',0),
+(485678901,'ציפי','שביט','2021-06-16','Haifa','Moriah',66,'053-9103333',0),
+(491234568,'גילה','אלמגור','2021-07-07','Jerusalem','Agron',13,'053-9104444',0),
+(499999111,'לאה','קניג','2021-08-02','Kiryat Ono','HaNesiim',4,'053-9105555',0),
+(502222333,'מרים','זוהר','2021-09-11','Ashdod','Herzl',2,'054-9201111',0),
+(511111222,'רבקה','מיכאלי','2021-10-20','Kfar Saba','Weizmann',9,'054-9202222',0),
+
+(511111223,'יעל','גרין','2022-01-02','Tel Aviv','Allenby',10,'054-9203333',1),
+(511111224,'שני','פרידמן','2022-01-10','Haifa','HaNassi',50,'054-9204444',1),
+(511111225,'נועה','בר','2022-02-05','Jerusalem','Jaffa',12,'054-9205555',1),
+(511111226,'שירה','לביא','2022-02-20','Netanya','Herzl',99,'054-9206666',1),
+(511111227,'ליה','אברהם','2022-03-15','Holon','Sokolov',3,'054-9207777',1),
+(511111228,'מור','שמש','2022-04-01','Ashkelon','Bar Kochva',4,'054-9208888',1),
+(511111229,'עדן','שטרן','2022-04-18','Beer Sheva','Rager',19,'055-9301111',1),
+(511111230,'קרן','אדרי','2022-05-07','Rishon LeZion','Rothschild',55,'055-9302222',1),
+(511111231,'איילת','בן-שמחון','2022-05-23','Petah Tikva','Haim Ozer',7,'055-9303333',1),
+(511111232,'מיכל','רוט','2022-06-11','Herzliya','Sokolov',23,'055-9304444',1),
+
+(511111233,'נעמי','אוחנה','2022-07-01','Tel Aviv','Ben Yehuda',88,'055-9305555',0),
+(511111234,'שחר','מילר','2022-07-19','Haifa','Moriah',11,'055-9306666',0),
+(511111235,'רוני','כץ','2022-08-03','Jerusalem','King George',6,'055-9307777',0),
+(511111236,'לילך','פרץ','2022-08-21','Netanya','Smilansky',14,'055-9308888',0),
+(511111237,'הילה','לב','2022-09-09','Holon','Eilat',18,'056-9401111',0),
+(511111238,'אביגיל','מרום','2022-09-26','Ashdod','HaBanim',21,'056-9402222',0),
+(511111239,'נעמה','רז','2022-10-13','Kfar Saba','Weizmann',31,'056-9403333',0),
+(511111240,'תמר','בראון','2022-11-02','Modiin','HaHashmonaim',8,'056-9404444',0),
+(511111241,'דנה','סוויסה','2022-11-20','Rehovot','Herzl',2,'056-9405555',0),
+(511111242,'אור','דקל','2022-12-07','Ramat Gan','Bialik',17,'056-9406666',0),
+
+(511111243,'מעיין','טל','2023-01-05','Tel Aviv','Dizengoff',9,'057-9501111',0),
+(511111244,'שירן','אלון','2023-01-22','Haifa','HaAtzmaut',28,'057-9502222',0),
+(511111245,'יובל','רזיאל','2023-02-10','Jerusalem','Agron',55,'057-9503333',0),
+(511111246,'סיון','גרנות','2023-02-27','Ashkelon','Bar Kochva',16,'057-9504444',0),
+(511111247,'נועה','שגב','2023-03-15','Netanya','Herzl',1,'057-9505555',0),
+(511111248,'רעות','מגן','2023-04-01','Holon','Sokolov',80,'057-9506666',0),
+(511111249,'דניאל','לוי','2023-04-19','Beer Sheva','Rager',7,'057-9507777',0),
+(511111250,'תמר','מלכה','2023-05-06','Petah Tikva','Jabotinsky',120,'057-9508888',0),
+(511111251,'לי','בן-ארי','2023-05-22','Herzliya','Sokolov',41,'058-9601111',0),
+(511111252,'שירה','קורן','2023-06-10','Tel Aviv','Frishman',77,'058-9602222',0);
+
+-- 6) Aircraft (15)
+INSERT INTO Aircraft (aircraft_id, manufacturer, purchase_date, aircraft_size) VALUES
+(101,'Airbus','2016-05-10','Small'),
+(102,'Boeing','2017-08-22','Small'),
+(103,'Embraer','2018-03-14','Small'),
+(104,'Airbus','2019-11-30','Small'),
+(105,'Boeing','2020-06-05','Small'),
+(106,'Embraer','2021-02-17','Small'),
+(107,'Airbus','2021-09-09','Small'),
+(108,'Boeing','2022-01-18','Small'),
+(109,'Embraer','2022-07-21','Small'),
+(110,'Airbus','2023-04-12','Small'),
+(111,'Boeing','2015-12-01','Large'),
+(112,'Airbus','2016-09-15','Large'),
+(113,'Boeing','2017-10-20','Large'),
+(114,'Airbus','2019-02-03','Large'),
+(115,'Boeing','2020-08-28','Large');
+
+-- 7) Classes
+INSERT INTO Class (aircraft_id, class_type, total_rows, total_columns) VALUES
+(101,'Economy',5,4),(102,'Economy',5,4),(103,'Economy',5,4),(104,'Economy',5,4),(105,'Economy',5,4),
+(106,'Economy',5,4),(107,'Economy',5,4),(108,'Economy',5,4),(109,'Economy',5,4),(110,'Economy',5,4),
+(111,'Business',4,6),(111,'Economy',10,6),
+(112,'Business',4,6),(112,'Economy',10,6),
+(113,'Business',4,6),(113,'Economy',10,6),
+(114,'Business',4,6),(114,'Economy',10,6),
+(115,'Business',4,6),(115,'Economy',10,6);
+
+-- 8) Seats
+INSERT INTO Seat (aircraft_id, class_type, row_num, column_number)
+WITH RECURSIVE
+  r10 AS (SELECT 1 AS n UNION ALL SELECT n+1 FROM r10 WHERE n < 10),
+  c6  AS (SELECT 1 AS n UNION ALL SELECT n+1 FROM c6  WHERE n < 6)
+SELECT cl.aircraft_id,'Economy',r10.n,c6.n
+FROM Class cl
+JOIN r10 ON r10.n <= cl.total_rows
+JOIN c6  ON c6.n  <= cl.total_columns
+WHERE cl.class_type = 'Economy';
+
+INSERT INTO Seat (aircraft_id, class_type, row_num, column_number)
+WITH RECURSIVE
+  r4 AS (SELECT 1 AS n UNION ALL SELECT n+1 FROM r4 WHERE n < 4),
+  c6 AS (SELECT 1 AS n UNION ALL SELECT n+1 FROM c6 WHERE n < 6)
+SELECT cl.aircraft_id,'Business',r4.n,c6.n
+FROM Class cl
+JOIN r4 ON r4.n <= cl.total_rows
+JOIN c6 ON c6.n <= cl.total_columns
+WHERE cl.class_type = 'Business';
+
+-- 9) FlightLength
+INSERT INTO FlightLength (origin, destination, length_minutes) VALUES
+('TLV','LHR','05:30:00'),('LHR','TLV','05:25:00'),
+('TLV','JFK','11:15:00'),('JFK','TLV','10:45:00'),
+('TLV','DXB','03:20:00'),('DXB','TLV','03:10:00'),
+('TLV','AMM','01:10:00'),('AMM','TLV','01:05:00'),
+('TLV','ATH','02:10:00'),('ATH','TLV','02:05:00'),
+('TLV','FRA','04:10:00'),('FRA','TLV','04:05:00'),
+('TLV','CDG','04:45:00'),('CDG','TLV','04:35:00');
+
+-- =================================================
+-- 10) Flights
+-- FIX: aircraft_id paired on return flights to satisfy AIRCRAFT location rule
+-- =================================================
+
+-- 15 Completed
+INSERT INTO Flight (flight_number, aircraft_id, origin, destination, departure_time, flight_status) VALUES
+(1701,111,'TLV','JFK','2025-08-01 10:05:00','Completed'),
+(1702,111,'JFK','TLV','2025-08-02 22:10:00','Completed'),   -- was 112, fixed to 111
+
+(1703,101,'TLV','AMM','2025-09-10 09:00:00','Completed'),
+(1704,101,'AMM','TLV','2025-09-11 12:00:00','Completed'),   -- was 102, fixed to 101
+
+(1705,103,'TLV','DXB','2025-10-05 07:20:00','Completed'),
+(1706,103,'DXB','TLV','2025-10-06 11:40:00','Completed'),   -- was 104, fixed to 103
+
+(1707,113,'TLV','LHR','2025-11-15 15:35:00','Completed'),
+(1708,113,'LHR','TLV','2025-11-16 08:20:00','Completed'),   -- was 114, fixed to 113
+
+(1709,105,'TLV','ATH','2025-12-01 06:30:00','Completed'),
+(1710,105,'ATH','TLV','2025-12-02 13:10:00','Completed'),   -- was 106, fixed to 105
+
+(1711,115,'TLV','FRA','2025-12-20 18:00:00','Completed'),
+(1712,115,'FRA','TLV','2025-12-21 09:30:00','Completed'),   -- was 107, fixed to 115
+
+(1713,108,'TLV','CDG','2026-01-05 12:00:00','Completed'),
+(1714,108,'CDG','TLV','2026-01-06 16:30:00','Completed'),   -- was 109, fixed to 108
+
+(1715,110,'TLV','DXB','2026-02-01 07:10:00','Completed');
+
+-- 8 Active
+INSERT INTO Flight (flight_number, aircraft_id, origin, destination, departure_time, flight_status) VALUES
+(2101,111,'TLV','JFK','2028-10-17 16:49:00','Active'),        -- aircraft 111 last ended TLV (1702)
+(2102,113,'TLV','LHR','2028-06-15 16:45:00','Active'),        -- aircraft 113 last ended TLV (1708)
+(2103,101,'TLV','DXB','2027-03-05 22:45:00','Active'),        -- aircraft 101 last ended TLV (1704)
+(2104,101,'DXB','TLV','2027-06-11 07:20:00','Active'),        -- was 103, fixed to 101 (return of 2103)
+(2105,105,'TLV','ATH','2026-12-15 09:30:00','Active'),        -- aircraft 105 last ended TLV (1710)
+(2106,115,'TLV','JFK','2028-10-18 03:49:00','Active'),        -- aircraft 115 last ended TLV (1712)
+(2107,103,'TLV','AMM','2026-09-01 10:00:00','Active'),        -- aircraft 103 last ended TLV (1706)
+(2108,108,'TLV','FRA','2027-11-20 20:15:00','Active');        -- aircraft 108 last ended TLV (1714)
+
+-- 3 Canceled by airline (doesn't affect location sequence in “real movement”, but aircraft ids are still valid)
+INSERT INTO Flight (flight_number, aircraft_id, origin, destination, departure_time, flight_status) VALUES
+(3101,114,'TLV','LHR','2026-08-04 23:10:00','Canceled'),
+(3102,102,'TLV','DXB','2026-09-10 12:00:00','Canceled'),
+(3103,112,'TLV','JFK','2026-10-01 09:00:00','Canceled');
+
+-- =================================================
+-- 11) Classes_on_Flights
+-- =================================================
+INSERT INTO Classes_on_Flights (aircraft_id, class_type, flight_number, class_price)
+SELECT f.aircraft_id,'Economy',f.flight_number,
+       CASE WHEN LOWER(a.aircraft_size)='large' THEN 650.00 ELSE 280.00 END
+FROM Flight f
+JOIN Aircraft a ON a.aircraft_id = f.aircraft_id
+JOIN Class cl ON cl.aircraft_id = f.aircraft_id AND cl.class_type = 'Economy';
+
+INSERT INTO Classes_on_Flights (aircraft_id, class_type, flight_number, class_price)
+SELECT f.aircraft_id,'Business',f.flight_number,1400.00
+FROM Flight f
+JOIN Aircraft a ON a.aircraft_id = f.aircraft_id
+JOIN Class cl ON cl.aircraft_id = f.aircraft_id AND cl.class_type = 'Business'
+WHERE LOWER(a.aircraft_size)='large';
+
+-- =================================================
+-- 12) Bookings (same as yours)
+-- =================================================
+INSERT INTO Booking (booking_id, registered_email, guest_email, flight_number, price, booking_date, booking_status) VALUES
+('BK0001','guy.eylat@example.com',NULL,1701,1300.00,'2025-07-10','Completed'),
+('BK0002',NULL,'guest1@mail.com',1701,650.00,'2025-07-11','Completed'),
+('BK0003','dana.levy@example.com',NULL,1702,1400.00,'2025-07-20','Completed'),
+('BK0004',NULL,'guest2@mail.com',1702,650.00,'2025-07-21','Completed'),
+('BK0005','noam.sade@example.com',NULL,1703,560.00,'2025-09-01','Completed'),
+('BK0006',NULL,'guest3@mail.com',1703,280.00,'2025-09-02','Completed'),
+('BK0007','maya.cohen@example.com',NULL,1704,560.00,'2025-09-03','Completed'),
+('BK0008',NULL,'guest4@mail.com',1704,280.00,'2025-09-04','Completed'),
+('BK0009','guy.eylat@example.com',NULL,1705,560.00,'2025-09-20','Completed'),
+('BK0010',NULL,'guest5@mail.com',1705,280.00,'2025-09-21','Completed'),
+('BK0011','dana.levy@example.com',NULL,1706,560.00,'2025-09-22','Completed'),
+('BK0012',NULL,'guest6@mail.com',1706,280.00,'2025-09-23','Completed'),
+('BK0013','noam.sade@example.com',NULL,1707,1300.00,'2025-11-01','Completed'),
+('BK0014',NULL,'guest7@mail.com',1707,650.00,'2025-11-02','Completed'),
+('BK0015','maya.cohen@example.com',NULL,1708,650.00,'2025-11-03','Completed'),
+('BK0016',NULL,'guest8@mail.com',1708,650.00,'2025-11-04','Completed'),
+('BK0017','guy.eylat@example.com',NULL,1709,560.00,'2025-11-15','Completed'),
+('BK0018',NULL,'guest1@mail.com',1709,280.00,'2025-11-16','Completed'),
+('BK0019','dana.levy@example.com',NULL,1710,560.00,'2025-11-17','Completed'),
+('BK0020',NULL,'guest2@mail.com',1710,280.00,'2025-11-18','Completed'),
+('BK0021','noam.sade@example.com',NULL,1711,1300.00,'2025-12-01','Completed'),
+('BK0022',NULL,'guest3@mail.com',1711,650.00,'2025-12-02','Completed'),
+('BK0023','maya.cohen@example.com',NULL,1712,560.00,'2025-12-03','Completed'),
+('BK0024',NULL,'guest4@mail.com',1712,280.00,'2025-12-04','Completed'),
+('BK0025','guy.eylat@example.com',NULL,1713,560.00,'2025-12-20','Completed'),
+('BK0026',NULL,'guest5@mail.com',1713,280.00,'2025-12-21','Completed'),
+('BK0027','dana.levy@example.com',NULL,1714,560.00,'2025-12-22','Completed'),
+('BK0028',NULL,'guest6@mail.com',1714,280.00,'2025-12-23','Completed'),
+('BK0029','noam.sade@example.com',NULL,1715,560.00,'2026-01-10','Completed'),
+('BK0030',NULL,'guest7@mail.com',1715,280.00,'2026-01-11','Completed'),
+
+('BK0031','guy.eylat@example.com',NULL,2101,650.00,'2028-09-01','Active'),
+('BK0032',NULL,'guest1@mail.com',2101,650.00,'2028-09-02','Active'),
+('BK0033','dana.levy@example.com',NULL,2102,650.00,'2028-05-01','Active'),
+('BK0034',NULL,'guest2@mail.com',2102,650.00,'2028-05-02','Active'),
+('BK0035','noam.sade@example.com',NULL,2103,280.00,'2027-02-01','Active'),
+('BK0036',NULL,'guest3@mail.com',2103,280.00,'2027-02-02','Active'),
+('BK0037','maya.cohen@example.com',NULL,2104,280.00,'2027-05-10','Active'),
+('BK0038',NULL,'guest4@mail.com',2104,280.00,'2027-05-11','Active'),
+('BK0039','guy.eylat@example.com',NULL,2108,650.00,'2027-10-01','Active'),
+('BK0040',NULL,'guest5@mail.com',2108,650.00,'2027-10-02','Active'),
+
+('BK0041','dana.levy@example.com',NULL,2105,280.00,'2026-11-01','Canceled by Customer'),
+('BK0042',NULL,'guest6@mail.com',2105,280.00,'2026-11-02','Canceled by Customer'),
+('BK0043','noam.sade@example.com',NULL,2106,650.00,'2028-08-10','Canceled by Customer'),
+('BK0044',NULL,'guest7@mail.com',2107,280.00,'2026-08-15','Canceled by Customer'),
+('BK0045','maya.cohen@example.com',NULL,2102,650.00,'2028-05-03','Canceled by Customer');
+-- =================================================
+-- 12b) EXTRA Business bookings (more variety across different large aircraft)
+--      BK0046..BK0060
+-- =================================================
+INSERT INTO Booking (booking_id, registered_email, guest_email, flight_number, price, booking_date, booking_status) VALUES
+-- Completed Large (Business)
+('BK0046','guy.eylat@example.com',NULL,1701,1400.00,'2025-07-12','Completed'),
+('BK0047',NULL,'guest2@mail.com',1701,1400.00,'2025-07-13','Completed'),
+
+('BK0048','dana.levy@example.com',NULL,1702,1400.00,'2025-07-22','Completed'),
+('BK0049',NULL,'guest4@mail.com',1702,1400.00,'2025-07-23','Completed'),
+
+('BK0050','noam.sade@example.com',NULL,1707,1400.00,'2025-11-05','Completed'),
+('BK0051',NULL,'guest6@mail.com',1707,1400.00,'2025-11-06','Completed'),
+
+('BK0052','maya.cohen@example.com',NULL,1708,1400.00,'2025-11-07','Completed'),
+('BK0053',NULL,'guest8@mail.com',1708,1400.00,'2025-11-08','Completed'),
+
+('BK0054','guy.eylat@example.com',NULL,1711,1400.00,'2025-12-05','Completed'),
+('BK0055',NULL,'guest1@mail.com',1711,1400.00,'2025-12-06','Completed'),
+
+('BK0056','dana.levy@example.com',NULL,1712,1400.00,'2025-12-07','Completed'),
+('BK0057',NULL,'guest3@mail.com',1712,1400.00,'2025-12-08','Completed'),
+
+-- Active Large (Business)
+('BK0058','noam.sade@example.com',NULL,2101,1400.00,'2028-09-03','Active'),
+('BK0059',NULL,'guest5@mail.com',2102,1400.00,'2028-05-04','Active'),
+('BK0060','maya.cohen@example.com',NULL,2106,1400.00,'2028-08-12','Active');
+
+
+-- =================================================
+-- 13) Tickets (same logic as yours)
+-- =================================================
+INSERT INTO Ticket (booking_id, flight_number, aircraft_id, class_type, row_num, column_number)
+SELECT b.booking_id, b.flight_number, f.aircraft_id, 'Economy',
+       1 + (CAST(SUBSTRING(b.booking_id,3) AS UNSIGNED) MOD 5),
+       1 + (CAST(SUBSTRING(b.booking_id,3) AS UNSIGNED) MOD 4)
+FROM Booking b
+JOIN Flight f ON f.flight_number=b.flight_number
+WHERE b.booking_status IN ('Completed','Active');
+
+INSERT INTO Ticket (booking_id, flight_number, aircraft_id, class_type, row_num, column_number)
+SELECT b.booking_id, b.flight_number, f.aircraft_id, 'Economy',
+       1 + ((CAST(SUBSTRING(b.booking_id,3) AS UNSIGNED) + 1) MOD 5),
+       1 + ((CAST(SUBSTRING(b.booking_id,3) AS UNSIGNED) + 2) MOD 4)
+FROM Booking b
+JOIN Flight f ON f.flight_number=b.flight_number
+WHERE b.booking_status IN ('Completed','Active');
+-- =================================================
+-- 13b) EXTRA Tickets for the new Business bookings (2 seats per booking)
+--      Uses Business rows 1..4, cols 1..6 (only exists on Large aircraft)
+-- =================================================
+
+-- Seat #1 per booking
+INSERT INTO Ticket (booking_id, flight_number, aircraft_id, class_type, row_num, column_number)
+SELECT
+  b.booking_id,
+  b.flight_number,
+  f.aircraft_id,
+  'Business',
+  1 + (CAST(SUBSTRING(b.booking_id,3) AS UNSIGNED) MOD 4) AS row_num,
+  1 + (CAST(SUBSTRING(b.booking_id,3) AS UNSIGNED) MOD 6) AS column_number
+FROM Booking b
+JOIN Flight f ON f.flight_number = b.flight_number
+WHERE b.booking_id BETWEEN 'BK0046' AND 'BK0060'
+  AND b.booking_status IN ('Completed','Active');
+
+-- Seat #2 per booking (different seat)
+INSERT INTO Ticket (booking_id, flight_number, aircraft_id, class_type, row_num, column_number)
+SELECT
+  b.booking_id,
+  b.flight_number,
+  f.aircraft_id,
+  'Business',
+  1 + ((CAST(SUBSTRING(b.booking_id,3) AS UNSIGNED) + 1) MOD 4) AS row_num,
+  1 + ((CAST(SUBSTRING(b.booking_id,3) AS UNSIGNED) + 3) MOD 6) AS column_number
+FROM Booking b
+JOIN Flight f ON f.flight_number = b.flight_number
+WHERE b.booking_id BETWEEN 'BK0046' AND 'BK0060'
+  AND b.booking_status IN ('Completed','Active');
+
+-- =================================================
+-- 14) Crew assignments (REWRITTEN to satisfy your constraints)
+-- =================================================
+TRUNCATE TABLE Pilots_on_Flights;
+TRUNCATE TABLE FlightAttendants_on_Flights;
+
+-- ---------- LARGE (cert=1) crews ----------
+-- Crew L1 for JFK pair + later TLV departures (valid because ends TLV after 1702)
+INSERT INTO Pilots_on_Flights (id, flight_number) VALUES
+(301234567,1701),(309876543,1701),(312345678,1701),
+(301234567,1702),(309876543,1702),(312345678,1702),
+(301234567,2101),(309876543,2101),(312345678,2101);
+
+INSERT INTO FlightAttendants_on_Flights (id, flight_number) VALUES
+(401234567,1701),(409876543,1701),(412345678,1701),(418765432,1701),(420123456,1701),(425678901,1701),
+(401234567,1702),(409876543,1702),(412345678,1702),(418765432,1702),(420123456,1702),(425678901,1702),
+(401234567,2101),(409876543,2101),(412345678,2101),(418765432,2101),(420123456,2101),(425678901,2101);
+
+-- Crew L2 for LHR pair + later TLV departures (ends TLV after 1708)
+INSERT INTO Pilots_on_Flights (id, flight_number) VALUES
+(318765432,1707),(320123456,1707),(352111223,1707),
+(318765432,1708),(320123456,1708),(352111223,1708),
+(318765432,2102),(320123456,2102),(352111223,2102);
+
+INSERT INTO FlightAttendants_on_Flights (id, flight_number) VALUES
+(431234568,1707),(439999111,1707),(442222333,1707),(451111222,1707),(511111223,1707),(511111224,1707),
+(431234568,1708),(439999111,1708),(442222333,1708),(451111222,1708),(511111223,1708),(511111224,1708),
+(431234568,2102),(439999111,2102),(442222333,2102),(451111222,2102),(511111223,2102),(511111224,2102);
+
+-- Crew L3 for FRA pair + later TLV departures: ends TLV after 1712
+INSERT INTO Pilots_on_Flights (id, flight_number) VALUES
+(352111224,1711),(352111225,1711),(352111226,1711),
+(352111224,1712),(352111225,1712),(352111226,1712),
+(352111224,2106),(352111225,2106),(352111226,2106);
+
+INSERT INTO FlightAttendants_on_Flights (id, flight_number) VALUES
+(511111225,1711),(511111226,1711),(511111227,1711),(511111228,1711),(511111229,1711),(511111230,1711),
+(511111225,1712),(511111226,1712),(511111227,1712),(511111228,1712),(511111229,1712),(511111230,1712),
+(511111225,2106),(511111226,2106),(511111227,2106),(511111228,2106),(511111229,2106),(511111230,2106);
+
+-- Crew L4 for Active FRA (separate from L3 to keep more diversity) ends FRA, not reused
+INSERT INTO Pilots_on_Flights (id, flight_number) VALUES
+(352111227,2108),(352111223,2108),(320123456,2108);
+
+INSERT INTO FlightAttendants_on_Flights (id, flight_number) VALUES
+(511111231,2108),(511111232,2108),(401234567,2108),(409876543,2108),(412345678,2108),(418765432,2108);
+
+-- CANCELED large: assign valid crews (does not need to preserve “movement”)
+INSERT INTO Pilots_on_Flights (id, flight_number) VALUES
+(352111224,3103),(352111225,3103),(352111226,3103),
+(318765432,3101),(320123456,3101),(352111223,3101);
+
+INSERT INTO FlightAttendants_on_Flights (id, flight_number) VALUES
+(511111225,3103),(511111226,3103),(511111227,3103),(511111228,3103),(511111229,3103),(511111230,3103),
+(431234568,3101),(439999111,3101),(442222333,3101),(451111222,3101),(511111223,3101),(511111224,3101);
+
+-- ---------- SMALL crews ----------
+-- Crew S1 for AMM pair + later TLV departure: ends TLV after 1704
+INSERT INTO Pilots_on_Flights (id, flight_number) VALUES
+(325678901,1703),(331234568,1703),
+(325678901,1704),(331234568,1704),
+(325678901,2107),(331234568,2107);
+
+INSERT INTO FlightAttendants_on_Flights (id, flight_number) VALUES
+(461234567,1703),(469876543,1703),(472345678,1703),
+(461234567,1704),(469876543,1704),(472345678,1704),
+(461234567,2107),(469876543,2107),(472345678,2107);
+
+-- Crew S2 for DXB pair: ends TLV after 1706 (reused for TLV departure 2103 and return 2104 uses same crew)
+INSERT INTO Pilots_on_Flights (id, flight_number) VALUES
+(339999111,1705),(342222333,1705),
+(339999111,1706),(342222333,1706),
+(339999111,2103),(342222333,2103),
+(339999111,2104),(342222333,2104);
+
+INSERT INTO FlightAttendants_on_Flights (id, flight_number) VALUES
+(478765432,1705),(480123456,1705),(485678901,1705),
+(478765432,1706),(480123456,1706),(485678901,1706),
+(478765432,2103),(480123456,2103),(485678901,2103),
+(478765432,2104),(480123456,2104),(485678901,2104);
+
+-- Crew S3 for ATH pair + later TLV departure: ends TLV after 1710
+INSERT INTO Pilots_on_Flights (id, flight_number) VALUES
+(351111222,1709),(352111228,1709),
+(351111222,1710),(352111228,1710),
+(351111222,2105),(352111228,2105);
+
+INSERT INTO FlightAttendants_on_Flights (id, flight_number) VALUES
+(491234568,1709),(499999111,1709),(502222333,1709),
+(491234568,1710),(499999111,1710),(502222333,1710),
+(491234568,2105),(499999111,2105),(502222333,2105);
+
+-- Crew S4 for CDG pair: ends TLV after 1714 (not reused)
+INSERT INTO Pilots_on_Flights (id, flight_number) VALUES
+(352111229,1713),(352111230,1713),
+(352111229,1714),(352111230,1714);
+
+INSERT INTO FlightAttendants_on_Flights (id, flight_number) VALUES
+(511111233,1713),(511111234,1713),(511111235,1713),
+(511111233,1714),(511111234,1714),(511111235,1714);
+
+-- Flight 1715 TLV->DXB one-way (crew ends DXB, not reused)
+INSERT INTO Pilots_on_Flights (id, flight_number) VALUES
+(352111231,1715),(352111232,1715);
+
+INSERT INTO FlightAttendants_on_Flights (id, flight_number) VALUES
+(511111236,1715),(511111237,1715),(511111238,1715);
+
+-- CANCELED small
+INSERT INTO Pilots_on_Flights (id, flight_number) VALUES
+(342222333,3102),(351111222,3102);
+
+INSERT INTO FlightAttendants_on_Flights (id, flight_number) VALUES
+(511111251,3102),(511111252,3102),(461234567,3102);
+
+-- =================================================
+-- Seats_on_Flights rebuild + mark sold seats unavailable (same as yours)
+-- =================================================
+TRUNCATE TABLE Seats_on_Flights;
+
+INSERT INTO Seats_on_Flights (aircraft_id, class_type, row_num, column_number, flight_number, available)
+SELECT s.aircraft_id, s.class_type, s.row_num, s.column_number, f.flight_number, 1
+FROM Flight f
+JOIN Seat s ON s.aircraft_id = f.aircraft_id;
+
+UPDATE Seats_on_Flights sof
+JOIN Ticket t
+ ON t.aircraft_id    = sof.aircraft_id
+AND t.class_type     = sof.class_type
+AND t.row_num        = sof.row_num
+AND t.column_number = sof.column_number
+AND t.flight_number = sof.flight_number
+SET sof.available = 0;
+
+
+
+-- Query 1
+SELECT 
+    CONCAT(ROUND(COALESCE(AVG(
+        (CASE 
+            WHEN t.tickets_sold IS NULL THEN 0 
+            ELSE t.tickets_sold 
+         END / sof.total_capacity) * 100), 0), 2), '%') AS average_flight_occupancy_percentage
+FROM 
+    Flight f
+-- Denominator: Total flight capacity
+JOIN (
+    SELECT flight_number, COUNT(*) AS total_capacity
+    FROM Seats_on_Flights
+    GROUP BY flight_number
+    ) sof ON f.flight_number = sof.flight_number
+-- Numerator: Total tickets sold
+LEFT JOIN (
+    SELECT flight_number, COUNT(*) AS tickets_sold
+    FROM Ticket
+    GROUP BY flight_number
+) t ON f.flight_number = t.flight_number
+WHERE 
+    f.arrival_time < NOW();
+    
+-- Query 2
+WITH Ticket_Valuation AS (
+    -- Step 1: Calculate individual list price and total booking list value
+    SELECT 
+        t.booking_id,
+        t.aircraft_id,
+        t.class_type,
+        cof.class_price AS individual_list_price,
+        -- Window function for total booking list value (denominator)
+        SUM(cof.class_price) OVER (PARTITION BY t.booking_id) AS total_booking_list_value
+    FROM 
+        Ticket t
+    JOIN 
+        Classes_on_Flights cof 
+        ON t.flight_number = cof.flight_number 
+        AND t.aircraft_id = cof.aircraft_id 
+        AND t.class_type = cof.class_type
+),
+Revenue_Allocation AS (
+    -- Step 2: Allocate actual revenue to each ticket
+    SELECT 
+        tv.aircraft_id,
+        tv.class_type,
+        -- Formula: (Ticket List Price / Total Booking List Value) * Actual Price
+        (tv.individual_list_price / tv.total_booking_list_value) * b.price AS allocated_revenue
+    FROM 
+        Ticket_Valuation tv
+    JOIN 
+        Booking b ON tv.booking_id = b.booking_id
+    -- Includes all revenue regardless of status
+)
+-- Step 3: Final aggregation by aircraft and class
+SELECT 
+    a.aircraft_size,      
+    a.manufacturer,        
+    ra.class_type,          
+    ROUND(SUM(ra.allocated_revenue), 2) AS total_revenue
+FROM 
+    Revenue_Allocation ra
+JOIN 
+    Aircraft a ON ra.aircraft_id = a.aircraft_id
+GROUP BY 
+    a.aircraft_size, 
+    a.manufacturer, 
+    ra.class_type;
+    
+-- Query 3
+WITH All_Crew_Flights AS (
+    -- Part 1: Gather pilot hours
+    SELECT 
+        p.id,
+        p.first_name_he,
+        p.last_name_he,
+        fl.length_minutes
+    FROM 
+        Pilot p
+    JOIN Pilots_on_Flights pof ON p.id = pof.id
+    JOIN Flight f ON pof.flight_number = f.flight_number
+    JOIN FlightLength fl ON f.origin = fl.origin AND f.destination = fl.destination
+    WHERE f.flight_status = 'Completed' -- Completed flights only
+
+    UNION ALL
+
+    -- Part 2: Gather flight attendant hours
+    SELECT 
+        fa.id,
+        fa.first_name_he,
+        fa.last_name_he,
+        fl.length_minutes
+    FROM 
+        FlightAttendant fa
+    JOIN FlightAttendants_on_Flights faof ON fa.id = faof.id
+    JOIN Flight f ON faof.flight_number = f.flight_number
+    JOIN FlightLength fl ON f.origin = fl.origin AND f.destination = fl.destination
+    WHERE f.flight_status = 'Completed' -- Completed flights only
+)
+-- Main selection: Aggregate data
+SELECT 
+    id,
+    first_name_he,
+    last_name_he,
+    
+    -- Calc short flight hours (<= 6 hours)
+    ROUND(SUM(CASE 
+        WHEN length_minutes <= '06:00:00' THEN TIME_TO_SEC(length_minutes) / 3600 
+        ELSE 0 
+    END), 2) AS short_flight_hours,
+
+    -- Calc long flight hours (> 6 hours)
+    ROUND(SUM(CASE 
+        WHEN length_minutes > '06:00:00' THEN TIME_TO_SEC(length_minutes) / 3600 
+        ELSE 0 
+    END), 2) AS long_flight_hours
+    
+FROM 
+    All_Crew_Flights
+GROUP BY 
+    id, first_name_he, last_name_he;
+    
+-- Query 4
+SELECT 
+    -- Format Year-Month
+    DATE_FORMAT(booking_date, '%Y-%m') AS booking_month,
+
+    -- Calculate percentage
+    CONCAT(
+        ROUND(
+            (SUM(CASE 
+                WHEN booking_status='Canceled by Customer' THEN 1 
+                ELSE 0 
+             END) / COUNT(*)) * 100, 0 ), '%') AS cancellation_rate_percentage
+FROM 
+    Booking
+GROUP BY 
+    DATE_FORMAT(booking_date, '%Y-%m')
+
+ORDER BY 
+    booking_month;
+    
+-- Query 5
+WITH Route_Stats AS (
+    -- Step 1: Aggregate completed flights by route and month
+    SELECT 
+        aircraft_id,
+        DATE_FORMAT(departure_time, '%Y-%m') AS work_month,
+        CONCAT(origin, '-', destination) AS route_name,
+        COUNT(*) AS route_count
+    FROM 
+        Flight
+    WHERE 
+        flight_status = 'Completed'
+    GROUP BY 
+        aircraft_id, work_month, route_name
+), 
+Dominant_Routes AS (
+    -- Step 2: Rank routes to identify the most frequent one
+    -- Uses route_name ASC as a tie-breaker to ensure a single result
+    SELECT 
+        aircraft_id,
+        work_month,
+        route_name,
+        ROW_NUMBER() OVER (PARTITION BY aircraft_id, work_month ORDER BY route_count DESC, route_name ASC) AS rn
+    FROM 
+        Route_Stats
+)
+-- Step 3: Main fleet report
+SELECT 
+    a.aircraft_id,
+    DATE_FORMAT(f.departure_time, '%Y-%m') AS work_month,
+    
+    -- Count performed flights
+    SUM(CASE 
+        WHEN f.flight_status = 'Completed' THEN 1 
+        ELSE 0 
+    END) AS performed_flights,
+
+    -- Count canceled flights
+    SUM(CASE 
+        WHEN f.flight_status = 'Canceled' THEN 1 
+        ELSE 0 
+    END) AS cancelled_flights,
+
+    -- Calculate utilization percentage (0 decimals + '%')
+    CONCAT(
+        ROUND(
+            (COUNT(DISTINCT CASE 
+                WHEN f.flight_status = 'Completed' 
+                THEN DATE(f.departure_time) 
+            END) / 30.0) * 100, 2),'%') AS utilization_percentage,
+
+    -- Display dominant route or default text
+    IFNULL(dr.route_name, 'No Flights') AS dominant_route
+
+FROM 
+    Aircraft a
+LEFT JOIN 
+    Flight f ON a.aircraft_id = f.aircraft_id
+LEFT JOIN 
+    Dominant_Routes dr ON a.aircraft_id = dr.aircraft_id 
+                        AND DATE_FORMAT(f.departure_time, '%Y-%m') = dr.work_month 
+                        AND dr.rn = 1
+WHERE 
+    f.departure_time <= NOW()
+GROUP BY 
+    a.aircraft_id, 
+    DATE_FORMAT(f.departure_time, '%Y-%m'),
+    dr.route_name;
