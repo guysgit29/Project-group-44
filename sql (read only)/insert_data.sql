@@ -285,25 +285,25 @@ INSERT INTO Booking (booking_id, registered_email, guest_email, flight_number, p
 ('BK0026',NULL,'guest5@mail.com',1713,280.00,'2025-12-21','Completed'),
 ('BK0027','dana.levy@example.com',NULL,1714,560.00,'2025-12-22','Completed'),
 ('BK0028',NULL,'guest6@mail.com',1714,280.00,'2025-12-23','Completed'),
-('BK0029','noam.sade@example.com',NULL,1715,560.00,'2026-01-10','Completed'),
+('BK0029','noam.sade@example.com',NULL,1715,560.00,'2025-01-10','Completed'),
 ('BK0030',NULL,'guest7@mail.com',1715,280.00,'2026-01-11','Completed'),
 
-('BK0031','guy.eylat@example.com',NULL,2101,650.00,'2028-09-01','Active'),
-('BK0032',NULL,'guest1@mail.com',2101,650.00,'2028-09-02','Active'),
-('BK0033','dana.levy@example.com',NULL,2102,650.00,'2028-05-01','Active'),
-('BK0034',NULL,'guest2@mail.com',2102,650.00,'2028-05-02','Active'),
-('BK0035','noam.sade@example.com',NULL,2103,280.00,'2027-02-01','Active'),
-('BK0036',NULL,'guest3@mail.com',2103,280.00,'2027-02-02','Active'),
-('BK0037','maya.cohen@example.com',NULL,2104,280.00,'2027-05-10','Active'),
-('BK0038',NULL,'guest4@mail.com',2104,280.00,'2027-05-11','Active'),
-('BK0039','guy.eylat@example.com',NULL,2108,650.00,'2027-10-01','Active'),
-('BK0040',NULL,'guest5@mail.com',2108,650.00,'2027-10-02','Active'),
+('BK0031','guy.eylat@example.com',NULL,2101,650.00,'2025-09-01','Active'),
+('BK0032',NULL,'guest1@mail.com',2101,650.00,'2025-09-02','Active'),
+('BK0033','dana.levy@example.com',NULL,2102,650.00,'2025-05-01','Active'),
+('BK0034',NULL,'guest2@mail.com',2102,650.00,'2025-05-02','Active'),
+('BK0035','noam.sade@example.com',NULL,2103,280.00,'2025-02-01','Active'),
+('BK0036',NULL,'guest3@mail.com',2103,280.00,'2025-02-02','Active'),
+('BK0037','maya.cohen@example.com',NULL,2104,280.00,'2025-05-10','Active'),
+('BK0038',NULL,'guest4@mail.com',2104,280.00,'2025-05-11','Active'),
+('BK0039','guy.eylat@example.com',NULL,2108,650.00,'2025-10-01','Active'),
+('BK0040',NULL,'guest5@mail.com',2108,650.00,'2025-10-02','Active'),
 
-('BK0041','dana.levy@example.com',NULL,2105,280.00,'2026-11-01','Canceled by Customer'),
-('BK0042',NULL,'guest6@mail.com',2105,280.00,'2026-11-02','Canceled by Customer'),
-('BK0043','noam.sade@example.com',NULL,2106,650.00,'2028-08-10','Canceled by Customer'),
-('BK0044',NULL,'guest7@mail.com',2107,280.00,'2026-08-15','Canceled by Customer'),
-('BK0045','maya.cohen@example.com',NULL,2102,650.00,'2028-05-03','Canceled by Customer');
+('BK0041','dana.levy@example.com',NULL,2105,280.00,'2025-11-01','Canceled by Customer'),
+('BK0042',NULL,'guest6@mail.com',2105,280.00,'2025-11-02','Canceled by Customer'),
+('BK0043','noam.sade@example.com',NULL,2106,650.00,'2025-08-10','Canceled by Customer'),
+('BK0044',NULL,'guest7@mail.com',2107,280.00,'2025-08-15','Canceled by Customer'),
+('BK0045','maya.cohen@example.com',NULL,2102,650.00,'2025-05-03','Canceled by Customer');
 -- =================================================
 -- 12b) EXTRA Business bookings (more variety across different large aircraft)
 --      BK0046..BK0060
@@ -329,9 +329,9 @@ INSERT INTO Booking (booking_id, registered_email, guest_email, flight_number, p
 ('BK0057',NULL,'guest3@mail.com',1712,1400.00,'2025-12-08','Completed'),
 
 -- Active Large (Business)
-('BK0058','noam.sade@example.com',NULL,2101,1400.00,'2028-09-03','Active'),
-('BK0059',NULL,'guest5@mail.com',2102,1400.00,'2028-05-04','Active'),
-('BK0060','maya.cohen@example.com',NULL,2106,1400.00,'2028-08-12','Active');
+('BK0058','noam.sade@example.com',NULL,2101,1400.00,'2025-09-03','Active'),
+('BK0059',NULL,'guest5@mail.com',2102,1400.00,'2025-05-04','Active'),
+('BK0060','maya.cohen@example.com',NULL,2106,1400.00,'2025-08-12','Active');
 
 
 -- =================================================
