@@ -128,7 +128,9 @@ CREATE TABLE Flight (
     arrival_time DATETIME DEFAULT NULL,
     flight_status VARCHAR(50),
     PRIMARY KEY (flight_number),
-    FOREIGN KEY (aircraft_id) REFERENCES Aircraft(aircraft_id)
+    FOREIGN KEY (aircraft_id) REFERENCES Aircraft(aircraft_id),
+    FOREIGN KEY (origin, destination) REFERENCES FlightLength(origin, destination)
+
 );
 
 DELIMITER //
