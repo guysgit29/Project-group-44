@@ -75,6 +75,7 @@ Jinja2 HTML templates containing the global layout (`base.html`), manager dashbo
 
 ### 4. Database Utility (`database.py`)
 Manages MySQL connection pooling and ensures proper resource cleanup after requests.
+
 ---
 
 ## Data (SQL Seed + Schema Diagram)
